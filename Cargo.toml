@@ -1,0 +1,20 @@
+[package]
+name = "commit-wizard"
+version = "0.1.0"
+edition = "2021"
+authors = ["jfheinrich-eu"]
+description = "A CLI tool to help create better commit messages"
+readme = "README.md"
+repository = "https://github.com/jfheinrich-eu/commit-wizard"
+license = "MIT"
+keywords = ["cli", "git", "commit", "wizard"]
+categories = ["command-line-utilities", "development-tools"]
+
+[dependencies]
+clap = { version = "4.5", features = ["derive"] }
+
+[dev-dependencies]
+
+[[bin]]
+name = "commit-wizard"
+path = "src/main.rs"
