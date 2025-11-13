@@ -14,8 +14,8 @@ if [ -d ~/.ssh ]; then
         echo "sudo not available; skipping chown for ~/.ssh"
     fi
     chmod 700 ~/.ssh
-    chmod 600 ~/.ssh/* 2>/dev/null || true
-    chmod 644 ~/.ssh/*.pub 2>/dev/null || true
+    find ~/.ssh -maxdepth 1 -type f -exec chmod 600 {} \;
+    find ~/.ssh -maxdepth 1 -type f -name "*.pub" -exec chmod 644 {} \;
 fi
 
 # Fix GPG permissions
@@ -27,7 +27,7 @@ if [ -d ~/.gnupg ]; then
         echo "sudo not available; skipping chown for ~/.gnupg"
     fi
     chmod 700 ~/.gnupg
-    chmod 600 ~/.gnupg/* 2>/dev/null || true
+    find ~/.gnupg -maxdepth 1 -type f -exec chmod 600 {} \;
     # Start GPG agent
     gpg-agent --daemon 2>/dev/null || true
 fi
@@ -84,14 +84,14 @@ alias cw='cargo watch -x check -x test -x run'
 alias cu='cargo update'
 alias tree='cargo tree'
 
-# Git aliases for conventional commits
-alias gcf='git commit -m "feat: "'
-alias gcfix='git commit -m "fix: "'
-alias gcd='git commit -m "docs: "'
-alias gcs='git commit -m "style: "'
-alias gcr='git commit -m "refactor: "'
-alias gct='git commit -m "test: "'
-alias gcc='git commit -m "chore: "'
+# Git functions for conventional commits
+gcf()    { git commit -m "feat: $*"; }
+gcfix()  { git commit -m "fix: $*"; }
+gcd()    { git commit -m "docs: $*"; }
+gcs()    { git commit -m "style: $*"; }
+gcr()    { git commit -m "refactor: $*"; }
+gct()    { git commit -m "test: $*"; }
+gcc()    { git commit -m "chore: $*"; }
 
 EOF
 

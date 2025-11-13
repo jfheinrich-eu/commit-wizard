@@ -5,12 +5,17 @@
 		"--init"
 	],
 	"mounts": [
-		// Mount SSH keys from host
-		"source=${localEnv:HOME}/.ssh,target=/home/vscode/.ssh,type=bind,consistency=cached",
-		// Mount GPG keys from host  
-		"source=${localEnv:HOME}/.gnupg,target=/home/vscode/.gnupg,type=bind,consistency=cached",
-		// Mount Git config from host
-		"source=${localEnv:HOME}/.gitconfig,target=/home/vscode/.gitconfig,type=bind,consistency=cached"
+		// Optional: Mount SSH keys from host (comment out if ~/.ssh doesn't exist)
+		// Uncomment the next line if you want to use your host SSH keys in the container
+		// "source=${localEnv:HOME}/.ssh,target=/home/vscode/.ssh,type=bind,consistency=cached",
+		
+		// Optional: Mount GPG keys from host (comment out if ~/.gnupg doesn't exist)
+		// Uncomment the next line if you want to use your host GPG keys in the container
+		// "source=${localEnv:HOME}/.gnupg,target=/home/vscode/.gnupg,type=bind,consistency=cached",
+		
+		// Optional: Mount Git config from host (comment out if ~/.gitconfig doesn't exist)
+		// Uncomment the next line if you want to use your host Git config in the container
+		// "source=${localEnv:HOME}/.gitconfig,target=/home/vscode/.gitconfig,type=bind,consistency=cached"
 	],
 	"customizations": {
 		"vscode": {
@@ -51,7 +56,6 @@
 				"rust-analyzer.checkOnSave.command": "clippy",
 				"rust-analyzer.completion.addCallArgumentSnippets": true,
 				"rust-analyzer.completion.addCallParenthesis": true,
-				"editor.formatOnSave": true,
 				"[rust]": {
 					"editor.defaultFormatter": "rust-lang.rust-analyzer",
 					"editor.formatOnSave": true

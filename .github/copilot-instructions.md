@@ -47,7 +47,7 @@ struct Cli {
 - At least 1 code owner approval (see `.github/CODEOWNERS`)
 - All CI checks passing
 
-**Dependency Management**: Dependabot configured for weekly Cargo updates on Mondays at 9:00 AM with automatic reviewers and assignees.
+**Dependency Management**: Dependabot configured for weekly Cargo updates on Mondays at 9:00 AM with automatic assignees (no reviewers).
 
 ## Current State & Roadmap
 

@@ -64,14 +64,17 @@ tree    # cargo tree
 ```
 
 **Git Conventional Commit Shortcuts:**
+
+> **Note:** These are shell functions that accept a commit message as arguments. Simply type the function name followed by your message. For example: `gcf my new feature`
+
 ```bash
-gcf     # git commit -m "feat: "
-gcfix   # git commit -m "fix: "
-gcd     # git commit -m "docs: "
-gcs     # git commit -m "style: "
-gcr     # git commit -m "refactor: "
-gct     # git commit -m "test: "
-gcc     # git commit -m "chore: "
+gcf     # git commit -m "feat: <your message>"
+gcfix   # git commit -m "fix: <your message>"
+gcd     # git commit -m "docs: <your message>"
+gcs     # git commit -m "style: <your message>"
+gcr     # git commit -m "refactor: <your message>"
+gct     # git commit -m "test: <your message>"
+gcc     # git commit -m "chore: <your message>"
 ```
 
 ## Security Features
