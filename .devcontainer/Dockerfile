@@ -1,5 +1,5 @@
 # Use the official Rust image as base
-FROM mcr.microsoft.com/devcontainers/rust:1-1-bullseye
+FROM mcr.microsoft.com/devcontainers/rust:1-bullseye
 
 # Set environment variables
 ENV DEBIAN_FRONTEND=noninteractive
@@ -30,6 +30,7 @@ RUN apt-get update && apt-get install -y \
     jq \
     ripgrep \
     fd-find \
+    sudo \
     # Clean up
     && apt-get autoremove -y \
     && apt-get clean -y \
@@ -52,16 +53,21 @@ RUN cargo install \
     cargo-expand
 
 # Create symlinks for fd (some systems use fdfind)
-RUN ln -sf /usr/bin/fdfind /usr/local/bin/fd
+RUN if [ -x /usr/bin/fdfind ]; then ln -sf /usr/bin/fdfind /usr/local/bin/fd || true; fi
+
+# Configure git to use correct SSH/GPG settings in container (run as root)
+RUN git config --global gpg.program gpg2 || true
+
+# Ensure sudo is available and allow vscode passwordless sudo
+RUN if command -v sudo >/dev/null 2>&1; then \
+            echo "vscode ALL=(ALL) NOPASSWD:ALL" > /etc/sudoers.d/vscode && chmod 0440 /etc/sudoers.d/vscode; \
+        fi
 
 # Set up vscode user for development
 USER vscode
 
 # Set working directory
 WORKDIR /workspace
-
-# Configure git to use correct SSH/GPG settings in container
-RUN git config --global gpg.program gpg2
 
 # Set default shell
 SHELL ["/bin/bash", "-c"]

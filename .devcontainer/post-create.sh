@@ -8,7 +8,11 @@ echo "🚀 Setting up Rust CLI development environment..."
 # Fix SSH permissions (required for SSH to work properly)
 if [ -d ~/.ssh ]; then
     echo "🔐 Fixing SSH permissions..."
-    sudo chown -R vscode:vscode ~/.ssh
+    if command -v sudo >/dev/null 2>&1; then
+        sudo chown -R vscode:vscode ~/.ssh
+    else
+        echo "sudo not available; skipping chown for ~/.ssh"
+    fi
     chmod 700 ~/.ssh
     chmod 600 ~/.ssh/* 2>/dev/null || true
     chmod 644 ~/.ssh/*.pub 2>/dev/null || true
@@ -17,7 +21,11 @@ fi
 # Fix GPG permissions
 if [ -d ~/.gnupg ]; then
     echo "🔐 Fixing GPG permissions..."
-    sudo chown -R vscode:vscode ~/.gnupg
+    if command -v sudo >/dev/null 2>&1; then
+        sudo chown -R vscode:vscode ~/.gnupg
+    else
+        echo "sudo not available; skipping chown for ~/.gnupg"
+    fi
     chmod 700 ~/.gnupg
     chmod 600 ~/.gnupg/* 2>/dev/null || true
     # Start GPG agent
@@ -27,7 +35,11 @@ fi
 # Fix Git config permissions
 if [ -f ~/.gitconfig ]; then
     echo "📝 Fixing Git config permissions..."
-    sudo chown vscode:vscode ~/.gitconfig
+    if command -v sudo >/dev/null 2>&1; then
+        sudo chown vscode:vscode ~/.gitconfig
+    else
+        echo "sudo not available; skipping chown for ~/.gitconfig"
+    fi
 fi
 
 # Authenticate with GitHub CLI if token is available
