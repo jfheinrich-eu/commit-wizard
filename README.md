@@ -4,8 +4,8 @@ A CLI tool to help create better commit messages.
 
 ## Features
 
-- Interactive commit message wizard
-- Follows conventional commit standards
+- Interactive commit message wizard (planned)
+- Follows conventional commit standards (planned)
 - User-friendly command-line interface
 
 ## Installation
