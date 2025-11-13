@@ -1,0 +1,80 @@
+{
+	"name": "Rust CLI Development",
+	"dockerFile": "Dockerfile",
+	"runArgs": [
+		"--init"
+	],
+	"mounts": [
+		// Mount SSH keys from host
+		"source=${localEnv:HOME}/.ssh,target=/home/vscode/.ssh,type=bind,consistency=cached",
+		// Mount GPG keys from host  
+		"source=${localEnv:HOME}/.gnupg,target=/home/vscode/.gnupg,type=bind,consistency=cached",
+		// Mount Git config from host
+		"source=${localEnv:HOME}/.gitconfig,target=/home/vscode/.gitconfig,type=bind,consistency=cached"
+	],
+	"customizations": {
+		"vscode": {
+			"extensions": [
+				// Rust Development
+				"rust-lang.rust-analyzer",
+				"vadimcn.vscode-lldb",
+				"serayuzgur.crates",
+				"dustypomerleau.rust-syntax",
+				
+				// TOML Support
+				"tamasfe.even-better-toml",
+				
+				// Git Integration
+				"github.vscode-pull-request-github",
+				"github.copilot",
+				"github.copilot-chat",
+				"eamodio.gitlens",
+				
+				// CLI Development Tools
+				"ms-vscode.hexdump",
+				"usernamehw.errorlens",
+				"streetsidesoftware.code-spell-checker",
+				
+				// Markdown Support
+				"yzhang.markdown-all-in-one",
+				"davidanson.vscode-markdownlint",
+				
+				// Development Utilities
+				"ms-vscode.vscode-json",
+				"redhat.vscode-yaml",
+				"ms-vscode-remote.remote-containers"
+			],
+			"settings": {
+				"rust-analyzer.cargo.buildScripts.enable": true,
+				"rust-analyzer.procMacro.enable": true,
+				"rust-analyzer.cargo.loadOutDirsFromCheck": true,
+				"rust-analyzer.checkOnSave.command": "clippy",
+				"rust-analyzer.completion.addCallArgumentSnippets": true,
+				"rust-analyzer.completion.addCallParenthesis": true,
+				"editor.formatOnSave": true,
+				"[rust]": {
+					"editor.defaultFormatter": "rust-lang.rust-analyzer",
+					"editor.formatOnSave": true
+				},
+				"files.watcherExclude": {
+					"**/target/**": true
+				},
+				"terminal.integrated.defaultProfile.linux": "bash",
+				"git.enableSmartCommit": true,
+				"git.confirmSync": false,
+				"git.autofetch": true
+			}
+		}
+	},
+	"remoteUser": "vscode",
+	"postCreateCommand": "bash .devcontainer/post-create.sh",
+	"forwardPorts": [],
+	"portsAttributes": {},
+	"features": {
+		"ghcr.io/devcontainers/features/github-cli:1": {},
+		"ghcr.io/devcontainers/features/git:1": {
+			"ppa": true,
+			"version": "latest"
+		}
+	}
+}
