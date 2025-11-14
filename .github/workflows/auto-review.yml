@@ -330,9 +330,7 @@ jobs:
           else
             echo "ℹ️ 'automated' label already present on PR"
           fi
-          else
-            echo "ℹ️ 'automated' label already present on PR"
-          fi
+
       - name: Handle errors gracefully
         if: failure()
         env:
@@ -342,16 +340,11 @@ jobs:
 
           # Only post comment if we have a PR number
           if [ -n "$PR_NUMBER" ] && [ "$PR_NUMBER" != "null" ]; then
-            ERROR_MESSAGE=$(cat <<EOF
-          ## ⚠️ Automated Review Failed
+            gh pr comment "$PR_NUMBER" --body "## ⚠️ Automated Review Failed
 
-            gh pr comment "$PR_NUMBER" --body "$ERROR_MESSAGE" || echo "Warning: Could not post error comment to PR"
+          The automated review process encountered an error. Please check the workflow logs for details.
 
-          You can still proceed with manual review by the code owners and maintainers.
-          EOF
-          )
-
-            gh pr comment "$PR_NUMBER" --body "$ERROR_MESSAGE" || echo "Warning: Could not post error comment to PR"
+          You can still proceed with manual review by the code owners and maintainers." || echo "Warning: Could not post error comment to PR"
           fi
 
           echo "⚠️ Workflow failed but error was handled gracefully"

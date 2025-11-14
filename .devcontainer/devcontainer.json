@@ -38,7 +38,7 @@
 			"settings": {
 				"rust-analyzer.cargo.buildScripts.enable": true,
 				"rust-analyzer.procMacro.enable": true,
-				"rust-analyzer.checkOnSave.command": "clippy",
+				"rust-analyzer.check.command": "clippy",
 				"rust-analyzer.completion.addCallArgumentSnippets": true,
 				"rust-analyzer.completion.addCallParenthesis": true,
 				"[rust]": {
