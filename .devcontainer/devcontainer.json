@@ -5,15 +5,15 @@
 		"--init"
 	],
 	"mounts": [
-		// Optional: Mount SSH keys from host (comment out if ~/.ssh doesn't exist)
+		// Optional: Mount SSH keys from host (uncomment if you have ~/.ssh directory)
 		// Uncomment the next line if you want to use your host SSH keys in the container
 		// "source=${localEnv:HOME}/.ssh,target=/home/vscode/.ssh,type=bind,consistency=cached",
 		
-		// Optional: Mount GPG keys from host (comment out if ~/.gnupg doesn't exist)
+		// Optional: Mount GPG keys from host (uncomment if you have ~/.gnupg directory)
 		// Uncomment the next line if you want to use your host GPG keys in the container
 		// "source=${localEnv:HOME}/.gnupg,target=/home/vscode/.gnupg,type=bind,consistency=cached",
 		
-		// Optional: Mount Git config from host (comment out if ~/.gitconfig doesn't exist)
+		// Optional: Mount Git config from host (uncomment if you have ~/.gitconfig file)
 		// Uncomment the next line if you want to use your host Git config in the container
 		// "source=${localEnv:HOME}/.gitconfig,target=/home/vscode/.gitconfig,type=bind,consistency=cached"
 	],
