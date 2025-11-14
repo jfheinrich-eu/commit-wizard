@@ -40,17 +40,14 @@ RUN apt-get update && apt-get install -y \
 RUN rustup component add \
     clippy \
     rustfmt \
-    rust-src \
-    rust-analysis
+    rust-src
 
 # Install cargo tools for CLI development
-RUN cargo install \
-    cargo-edit \
-    cargo-watch \
-    cargo-audit \
-    cargo-outdated \
-    cargo-tree \
-    cargo-expand
+RUN cargo install cargo-edit || true
+RUN cargo install cargo-watch || true
+RUN cargo install cargo-audit || true
+RUN cargo install cargo-outdated || true
+RUN cargo install cargo-expand || true
 
 # Create symlinks for fd (some systems use fdfind)
 RUN if [ -x /usr/bin/fdfind ]; then ln -sf /usr/bin/fdfind /usr/local/bin/fd || true; fi
