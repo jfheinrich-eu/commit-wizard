@@ -169,8 +169,10 @@ jobs:
 
           echo "Commit status: $COMMIT_STATUS"
           echo "Total check runs for this PR: $CHECK_RUNS_COUNT"
-          echo "DEBUG: Check runs for PR #$PR_NUMBER:"
-          echo "$CHECK_RUNS" | jq '.'
+          if [ "${ACTIONS_STEP_DEBUG}" = "true" ]; then
+            echo "DEBUG: Check runs for PR #$PR_NUMBER:"
+            echo "$CHECK_RUNS" | jq '.'
+          fi
 
           # Count check runs by status, excluding this workflow (auto-review)
           SUCCESSFUL_RUNS=$(echo "$CHECK_RUNS" | jq '[.[] | select(.name != "Auto Review by Bot" and .conclusion == "success")] | length')
