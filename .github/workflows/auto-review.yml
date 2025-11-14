@@ -170,7 +170,7 @@ jobs:
 
           # Filter check runs to only include those from pull requests matching this PR
           # This ensures we only check jobs that belong to this PR
-          CHECK_RUNS=$(echo "$ALL_CHECK_RUNS" | jq --arg pr "$PR_NUMBER" '[.[] | select(.pull_requests // [] | any(.number == ($pr | tonumber)))]')
+          CHECK_RUNS=$(echo "$ALL_CHECK_RUNS" | jq --arg pr "$PR_NUMBER" '[.[] | select(.pull_requests // [] | any(.number == ($pr | try tonumber // 0)))]')
           CHECK_RUNS_COUNT=$(echo "$CHECK_RUNS" | jq 'length')
 
           echo "Commit status: $COMMIT_STATUS"
@@ -351,7 +351,7 @@ jobs:
           EOF
           )
 
-            gh pr comment "$PR_NUMBER" --body "$ERROR_MESSAGE" || true
+            gh pr comment "$PR_NUMBER" --body "$ERROR_MESSAGE" || echo "Warning: Could not post error comment to PR"
           fi
 
           echo "⚠️ Workflow failed but error was handled gracefully"
