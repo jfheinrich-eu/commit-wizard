@@ -294,8 +294,6 @@ jobs:
 
           ### Next Steps
           - Code owner review is required from: **@jfheinrich-eu/maintainers**
-          - Additional reviewers: **@Copilot**
-
           ---
           *This is an automated review. Please wait for human reviewers to approve before merging.*
           EOF
