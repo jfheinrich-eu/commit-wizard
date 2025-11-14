@@ -43,11 +43,21 @@ RUN rustup component add \
     rust-src
 
 # Install cargo tools for CLI development
-RUN cargo install cargo-edit || true
-RUN cargo install cargo-watch || true
-RUN cargo install cargo-audit || true
-RUN cargo install cargo-outdated || true
-RUN cargo install cargo-expand || true
+RUN set -e; \
+  tools="cargo-edit cargo-watch cargo-audit cargo-outdated cargo-expand"; \
+  failed=""; \
+  for tool in $tools; do \
+    echo "Installing $tool..."; \
+    if cargo install "$tool"; then \
+      echo "$tool installed successfully."; \
+    else \
+      echo "Failed to install $tool."; \
+      failed="$failed $tool"; \
+    fi; \
+  done; \
+  if [ -n "$failed" ]; then \
+    echo "WARNING: The following cargo tools failed to install:$failed"; \
+  fi
 
 # Create symlinks for fd (some systems use fdfind)
 RUN if [ -x /usr/bin/fdfind ]; then ln -sf /usr/bin/fdfind /usr/local/bin/fd || true; fi

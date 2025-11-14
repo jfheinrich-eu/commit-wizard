@@ -42,9 +42,9 @@ This dev container provides a complete Rust CLI development environment with all
 
 The container will automatically:
 - Install all Rust components and tools
-- Mount your SSH keys from `~/.ssh`
-- Mount your GPG keys from `~/.gnupg` 
-- Mount your Git config from `~/.gitconfig`
+- (Optional) Mount your SSH keys from `~/.ssh` (uncomment the relevant lines in `devcontainer.json`)
+- (Optional) Mount your GPG keys from `~/.gnupg` (uncomment the relevant lines in `devcontainer.json`)
+- (Optional) Mount your Git config from `~/.gitconfig` (uncomment the relevant lines in `devcontainer.json`)
 - Set up development aliases
 - Pre-build project dependencies
 

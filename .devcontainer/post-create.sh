@@ -45,6 +45,8 @@ fi
 # Authenticate with GitHub CLI if token is available
 if [ -n "$GITHUB_TOKEN" ]; then
     echo "🐙 Authenticating with GitHub CLI..."
+    # WARNING: GITHUB_TOKEN should only be set in secure contexts (e.g., as a secret in devcontainer.json)
+    # Do NOT set GITHUB_TOKEN in shell history, logs, or other insecure locations.
     echo "$GITHUB_TOKEN" | gh auth login --with-token
 fi
 
@@ -65,7 +67,7 @@ if [ -f "Cargo.toml" ]; then
     # Install project-specific tools if they exist in Cargo.toml
     if grep -q "clap" Cargo.toml; then
         echo "🛠️  Installing additional CLI development tools..."
-        cargo install cargo-help2man 2>/dev/null || true
+        # (No additional tools to install at this time)
     fi
 fi
 
