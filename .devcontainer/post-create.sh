@@ -73,7 +73,8 @@ fi
 
 # Set up shell aliases for common Rust CLI tasks
 echo "🔧 Setting up development aliases..."
-cat >> ~/.bashrc << 'EOF'
+if ! grep -q "# Rust CLI Development Aliases" ~/.bashrc 2>/dev/null; then
+  cat >> ~/.bashrc << 'EOF'
 
 # Rust CLI Development Aliases
 alias cb='cargo build'
@@ -96,6 +97,10 @@ gct()    { git commit -m "test: $*"; }
 gcc()    { git commit -m "chore: $*"; }
 
 EOF
+  echo "✅ Aliases added to ~/.bashrc"
+else
+  echo "ℹ️  Aliases already present in ~/.bashrc"
+fi
 
 echo "✅ Development environment setup complete!"
 echo "💡 Available aliases: cb, cr, ct, cc, cf, ccl, cw, cu, tree"

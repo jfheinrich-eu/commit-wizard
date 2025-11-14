@@ -55,6 +55,9 @@ jobs:
       - name: Run Clippy
         run: cargo clippy --all-targets --all-features -- -D warnings
 
+      - name: Install jq for metadata parsing
+        run: sudo apt-get update && sudo apt-get install -y jq
+
       - name: Build project
         run: cargo build --verbose
 

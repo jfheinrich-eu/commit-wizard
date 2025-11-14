@@ -112,4 +112,75 @@ BREAKING CHANGE: CLI interface now requires subcommands
 - Ensure accessibility and professional presentation
 - Reference relevant documentation in `docs/` directory
 
+## Code Review Standards
+
+### Security Best Practices
+
+**GitHub Actions Security**:
+- Use pinned versions for actions (e.g., `actions/checkout@v4` with SHA when possible)
+- Minimize token permissions - use least privilege principle
+- Never expose secrets in logs or environment variables
+- Use `secrets.GITHUB_TOKEN` with restricted permissions when possible
+- Validate and sanitize all external inputs (PR numbers, branch names, etc.)
+- Use environment variables instead of direct variable substitution to prevent injection attacks
+
+**Container & Shell Script Security**:
+- Never store credentials in plain text or command history
+- Use secure token passing methods (heredocs, file descriptors, not echo pipes)
+- Set proper file permissions (600 for private keys, 700 for .ssh/.gnupg directories)
+- Avoid running containers as root when possible
+- Use `set -euo pipefail` in bash scripts for better error handling
+
+**Rust Security**:
+- Run `cargo audit` regularly to check for vulnerable dependencies
+- Keep dependencies up-to-date via Dependabot
+- Use `cargo clippy` with `-D warnings` to catch potential issues
+- Avoid unsafe code unless absolutely necessary and well-documented
+
+### Robustness Standards
+
+**Error Handling**:
+- All bash scripts must use `set -e` or proper error checking (`|| true` only when failure is acceptable)
+- Check command availability before use (e.g., `command -v jq >/dev/null 2>&1`)
+- Provide meaningful error messages and exit codes
+- Handle edge cases (empty inputs, missing files, network failures)
+
+**Idempotency**:
+- Scripts should be safe to run multiple times without side effects
+- Check if operations are already done before repeating (e.g., aliases already in .bashrc)
+- Use conditional logic to skip unnecessary work
+
+**GitHub Workflows**:
+- Add timeout limits to prevent hanging jobs (`timeout-minutes: 30`)
+- Use caching for dependencies to speed up builds
+- Implement proper retry logic for flaky operations
+- Add conditional execution to skip unnecessary steps
+
+**Rust Best Practices**:
+- Use `cargo fmt` and `cargo clippy` in CI/CD
+- Write comprehensive tests for all public APIs
+- Use semantic versioning for releases
+- Document all public items with doc comments
+- Prefer explicit error types over `unwrap()` or `expect()`
+
+### GitHub Best Practices
+
+**Workflow Design**:
+- Use reusable workflows and composite actions for common patterns
+- Minimize workflow run time with parallel jobs and caching
+- Use matrix builds for testing multiple configurations
+- Provide clear job and step names for better visibility
+
+**Dependabot Configuration**:
+- No duplicate keys in YAML configuration
+- Set reasonable PR limits to avoid spam
+- Use conventional commit prefixes
+- Assign reviewers or assignees for automated PRs
+
+**Documentation**:
+- Keep README.md up-to-date with accurate setup instructions
+- Document all environment variables and secrets needed
+- Provide troubleshooting sections for common issues
+- Include badges for CI/CD status, version, and license
+
 When working on this project, focus on expanding the CLI functionality while maintaining the simple, single-file structure until complexity justifies modularization.
