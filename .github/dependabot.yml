@@ -31,9 +31,7 @@ updates:
     labels:
       - "dependencies"
       - "github-actions"
-    labels:
-      - "dependencies"
-      - "github-actions"
+
     commit-message:
       prefix: "chore"
       include: "scope"

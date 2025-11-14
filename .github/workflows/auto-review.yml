@@ -16,7 +16,7 @@ on:
     types:
       - completed
   workflow_run:
-    workflows: ["Devcontainer & Scripts Security and Best Practices"]
+    workflows: ["Rust Tests"]
     types:
       - completed
 
@@ -31,6 +31,10 @@ jobs:
     name: Auto Review by Bot
     runs-on: ubuntu-latest
     env:
+      # If you set BOT_TOKEN, it will be used instead of GITHUB_TOKEN.
+      # BOT_TOKEN should have the minimum required permissions (ideally: 'repo' and 'pull_request:write' only).
+      # Avoid using a token with admin or organization-wide permissions.
+      # See https://docs.github.com/en/actions/security-guides/automatic-token-authentication for details.
       GH_TOKEN: ${{ secrets.BOT_TOKEN || secrets.GITHUB_TOKEN }}
 
     # Set bash as default shell for all run steps in this job
@@ -121,6 +125,8 @@ jobs:
         run: |
           set -eu
 
+          :"${ACTIONS_STEP_DEBUG:=false}"
+
           # Get PR details using GitHub CLI
           PR_DATA=$(gh pr view "$PR_NUMBER" --json state,isDraft,mergeable,statusCheckRollup)
 
@@ -160,7 +166,7 @@ jobs:
           COMMIT_STATUS=$(gh api "/repos/${{ github.repository }}/commits/$COMMIT_SHA/status" --jq '.state // "unknown"')
 
           # Get all check runs for this commit
-          ALL_CHECK_RUNS=$(gh api "/repos/${{ github.repository }}/commits/$COMMIT_SHA/check-runs" --jq '.check_runs // []')
+          CHECK_RUNS=$(echo "$ALL_CHECK_RUNS" | jq --arg pr "$PR_NUMBER" '[.[] | select(.pull_requests // [] | any(.number == ($pr | try tonumber // 0)))]')
 
           # Filter check runs to only include those from pull requests matching this PR
           # This ensures we only check jobs that belong to this PR
@@ -316,11 +322,17 @@ jobs:
           set -eu
 
           # Add 'automated' label to indicate bot has reviewed
-          # Using || true because label might already exist from a previous run
-          gh pr edit "$PR_NUMBER" --add-label "automated" || true
-
-          echo "✅ Added 'automated' label to PR"
-
+          # Only add the label if it is not already present
+          EXISTING_LABELS=$(gh pr view "$PR_NUMBER" --json labels -q '.labels[].name')
+          if ! echo "$EXISTING_LABELS" | grep -qx "automated"; then
+            gh pr edit "$PR_NUMBER" --add-label "automated"
+            echo "✅ Added 'automated' label to PR"
+          else
+            echo "ℹ️ 'automated' label already present on PR"
+          fi
+          else
+            echo "ℹ️ 'automated' label already present on PR"
+          fi
       - name: Handle errors gracefully
         if: failure()
         env:
@@ -333,7 +345,7 @@ jobs:
             ERROR_MESSAGE=$(cat <<EOF
           ## ⚠️ Automated Review Failed
 
-          The automated bot review encountered an error. Please check the workflow logs for details.
+            gh pr comment "$PR_NUMBER" --body "$ERROR_MESSAGE" || echo "Warning: Could not post error comment to PR"
 
           You can still proceed with manual review by the code owners and maintainers.
           EOF
