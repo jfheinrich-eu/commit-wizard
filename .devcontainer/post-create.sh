@@ -1,7 +1,7 @@
 #!/bin/bash
 
 # Post-create script for Rust CLI dev container setup
-set -e
+set -euo pipefail
 
 echo "🚀 Setting up Rust CLI development environment..."
 
