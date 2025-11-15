@@ -19,7 +19,7 @@ This dev container provides a complete Rust CLI development environment with all
 ### 📝 VS Code Extensions
 - **rust-lang.rust-analyzer** - Rust language server
 - **vadimcn.vscode-lldb** - Native debugging
-- **serayuzgur.crates** - Cargo.toml assistance
+- **fill-labs.dependi** - Cargo.toml assistance
 - **tamasfe.even-better-toml** - TOML file support
 - **github.vscode-pull-request-github** - GitHub integration
 - **eamodio.gitlens** - Enhanced Git capabilities
@@ -65,7 +65,7 @@ tree    # cargo tree
 
 **Git Conventional Commit Shortcuts:**
 
-> **Note:** These are shell functions that accept a commit message as arguments. Simply type the function name followed by your message. For example: `gcf my new feature`
+> **Note:** These are shell functions that accept a commit message as arguments. Simply type the function name followed by your message. For example: `gcf "my new feature"` or `gcf 'add new feature support'`
 
 ```bash
 gcf     # git commit -m "feat: <your message>"
@@ -123,11 +123,8 @@ gpg --list-secret-keys
 ### GitHub CLI Authentication
 If GitHub CLI needs authentication:
 ```bash
-# Login with token
+# Login with GitHub CLI (recommended)
 gh auth login
-
-# Or set environment variable
-export GITHUB_TOKEN=your_token_here
 ```
 
 ## Container Rebuild

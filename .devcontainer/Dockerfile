@@ -58,14 +58,13 @@ RUN set -e; \
   if [ -n "$failed" ]; then \
     echo "ERROR: The following cargo tools failed to install:$failed"; \
     exit 1; \
-    exit 1; \
   fi
-RUN if [ -x /usr/bin/fdfind ]; then ln -sf /usr/bin/fdfind /usr/local/bin/fd || echo "Warning: Could not create fd symlink"; fi
+
 # Create symlinks for fd (some systems use fdfind)
-RUN if [ -x /usr/bin/fdfind ]; then ln -sf /usr/bin/fdfind /usr/local/bin/fd || true; fi
-RUN git config --global gpg.program gpg2 || echo "Warning: Could not configure GPG program"
+RUN if [ -x /usr/bin/fdfind ]; then ln -sf /usr/bin/fdfind /usr/local/bin/fd || echo "Warning: Could not create fd symlink"; fi
+
 # Configure git to use correct SSH/GPG settings in container (run as root)
-RUN git config --global gpg.program gpg2 || true
+RUN git config --global gpg.program gpg2 || echo "Warning: Could not configure GPG program"
 
 # Ensure sudo is available and allow vscode passwordless sudo
 RUN if command -v sudo >/dev/null 2>&1; then \

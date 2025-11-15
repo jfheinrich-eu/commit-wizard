@@ -78,8 +78,8 @@ jobs:
               if [[ -n "$PR_NUMBER_INPUT" ]]; then
                 echo "pr_number=$PR_NUMBER_INPUT" >> "$GITHUB_OUTPUT"
               else
-                # Try to auto-detect PR from current context
-                # Use GitHub context variables instead of git command to avoid detached HEAD issues
+              # Try to auto-detect PR from current context
+              # Use GitHub context variables instead of git command to avoid detached HEAD issues
                 CURRENT_BRANCH="${GITHUB_HEAD_REF:-$GITHUB_REF_NAME}"
                 echo "Trying to auto-detect PR for branch: $CURRENT_BRANCH"
                 PR_NUM=$(gh pr list --head "$CURRENT_BRANCH" --json number --jq '.[0].number // empty' || echo "")
@@ -125,7 +125,7 @@ jobs:
         run: |
           set -eu
 
-          :"${ACTIONS_STEP_DEBUG:=false}"
+          ACTIONS_STEP_DEBUG="${ACTIONS_STEP_DEBUG:=false}"
 
           # Get PR details using GitHub CLI
           PR_DATA=$(gh pr view "$PR_NUMBER" --json state,isDraft,mergeable,statusCheckRollup)
@@ -166,7 +166,7 @@ jobs:
           COMMIT_STATUS=$(gh api "/repos/${{ github.repository }}/commits/$COMMIT_SHA/status" --jq '.state // "unknown"')
 
           # Get all check runs for this commit
-          CHECK_RUNS=$(echo "$ALL_CHECK_RUNS" | jq --arg pr "$PR_NUMBER" '[.[] | select(.pull_requests // [] | any(.number == ($pr | try tonumber // 0)))]')
+          ALL_CHECK_RUNS=$(gh api "/repos/${{ github.repository }}/commits/$COMMIT_SHA/check-runs" --jq '.check_runs')
 
           # Filter check runs to only include those from pull requests matching this PR
           # This ensures we only check jobs that belong to this PR

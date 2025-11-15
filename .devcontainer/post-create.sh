@@ -112,7 +112,7 @@ if [ -n "$GITHUB_TOKEN" ]; then
     # Basic format check (GitHub tokens usually start with 'ghp_' or 'github_pat_')
     if [[ "$GITHUB_TOKEN" == ghp_* || "$GITHUB_TOKEN" == github_pat_* ]]; then
         echo "🐙 Authenticating with GitHub CLI..."
-        if echo "$GITHUB_TOKEN" | gh auth login --with-token >/dev/null 2>&1; then
+        if gh auth login --with-token <<< "$GITHUB_TOKEN" >/dev/null 2>&1; then
             # Test token validity with a minimal API call
             if gh api user >/dev/null 2>&1; then
                 echo "✅ GitHub CLI authenticated successfully."
