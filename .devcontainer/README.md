@@ -42,11 +42,12 @@ This dev container provides a complete Rust CLI development environment with all
 
 The container will automatically:
 - Install all Rust components and tools
-- (Optional) Mount your SSH keys from `~/.ssh` (uncomment the relevant lines in `devcontainer.json`)
-- (Optional) Mount your GPG keys from `~/.gnupg` (uncomment the relevant lines in `devcontainer.json`)
-- (Optional) Mount your Git config from `~/.gitconfig` (uncomment the relevant lines in `devcontainer.json`)
+- Mount your SSH keys from `~/.ssh` (GitHub-specific keys filtered by config)
+- Mount your GPG keys from `~/.gnupg`
+- Mount your Git config from `~/.gitconfig`
 - Set up development aliases
 - Pre-build project dependencies
+- Authenticate with GitHub CLI (if `GITHUB_TOKEN` is provided)
 
 ### Development Aliases
 
@@ -80,9 +81,10 @@ gcc     # git commit -m "chore: <your message>"
 ## Security Features
 
 ### SSH Key Mounting
-Your SSH keys are securely mounted from the host system:
-- **Host Path:** `~/.ssh` 
-- **Container Path:** `/home/vscode/.ssh`
+Your SSH keys are securely mounted and filtered from the host system:
+- **Host Path:** `~/.ssh` (mounted readonly to `/tmp/host-ssh`)
+- **Container Path:** `/home/vscode/.ssh` (GitHub-specific keys copied)
+- **Filtering:** Only keys configured for `github.com` in SSH config are copied
 - **Permissions:** Automatically fixed (700/600)
 
 ### GPG Key Mounting  
