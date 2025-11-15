@@ -7,6 +7,10 @@
 	"mounts": [
 		// Example: Mount SSH keys from host (uncomment if you have ~/.ssh directory)
 		// "source=${localEnv:HOME}/.ssh,target=/home/vscode/.ssh,type=bind,consistency=cached"
+		// Example: Mount GPG keys from host (uncomment if you have ~/.gnupg directory)
+		// "source=${localEnv:HOME}/.gnupg,target=/home/vscode/.gnupg,type=bind,consistency=cached"
+		// Example: Mount Git config from host (uncomment if you have ~/.gitconfig file)
+		// "source=${localEnv:HOME}/.gitconfig,target=/home/vscode/.gitconfig,type=bind,consistency=cached"
 	],
 	"customizations": {
 		"vscode": {
@@ -14,7 +18,7 @@
 				// Rust Development
 				"rust-lang.rust-analyzer",
 				"vadimcn.vscode-lldb",
-				"serayuzgur.crates",
+				"fill-labs.dependi",
 				"dustypomerleau.rust-syntax",
 				// TOML Support
 				"tamasfe.even-better-toml",
