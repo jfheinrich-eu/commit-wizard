@@ -24,7 +24,9 @@ To configure branch protection for the `main` branch, follow these steps in the 
 
 ### Additional Recommended Settings
 
-- **Require status checks to pass before merging**: ✅ Enabled (when CI is set up)
+- **Require status checks to pass before merging**: ✅ Enabled
+  - Required status checks:
+    - `Run Rust Tests` (from Rust Tests workflow)
 - **Require branches to be up to date before merging**: ✅ Enabled
 - **Require conversation resolution before merging**: ✅ Enabled
 - **Include administrators**: ✅ Enabled (applies rules to admins too)
