@@ -70,6 +70,11 @@ pub fn infer_commit_type(path: &str) -> CommitType {
 
 /// Checks if a file is a documentation file.
 fn is_documentation_file(path: &str) -> bool {
+    // Exclude build files like CMakeLists.txt before checking .txt extension
+    if path.contains("cmake") || path.contains("makefile") {
+        return false;
+    }
+    
     path.ends_with(".md")
         || path.ends_with(".rst")
         || path.ends_with(".txt")
@@ -301,56 +306,4 @@ pub fn build_groups(files: Vec<ChangedFile>, ticket: Option<String>) -> Vec<Chan
     groups.sort_by_key(|g| g.commit_type);
 
     groups
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-    use git2::Status;
-
-    #[test]
-    fn test_infer_commit_type() {
-        assert_eq!(infer_commit_type("src/main.rs"), CommitType::Feat);
-        assert_eq!(infer_commit_type("tests/unit.rs"), CommitType::Test);
-        assert_eq!(infer_commit_type("README.md"), CommitType::Docs);
-        assert_eq!(infer_commit_type(".github/workflows/ci.yml"), CommitType::Ci);
-        assert_eq!(infer_commit_type("Dockerfile"), CommitType::Build);
-        assert_eq!(infer_commit_type("styles/main.css"), CommitType::Style);
-    }
-
-    #[test]
-    fn test_infer_scope() {
-        assert_eq!(infer_scope("src/main.rs"), Some("src".to_string()));
-        assert_eq!(infer_scope("backend/api.rs"), Some("backend".to_string()));
-        assert_eq!(infer_scope("README.md"), None);
-        assert_eq!(infer_scope(".github/ci.yml"), None);
-    }
-
-    #[test]
-    fn test_infer_description() {
-        let files = vec![ChangedFile::new("src/main.rs".to_string(), Status::INDEX_NEW)];
-
-        let desc = infer_description(&files, CommitType::Feat, &Some("src".to_string()));
-        assert_eq!(desc, "add src");
-
-        let desc = infer_description(&files, CommitType::Fix, &None);
-        assert_eq!(desc, "fix main.rs");
-    }
-
-    #[test]
-    fn test_build_groups() {
-        let files = vec![
-            ChangedFile::new("src/main.rs".to_string(), Status::INDEX_MODIFIED),
-            ChangedFile::new("src/lib.rs".to_string(), Status::INDEX_NEW),
-            ChangedFile::new("tests/test.rs".to_string(), Status::INDEX_NEW),
-            ChangedFile::new("README.md".to_string(), Status::INDEX_MODIFIED),
-        ];
-
-        let groups = build_groups(files, Some("TICKET-123".to_string()));
-
-        // Should create separate groups for docs, src code, and tests
-        assert!(groups.len() >= 2);
-        assert!(groups.iter().any(|g| g.commit_type == CommitType::Docs));
-        assert!(groups.iter().any(|g| g.commit_type == CommitType::Test));
-    }
 }

@@ -129,6 +129,38 @@ fn is_valid_path(path: &str) -> bool {
     true
 }
 
+/// Gets the git diff for a specific file.
+///
+/// # Arguments
+///
+/// * `repo` - A reference to the git repository
+/// * `file_path` - The path to the file
+///
+/// # Returns
+///
+/// A string containing the diff output for the file.
+///
+/// # Errors
+///
+/// Returns an error if the diff operation fails.
+pub fn get_file_diff(repo: &Repository, file_path: &str) -> Result<String> {
+    let workdir = repo
+        .workdir()
+        .context("Repository has no working directory")?;
+
+    let output = Command::new("git")
+        .args(["diff", "--cached", "--", file_path])
+        .current_dir(workdir)
+        .output()
+        .context("Failed to execute git diff")?;
+
+    if !output.status.success() {
+        bail!("git diff failed: {}", String::from_utf8_lossy(&output.stderr));
+    }
+
+    Ok(String::from_utf8_lossy(&output.stdout).to_string())
+}
+
 /// Gets the current branch name from the repository.
 ///
 /// # Arguments
@@ -289,45 +321,4 @@ fn execute_with_timeout(cmd: &mut Command, timeout: Duration) -> Result<std::pro
     rx.recv_timeout(timeout)
         .context("Command execution timed out")?
         .context("Command execution failed")
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn test_is_valid_path() {
-        // Valid paths
-        assert!(is_valid_path("src/main.rs"));
-        assert!(is_valid_path("README.md"));
-        assert!(is_valid_path("docs/guide.md"));
-
-        // Invalid paths
-        assert!(!is_valid_path("/etc/passwd"));
-        assert!(!is_valid_path("../../../etc/passwd"));
-        assert!(!is_valid_path("src/../../../etc/passwd"));
-        assert!(!is_valid_path("src/\0null"));
-    }
-
-    #[test]
-    fn test_extract_ticket_from_branch() {
-        assert_eq!(
-            extract_ticket_from_branch("feature/LU-1234-add-feature"),
-            Some("LU-1234".to_string())
-        );
-        assert_eq!(
-            extract_ticket_from_branch("bugfix/JIRA-999"),
-            Some("JIRA-999".to_string())
-        );
-        assert_eq!(extract_ticket_from_branch("main"), None);
-        assert_eq!(extract_ticket_from_branch("develop"), None);
-        assert_eq!(extract_ticket_from_branch("feature/no-ticket"), None);
-    }
-
-    #[test]
-    #[cfg(windows)]
-    fn test_is_valid_path_windows() {
-        assert!(!is_valid_path("C:\\Windows\\System32"));
-        assert!(!is_valid_path("D:\\data"));
-    }
 }

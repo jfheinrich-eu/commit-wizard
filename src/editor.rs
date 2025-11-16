@@ -85,7 +85,7 @@ pub fn edit_text_in_editor(initial: &str) -> Result<String> {
 }
 
 /// Gets the editor command from environment or default.
-fn get_editor() -> Result<String> {
+pub fn get_editor() -> Result<String> {
     match env::var("EDITOR") {
         Ok(editor) if !editor.trim().is_empty() => Ok(editor.trim().to_string()),
         _ => Ok("vi".to_string()),
@@ -100,7 +100,7 @@ fn get_editor() -> Result<String> {
 /// - The command doesn't contain shell metacharacters
 /// - The command is in the safe editors whitelist OR is an absolute path to a known editor
 /// - No arguments or options are smuggled in the command string
-fn validate_editor_command(cmd: &str) -> Result<()> {
+pub fn validate_editor_command(cmd: &str) -> Result<()> {
     let cmd_lower = cmd.to_lowercase();
 
     // Check for shell metacharacters that could enable injection
@@ -188,46 +188,4 @@ fn spawn_editor_with_timeout(
         .with_context(|| format!("Failed to spawn editor: {}", editor))?;
 
     Ok(result)
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn test_validate_safe_editors() {
-        assert!(validate_editor_command("vim").is_ok());
-        assert!(validate_editor_command("nano").is_ok());
-        assert!(validate_editor_command("emacs").is_ok());
-        assert!(validate_editor_command("nvim").is_ok());
-    }
-
-    #[test]
-    fn test_validate_unsafe_editors() {
-        assert!(validate_editor_command("vim; rm -rf /").is_err());
-        assert!(validate_editor_command("nano | cat /etc/passwd").is_err());
-        assert!(validate_editor_command("vim && malicious").is_err());
-        assert!(validate_editor_command("$(evil)").is_err());
-    }
-
-    #[test]
-    fn test_validate_absolute_paths() {
-        assert!(validate_editor_command("/usr/bin/vim").is_ok());
-        assert!(validate_editor_command("/bin/nano").is_ok());
-    }
-
-    #[test]
-    fn test_get_editor_default() {
-        // Temporarily remove EDITOR
-        let old_editor = env::var("EDITOR").ok();
-        env::remove_var("EDITOR");
-
-        let editor = get_editor().unwrap();
-        assert_eq!(editor, "vi");
-
-        // Restore
-        if let Some(old) = old_editor {
-            env::set_var("EDITOR", old);
-        }
-    }
 }

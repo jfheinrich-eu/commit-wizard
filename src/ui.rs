@@ -22,13 +22,7 @@ use crate::editor::edit_text_in_editor;
 use crate::git::{commit_all_groups, commit_group};
 use crate::types::AppState;
 
-/// Event types for the TUI event loop.
-enum Event<I> {
-    /// User input event
-    Input(I),
-    /// Periodic tick event
-    Tick,
-}
+
 
 /// Runs the terminal user interface event loop.
 ///
@@ -36,6 +30,7 @@ enum Event<I> {
 ///
 /// * `app` - The application state containing commit groups
 /// * `repo_path` - Path to the git repository
+/// * `ai_enabled` - Whether AI-powered message generation is enabled
 ///
 /// # Returns
 ///
@@ -45,11 +40,12 @@ enum Event<I> {
 ///
 /// - `↑`/`↓` or `k`/`j` - Navigate between commit groups
 /// - `e` - Edit the selected commit message in external editor
+/// - `a` - Generate commit message using AI (if enabled)
 /// - `c` - Commit the selected group
 /// - `C` - Commit all groups
 /// - `Ctrl+L` - Clear status message
 /// - `q` or `Esc` - Quit
-pub fn run_tui(mut app: AppState, repo_path: &Path) -> Result<()> {
+pub fn run_tui(mut app: AppState, repo_path: &Path, ai_enabled: bool) -> Result<()> {
     // Setup terminal
     enable_raw_mode()?;
     let mut stdout = io::stdout();
@@ -59,7 +55,7 @@ pub fn run_tui(mut app: AppState, repo_path: &Path) -> Result<()> {
     terminal.clear()?;
     terminal.hide_cursor()?;
 
-    let result = run_event_loop(&mut terminal, &mut app, repo_path);
+    let result = run_event_loop(&mut terminal, &mut app, repo_path, ai_enabled);
 
     // Restore terminal state
     disable_raw_mode()?;
@@ -74,6 +70,7 @@ fn run_event_loop<B: ratatui::backend::Backend + std::io::Write>(
     terminal: &mut Terminal<B>,
     app: &mut AppState,
     repo_path: &Path,
+    ai_enabled: bool,
 ) -> Result<()> {
     let tick_rate = Duration::from_millis(250);
     let mut last_tick = Instant::now();
@@ -89,7 +86,7 @@ fn run_event_loop<B: ratatui::backend::Backend + std::io::Write>(
 
         if event::poll(timeout)? {
             if let CEvent::Key(key) = event::read()? {
-                if handle_key_event(key, app, repo_path, terminal)? {
+                if handle_key_event(key, app, repo_path, terminal, ai_enabled)? {
                     break; // User wants to quit
                 }
             }
@@ -112,6 +109,7 @@ fn handle_key_event<B: ratatui::backend::Backend + std::io::Write>(
     app: &mut AppState,
     repo_path: &Path,
     terminal: &mut Terminal<B>,
+    ai_enabled: bool,
 ) -> Result<bool> {
     match key.code {
         KeyCode::Char('q') | KeyCode::Esc => {
@@ -125,6 +123,13 @@ fn handle_key_event<B: ratatui::backend::Backend + std::io::Write>(
         }
         KeyCode::Char('e') => {
             handle_edit_action(app, terminal)?;
+        }
+        KeyCode::Char('a') => {
+            if ai_enabled {
+                handle_ai_generate_action(app, terminal)?;
+            } else {
+                app.set_status("✗ AI mode not enabled. Use --ai or --copilot flag.");
+            }
         }
         KeyCode::Char('c') => {
             handle_commit_action(app, repo_path)?;
@@ -167,6 +172,60 @@ fn handle_edit_action<B: ratatui::backend::Backend + std::io::Write>(
             Err(e) => {
                 app.set_status(format!("✗ Editor error: {}. Kept old message.", e));
             }
+        }
+    }
+
+    Ok(())
+}
+
+/// Handles AI-powered commit message generation.
+fn handle_ai_generate_action<B: ratatui::backend::Backend + std::io::Write>(
+    app: &mut AppState,
+    _terminal: &mut Terminal<B>,
+) -> Result<()> {
+    use crate::ai::generate_commit_message;
+    use git2::Repository;
+
+    // Clone data we need before borrowing mutably
+    let (group_clone, files_clone) = if let Some(group) = app.selected_group() {
+        (group.clone(), group.files.clone())
+    } else {
+        return Ok(());
+    };
+
+    app.set_status("🤖 Generating commit message with AI...");
+
+    // Try to get git diff for better context
+    let diff = Repository::discover(".")
+        .ok()
+        .and_then(|repo| {
+            let mut diff_text = String::new();
+            for file in &files_clone {
+                if let Ok(diff) = crate::git::get_file_diff(&repo, &file.path) {
+                    diff_text.push_str(&diff);
+                }
+            }
+            if diff_text.is_empty() {
+                None
+            } else {
+                Some(diff_text)
+            }
+        });
+
+    match generate_commit_message(&group_clone, &files_clone, diff.as_deref()) {
+        Ok((description, body)) => {
+            // Now update the actual group
+            if let Some(group) = app.selected_group_mut() {
+                group.description = description;
+                // Convert optional body string to Vec<String> of lines
+                group.body_lines = body
+                    .map(|b| b.lines().map(String::from).collect())
+                    .unwrap_or_default();
+            }
+            app.set_status("✓ AI generated commit message successfully");
+        }
+        Err(e) => {
+            app.set_status(format!("✗ AI generation failed: {}. Check GITHUB_TOKEN.", e));
         }
     }
 
@@ -350,15 +409,4 @@ fn draw_details_panel(
         )
         .wrap(Wrap { trim: true });
     f.render_widget(status, chunks[2]);
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn test_event_creation() {
-        let _input_event: Event<KeyEvent> = Event::Input(KeyEvent::from(KeyCode::Char('q')));
-        let _tick_event: Event<KeyEvent> = Event::Tick;
-    }
 }

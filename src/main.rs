@@ -32,16 +32,11 @@ use anyhow::{bail, Context, Result};
 use clap::Parser;
 use git2::Repository;
 
-mod editor;
-mod git;
-mod inference;
-mod types;
-mod ui;
-
-use crate::git::{collect_staged_files, extract_ticket_from_branch, get_current_branch};
-use crate::inference::build_groups;
-use crate::types::AppState;
-use crate::ui::run_tui;
+// Use the library modules
+use commit_wizard::git::{collect_staged_files, extract_ticket_from_branch, get_current_branch};
+use commit_wizard::inference::build_groups;
+use commit_wizard::types::AppState;
+use commit_wizard::ui::run_tui;
 
 /// Command-line interface options.
 #[derive(Parser, Debug)]
@@ -59,6 +54,10 @@ struct Cli {
     /// Path to the git repository (defaults to current directory)
     #[arg(short, long, value_name = "PATH")]
     repo: Option<PathBuf>,
+
+    /// Use AI (GitHub Copilot) to generate commit messages
+    #[arg(short, long, alias = "copilot")]
+    ai: bool,
 
     /// Verbose output for debugging
     #[arg(short, long)]
@@ -126,9 +125,16 @@ fn main() -> Result<()> {
         eprintln!("📦 Created {} commit group(s)", groups.len());
     }
 
+    // Check for AI mode
+    if cli.ai {
+        if cli.verbose {
+            eprintln!("🤖 AI mode enabled - will use GitHub Copilot for message generation");
+        }
+    }
+
     // Run TUI
     let app = AppState::new(groups);
-    run_tui(app, &repo_path)?;
+    run_tui(app, &repo_path, cli.ai)?;
 
     Ok(())
 }

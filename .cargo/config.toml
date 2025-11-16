@@ -1,0 +1,32 @@
+# Cargo configuration and custom aliases
+
+[alias]
+# Quick shortcuts
+b = "build"
+br = "build --release"
+r = "run"
+t = "test"
+c = "check"
+f = "fmt"
+
+# Development workflows
+dev = "run -- --verbose"
+watch = "watch -x run"
+
+# Quality checks
+lint = "clippy -- -D warnings"
+fmt-check = "fmt -- --check"
+
+# Complete CI pipeline
+ci = ["fmt -- --check", "clippy -- -D warnings", "test", "build --release"]
+
+# Testing variants
+test-all = "test --all-features"
+test-doc = "test --doc"
+
+# Build variants
+build-dev = "build"
+build-prod = "build --release"
+
+# Installation
+install-local = "install --path ."

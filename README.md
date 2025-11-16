@@ -13,7 +13,9 @@ A CLI tool to help create better commit messages.
   - [From Source](#from-source)
 - [Usage](#usage)
   - [Basic Usage](#basic-usage)
-  - [Verbose Mode](#verbose-mode)
+  - [AI-Powered Mode](#ai-powered-mode)
+  - [Keyboard Controls](#keyboard-controls)
+  - [Advanced Options](#advanced-options)
 - [Development](#development)
   - [Prerequisites](#prerequisites)
   - [Dev Container (Recommended)](#dev-container-recommended)
@@ -31,9 +33,12 @@ A CLI tool to help create better commit messages.
 
 # Features
 
-- Interactive commit message wizard (planned)
-- Follows conventional commit standards (planned)
-- User-friendly command-line interface
+- ✅ **Interactive TUI**: Review and manage commit groups with keyboard navigation
+- ✅ **Conventional Commits**: Automatically follows the Conventional Commits specification
+- ✅ **Smart Grouping**: Intelligently groups files by commit type and scope
+- ✅ **AI-Powered**: Generate commit messages using GitHub Copilot (optional)
+- ✅ **Editor Integration**: Edit commit messages in your favorite editor
+- ✅ **Ticket Detection**: Automatically extracts ticket numbers from branch names
 
 # Installation
 
@@ -45,20 +50,50 @@ cargo install --path .
 
 # Usage
 
-```bash
-commit-wizard --help
-```
-
 ## Basic Usage
 
+Stage your changes and run the wizard:
+
 ```bash
+git add .
 commit-wizard
 ```
 
-## Verbose Mode
+## AI-Powered Mode
+
+Generate commit messages using GitHub Copilot:
 
 ```bash
+# Set your GitHub token (required for AI features)
+export GITHUB_TOKEN="your_token_here"
+
+# Run with AI enabled
+commit-wizard --ai
+```
+
+In the TUI, press `a` to generate a commit message for the selected group using AI.
+
+## Keyboard Controls
+
+- `↑`/`↓` or `k`/`j` - Navigate between commit groups
+- `e` - Edit commit message in external editor
+- `a` - Generate commit message with AI (requires `--ai` flag)
+- `c` - Commit selected group
+- `C` - Commit all groups
+- `Ctrl+L` - Clear status message
+- `q` or `Esc` - Quit
+
+## Advanced Options
+
+```bash
+# Specify repository path
+commit-wizard --repo /path/to/repo
+
+# Enable verbose output
 commit-wizard --verbose
+
+# Combine options
+commit-wizard --ai --verbose --repo /path/to/repo
 ```
 
 # Development

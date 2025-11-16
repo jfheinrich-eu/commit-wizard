@@ -26,3 +26,17 @@ Thumbs.db
 
 # devcontainer
 .devcontainer/.devcontainer.env
+
+# Benchmark results
+criterion/
+target/criterion/
+
+# Test coverage
+tarpaulin-report.html
+cobertura.xml
+*.profdata
+*.profraw
+
+# Documentation build
+docs/book/
+target/doc/

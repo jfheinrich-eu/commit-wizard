@@ -24,11 +24,13 @@ The project follows these core principles:
 
 ```
 src/
+├── lib.rs           # Library root exposing public modules
 ├── main.rs          # Entry point, CLI parsing, orchestration
 ├── types.rs         # Core data structures and types
 ├── git.rs           # Git repository operations
 ├── inference.rs     # Commit type/scope/description inference
 ├── editor.rs        # External editor integration
+├── ai.rs            # AI-powered commit message generation
 └── ui.rs            # Terminal user interface (TUI)
 ```
 
@@ -36,11 +38,13 @@ src/
 
 | Module | Purpose | Key Functions |
 |--------|---------|---------------|
+| `lib.rs` | Library root enabling external usage of modules | Public module exports |
 | `main.rs` | Application entry point, CLI parsing, workflow orchestration | `main()` |
 | `types.rs` | Type definitions for commits, files, and application state | `CommitType`, `ChangeGroup`, `ChangedFile`, `AppState` |
-| `git.rs` | Git operations using libgit2 | `collect_staged_files()`, `commit_group()`, `get_current_branch()` |
+| `git.rs` | Git operations using libgit2 | `collect_staged_files()`, `commit_group()`, `get_current_branch()`, `get_file_diff()` |
 | `inference.rs` | Heuristic analysis of files to determine commit attributes | `infer_commit_type()`, `build_groups()` |
 | `editor.rs` | External editor spawning with security validation | `edit_text_in_editor()`, `validate_editor_command()` |
+| `ai.rs` | GitHub Copilot API integration for message generation | `generate_commit_message()` |
 | `ui.rs` | Interactive TUI using ratatui | `run_tui()`, `draw_ui()` |
 
 ## Core Data Types
@@ -476,19 +480,75 @@ feat(inference): add custom pattern support
 - update inference::infer_commit_type
 ```
 
+## AI Integration
+
+### GitHub Copilot API
+
+The `ai` module integrates with GitHub's Copilot API to generate commit messages based on file changes and diffs.
+
+**Key Features:**
+
+- Blocking HTTP requests using `reqwest`
+- Configurable timeout (30 seconds)
+- Temperature 0.3 for consistent, focused output
+- Automatic token retrieval from `GITHUB_TOKEN` or `GH_TOKEN`
+- Diff context limited to 1000 characters to optimize API usage
+
+**API Request Flow:**
+
+1. User presses `a` in TUI (requires `--ai` flag)
+2. System collects:
+   - Commit type and scope from group
+   - List of changed files
+   - Git diff output for context
+3. Build prompt with structured information
+4. Send POST request to `api.githubcopilot.com/chat/completions`
+5. Parse response and update commit message
+
+**Response Parsing:**
+
+- Extracts description (first line)
+- Extracts optional body (text after blank line)
+- Cleans markdown formatting and quotes
+- Converts body to line array for `body_lines` field
+
+**Security Considerations:**
+
+- Token must be set in environment (not hardcoded)
+- API responses are validated before use
+- Network timeouts prevent hanging requests
+- Error messages guide users to check token validity
+
+**CLI Integration:**
+
+```bash
+# Enable AI features
+commit-wizard --ai
+# or
+commit-wizard --copilot
+```
+
+**TUI Integration:**
+
+- Press `a` to generate message for selected group
+- Status bar shows "🤖 Generating..." during API call
+- Success/failure feedback displayed immediately
+- Original message preserved on error
+
 ## Security Considerations
 
 ### Threat Model
 
-**Trusted**: User's git repository, git binary, editor binary  
-**Untrusted**: File paths, branch names, commit messages (from previous commits)
+**Trusted**: User's git repository, git binary, editor binary, GitHub API  
+**Untrusted**: File paths, branch names, commit messages (from previous commits), API responses
 
 ### Attack Vectors
 
 1. **Directory Traversal**: Mitigated by path validation
 2. **Command Injection**: Mitigated by editor validation and argument separation
-3. **Resource Exhaustion**: Mitigated by timeouts
+3. **Resource Exhaustion**: Mitigated by timeouts (30s for git, 5min for editor, 30s for API)
 4. **Terminal Injection**: Mitigated by crossterm's escaping
+5. **API Token Exposure**: Mitigated by environment variable usage only
 
 ### Security Best Practices
 
@@ -497,6 +557,8 @@ feat(inference): add custom pattern support
 - Use argument arrays (not shell strings)
 - Implement timeouts for all I/O operations
 - Fail securely (reject suspicious input)
+- Never log or expose API tokens
+- Validate API responses before using
 
 ## Troubleshooting
 
