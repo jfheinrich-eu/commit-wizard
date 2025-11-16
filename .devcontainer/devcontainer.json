@@ -3,15 +3,16 @@
 	"dockerFile": "Dockerfile",
 	"runArgs": [
 		"--init",
-        "--env-file", ".devcontainer/.devcontainer.env"
+		"--env-file",
+		".devcontainer/.devcontainer.env"
 	],
 	"mounts": [
 		// Mount SSH directory (post-create.sh will filter GitHub-specific keys)
 		"source=${localEnv:HOME}/.ssh,target=/tmp/host-ssh,type=bind,consistency=cached,readonly",
 		// Example: Mount GPG keys from host (uncomment if you have ~/.gnupg directory)
-		"source=${localEnv:HOME}/.gnupg,target=/home/vscode/.gnupg,type=bind,consistency=cached",
+		"source=${localEnv:HOME}/.gnupg,target=/home/vscode/.gnupg,type=bind,consistency=cached,readonly",
 		// Example: Mount Git config from host (uncomment if you have ~/.gitconfig file)
-		"source=${localEnv:HOME}/.gitconfig,target=/home/vscode/.gitconfig,type=bind,consistency=cached"
+		"source=${localEnv:HOME}/.gitconfig,target=/home/vscode/.gitconfig,type=bind,consistency=cached,readonly"
 	],
 	"customizations": {
 		"vscode": {

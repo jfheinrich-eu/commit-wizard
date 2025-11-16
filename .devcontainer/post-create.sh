@@ -108,11 +108,11 @@ fi
 #   "secrets": { "GITHUB_TOKEN": "your-token-here" }
 # See: https://containers.dev/implementors/json_reference/#secrets
 # Do NOT set GITHUB_TOKEN in shell history, logs, or other insecure locations.
-if [ -n "$GITHUB_TOKEN" ]; then
+if [ -n "${GITHUB_TOKEN:-}" ]; then
     # Basic format check (GitHub tokens usually start with 'ghp_' or 'github_pat_')
-    if [[ "$GITHUB_TOKEN" == ghp_* || "$GITHUB_TOKEN" == github_pat_* ]]; then
+    if [[ "$GITHUB_TOKEN" =~ ^(ghp_|github_pat_|gho_|ghs_|ghu_|ghr_) ]]; then  
         echo "🐙 Authenticating with GitHub CLI..."
-        if gh auth login --with-token <<< "$GITHUB_TOKEN" >/dev/null 2>&1; then
+        if printf '%s\n' "$GITHUB_TOKEN" | gh auth login --with-token >/dev/null 2>&1; then
             # Test token validity with a minimal API call
             if gh api user >/dev/null 2>&1; then
                 echo "✅ GitHub CLI authenticated successfully."

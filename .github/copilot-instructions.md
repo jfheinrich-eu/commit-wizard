@@ -77,6 +77,46 @@ struct Cli {
 - Follow GitHub best practices and accepted style guidelines
 - Use proper Markdown structure, headings, and formatting
 
+**Markdown Formatting Rules** (to avoid markdownlint warnings):
+
+- **MD022** (blanks-around-headings): Always add blank lines before AND after headings
+  ```markdown
+  Some text here
+  
+  ## Heading
+  
+  More text here
+  ```
+
+- **MD031** (blanks-around-fences): Always add blank lines before AND after code blocks
+  ```markdown
+  Some text here
+  
+  ```bash
+  command here
+  ```
+  
+  More text here
+  ```
+
+- **MD032** (blanks-around-lists): Always add blank lines before AND after lists
+  ```markdown
+  Some text here
+  
+  - List item 1
+  - List item 2
+  
+  More text here
+  ```
+
+- **MD040** (fenced-code-language): Always specify a language for fenced code blocks
+  ```markdown
+  Correct: ```bash or ```python or ```json
+  Wrong: ```
+  ```
+
+- **MD047** (single-trailing-newline): Always end files with exactly one newline character
+
 ## Commit Message Guidelines
 
 **Conventional Commits**: Follow strict conventional commit standards:

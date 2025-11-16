@@ -78,8 +78,8 @@ jobs:
               if [[ -n "$PR_NUMBER_INPUT" ]]; then
                 echo "pr_number=$PR_NUMBER_INPUT" >> "$GITHUB_OUTPUT"
               else
-              # Try to auto-detect PR from current context
-              # Use GitHub context variables instead of git command to avoid detached HEAD issues
+                # Try to auto-detect PR from current context
+                # Use GitHub context variables instead of git command to avoid detached HEAD issues
                 CURRENT_BRANCH="${GITHUB_HEAD_REF:-$GITHUB_REF_NAME}"
                 echo "Trying to auto-detect PR for branch: $CURRENT_BRANCH"
                 PR_NUM=$(gh pr list --head "$CURRENT_BRANCH" --json number --jq '.[0].number // empty' || echo "")
@@ -242,7 +242,7 @@ jobs:
               echo "can_review=true" >> "$GITHUB_OUTPUT"
               ;;
           esac
-      - name: Check if bot already reviewed
+      - name: Check if bot already reviewed current commit
         id: check-reviewed
         if: steps.check-status.outputs.can_review == 'true'
         env:
@@ -254,16 +254,24 @@ jobs:
           BOT_USERNAME=$(gh api user --jq '.login')
           echo "Detected bot username: $BOT_USERNAME"
 
-          # Get reviews from the bot
-          REVIEWS=$(gh api "/repos/${{ github.repository }}/pulls/$PR_NUMBER/reviews" --jq "[.[] | select(.user.login == \"$BOT_USERNAME\")] | length")
+          # Get current HEAD commit SHA of the PR
+          CURRENT_COMMIT=$(gh pr view "$PR_NUMBER" --json headRefOid --jq '.headRefOid')
+          echo "Current PR HEAD commit: $CURRENT_COMMIT"
 
-          echo "Found $REVIEWS previous reviews from $BOT_USERNAME"
+          # Get all reviews from the bot with their commit SHAs
+          REVIEWS_DATA=$(gh api "/repos/${{ github.repository }}/pulls/$PR_NUMBER/reviews" --jq "[.[] | select(.user.login == \"$BOT_USERNAME\") | {commit_id: .commit_id, state: .state}]")
 
-          if [ "$REVIEWS" -gt 0 ]; then
-            echo "Bot has already reviewed this PR"
+          echo "Bot reviews found:"
+          echo "$REVIEWS_DATA" | jq '.'
+
+          # Check if there's an APPROVED review for the current commit
+          CURRENT_COMMIT_APPROVED=$(echo "$REVIEWS_DATA" | jq --arg commit "$CURRENT_COMMIT" '[.[] | select(.commit_id == $commit and .state == "APPROVED")] | length')
+
+          if [ "$CURRENT_COMMIT_APPROVED" -gt 0 ]; then
+            echo "✅ Bot has already approved the current commit ($CURRENT_COMMIT)"
             echo "already_reviewed=true" >> "$GITHUB_OUTPUT"
           else
-            echo "Bot has not reviewed this PR yet"
+            echo "⏳ Bot has not approved the current commit yet (new commits pushed or no review yet)"
             echo "already_reviewed=false" >> "$GITHUB_OUTPUT"
           fi
 
@@ -284,28 +292,54 @@ jobs:
           ADDITIONS=$(echo "$PR_DATA" | jq -r '.additions')
           DELETIONS=$(echo "$PR_DATA" | jq -r '.deletions')
 
-          # Create review comment
-          REVIEW_BODY=$(cat <<EOF
-          ## 🤖 Automated Bot Review
+          # Create review comment with properly escaped values
+                    # Escape all variables that come from PR metadata using jq
+                    PR_TITLE_ESCAPED=$(echo "$PR_DATA" | jq -r '.title | @text')
+                    PR_AUTHOR_ESCAPED=$(echo "$PR_DATA" | jq -r '.author.login | @text')
+                    PR_BRANCH_ESCAPED=$(echo "$PR_DATA" | jq -r '.headRefName | @text')
+                    ADDITIONS_ESCAPED=$(echo "$PR_DATA" | jq -r '.additions | tostring')
+                    DELETIONS_ESCAPED=$(echo "$PR_DATA" | jq -r '.deletions | tostring')
 
-          **Status:** ✅ All checks passed
+                    # Use heredoc with variable substitution disabled, then replace placeholders
+                    REVIEW_BODY=$(cat <<'EOF'
+              ## 🤖 Automated Bot Review
 
-          ### Pull Request: $PR_TITLE
+              **Status:** ✅ All checks passed
 
-          ### Summary
-          - **Author:** @$PR_AUTHOR
-          - **Branch:** \`$PR_BRANCH\`
-          - **Changes:** +$ADDITIONS / -$DELETIONS lines
+              ### Pull Request: __PR_TITLE__
 
-          ### Automated Checks
-          All required status checks have completed successfully. This PR is ready for human review.
+              ### Summary
+              - **Author:** @__PR_AUTHOR__
+              - **Branch:** `__PR_BRANCH__`
+              - **Changes:** +__ADDITIONS__ / -__DELETIONS__ lines
 
-          ### Next Steps
+              EOF
+                    )
+
+                    # Replace placeholders with escaped values
+                    REVIEW_BODY="${REVIEW_BODY//__PR_TITLE__/$PR_TITLE_ESCAPED}"
+                    REVIEW_BODY="${REVIEW_BODY//__PR_AUTHOR__/$PR_AUTHOR_ESCAPED}"
+                    REVIEW_BODY="${REVIEW_BODY//__PR_BRANCH__/$PR_BRANCH_ESCAPED}"
+                    REVIEW_BODY="${REVIEW_BODY//__ADDITIONS__/$ADDITIONS_ESCAPED}"
+                    REVIEW_BODY="${REVIEW_BODY//__DELETIONS__/$DELETIONS_ESCAPED}"
+
+            ### Automated Checks
+            All required status checks have completed successfully. This PR is ready for human review.
+
+            EOF
+                  )
+
+                  # Replace placeholders with escaped values
+                  REVIEW_BODY="${REVIEW_BODY//PR_TITLE_PLACEHOLDER/$PR_TITLE_ESCAPED}"
+                  REVIEW_BODY="${REVIEW_BODY//PR_AUTHOR_PLACEHOLDER/$PR_AUTHOR_ESCAPED}"
+                  REVIEW_BODY="${REVIEW_BRANCH_PLACEHOLDER/$PR_BRANCH_ESCAPED}"
+                  REVIEW_BODY="${REVIEW_BODY//ADDITIONS_PLACEHOLDER/$ADDITIONS_ESCAPED}"
+                  REVIEW_BODY="${REVIEW_BODY//DELETIONS_PLACEHOLDER/$DELETIONS_ESCAPED}"   ### Next Steps
           - Code owner review is required from: **@jfheinrich-eu/maintainers**
           ---
           *This is an automated review. Please wait for human reviewers to approve before merging.*
           EOF
-          )
+                )
 
           # Submit the review
           gh pr review "$PR_NUMBER" --approve --body "$REVIEW_BODY"

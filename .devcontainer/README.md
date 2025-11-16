@@ -5,18 +5,21 @@ This dev container provides a complete Rust CLI development environment with all
 ## Features
 
 ### 🦀 Rust Development Environment
+
 - **Rust Analyzer** - Advanced Rust language support
 - **LLDB Debugger** - Native debugging support
 - **Cargo Tools** - Enhanced package management (cargo-edit, cargo-watch, etc.)
 - **Clippy & Rustfmt** - Code linting and formatting
 
 ### 🛠️ Development Tools
+
 - **GitHub CLI (gh)** - Direct GitHub integration
 - **Git** - Version control with GPG signing support
 - **Ripgrep & fd** - Fast file and text search
 - **SSH & GPG Keys** - Automatically mounted from host
 
 ### 📝 VS Code Extensions
+
 - **rust-lang.rust-analyzer** - Rust language server
 - **vadimcn.vscode-lldb** - Native debugging
 - **fill-labs.dependi** - Cargo.toml assistance
@@ -30,16 +33,19 @@ This dev container provides a complete Rust CLI development environment with all
 ### Requirements
 
 - Copy `.devcontainer/.devcontainer.env.example` to `.devcontainer/.devcontainer.env`
+  
   ```env
   GITHUB_USER=your-github-username
   GITHUB_TOKEN=your-github-token
   ```
+
 - Adjust the environment variables.
 
 ### Opening the Dev Container
 
 1. **Using VS Code Command Palette:**
-   ```
+
+   ```bash
    Ctrl/Cmd + Shift + P → "Dev Containers: Reopen in Container"
    ```
 
@@ -50,6 +56,7 @@ This dev container provides a complete Rust CLI development environment with all
 ### First Time Setup
 
 The container will automatically:
+
 - Install all Rust components and tools
 - Mount your SSH keys from `~/.ssh` (GitHub-specific keys filtered by config)
 - Mount your GPG keys from `~/.gnupg`
@@ -61,6 +68,7 @@ The container will automatically:
 ### Development Aliases
 
 **Cargo Shortcuts:**
+
 ```bash
 cb      # cargo build
 cr      # cargo run  
@@ -90,20 +98,26 @@ gcc     # git commit -m "chore: <your message>"
 ## Security Features
 
 ### SSH Key Mounting
+
 Your SSH keys are securely mounted and filtered from the host system:
+
 - **Host Path:** `~/.ssh` (mounted readonly to `/tmp/host-ssh`)
 - **Container Path:** `/home/vscode/.ssh` (GitHub-specific keys copied)
 - **Filtering:** Only keys configured for `github.com` in SSH config are copied
 - **Permissions:** Automatically fixed (700/600)
 
-### GPG Key Mounting  
+### GPG Key Mounting
+
 GPG keys for commit signing are mounted:
+
 - **Host Path:** `~/.gnupg`
 - **Container Path:** `/home/vscode/.gnupg`
 - **GPG Agent:** Automatically started
 
 ### Git Configuration
+
 Your Git configuration is preserved:
+
 - **Host Path:** `~/.gitconfig`
 - **Container Path:** `/home/vscode/.gitconfig`
 - **GPG Signing:** Configured to work in container
@@ -111,7 +125,9 @@ Your Git configuration is preserved:
 ## Troubleshooting
 
 ### SSH Issues
+
 If SSH authentication fails:
+
 ```bash
 # Check SSH agent
 ssh-add -l
@@ -121,7 +137,9 @@ ssh-add ~/.ssh/id_rsa
 ```
 
 ### GPG Issues
+
 If GPG signing fails:
+
 ```bash
 # Restart GPG agent
 gpgconf --kill gpg-agent
@@ -132,7 +150,9 @@ gpg --list-secret-keys
 ```
 
 ### GitHub CLI Authentication
+
 If GitHub CLI needs authentication:
+
 ```bash
 # Login with GitHub CLI (recommended)
 gh auth login
@@ -141,11 +161,12 @@ gh auth login
 ## Container Rebuild
 
 To rebuild the container with updates:
-```
+
+```bash
 Ctrl/Cmd + Shift + P → "Dev Containers: Rebuild Container"
 ```
 
-## Requirements
+## Container Requirements
 
 - **VS Code** with Dev Containers extension
 - **Docker** running on host system
