@@ -69,7 +69,7 @@ jobs:
           CHECK_SUITE_PRS: ${{ toJson(github.event.check_suite.pull_requests) }}
           WORKFLOW_RUN_PRS: ${{ toJson(github.event.workflow_run.pull_requests) }}
         run: |
-          set -eu
+          set -euo pipefail
 
           # Validate conditions based on event type
           case "$EVENT_NAME" in
@@ -123,7 +123,7 @@ jobs:
         env:
           PR_NUMBER: ${{ steps.get-pr.outputs.pr_number }}
         run: |
-          set -eu
+          set -euo pipefail
 
           ACTIONS_STEP_DEBUG="${ACTIONS_STEP_DEBUG:=false}"
 
@@ -248,7 +248,7 @@ jobs:
         env:
           PR_NUMBER: ${{ steps.get-pr.outputs.pr_number }}
         run: |
-          set -eu
+          set -euo pipefail
 
           # Dynamically determine the bot's username from the token
           BOT_USERNAME=$(gh api user --jq '.login')
@@ -274,7 +274,7 @@ jobs:
         env:
           PR_NUMBER: ${{ steps.get-pr.outputs.pr_number }}
         run: |
-          set -eu
+          set -euo pipefail
 
           # Get PR details for the review comment
           PR_DATA=$(gh pr view "$PR_NUMBER" --json title,author,headRefName,additions,deletions)
@@ -319,7 +319,7 @@ jobs:
         env:
           PR_NUMBER: ${{ steps.get-pr.outputs.pr_number }}
         run: |
-          set -eu
+          set -euo pipefail
 
           # Add 'automated' label to indicate bot has reviewed
           # Only add the label if it is not already present

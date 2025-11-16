@@ -17,7 +17,7 @@ A CLI tool to help create better commit messages.
 - [Development](#development)
   - [Prerequisites](#prerequisites)
   - [Dev Container (Recommended)](#dev-container-recommended)
-    - [Quick Start:](#quick-start)
+    - [Quick Start](#quick-start)
   - [Building](#building)
   - [Running](#running)
   - [Testing](#testing)
@@ -72,7 +72,7 @@ commit-wizard --verbose
 
 This project includes a VS Code dev container with all tools pre-configured. See [.devcontainer/README.md](.devcontainer/README.md) for details.
 
-### Quick Start:
+### Quick Start
 
 1. Open project in VS Code
 2. Press `Ctrl/Cmd + Shift + P`
