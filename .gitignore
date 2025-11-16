@@ -23,3 +23,6 @@ target/
 # OS files
 .DS_Store
 Thumbs.db
+
+# devcontainer
+.devcontainer/.devcontainer.env

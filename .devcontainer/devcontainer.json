@@ -2,7 +2,8 @@
 	"name": "Rust CLI Development",
 	"dockerFile": "Dockerfile",
 	"runArgs": [
-		"--init"
+		"--init",
+        "--env-file", ".devcontainer/.devcontainer.env"
 	],
 	"mounts": [
 		// Mount SSH directory (post-create.sh will filter GitHub-specific keys)

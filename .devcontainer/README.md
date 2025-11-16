@@ -27,6 +27,15 @@ This dev container provides a complete Rust CLI development environment with all
 
 ## Usage
 
+### Requirements
+
+- Copy `.devcontainer/.devcontainer.env.example` to `.devcontainer/.devcontainer.env`
+  ```env
+  GITHUB_USER=your-github-username
+  GITHUB_TOKEN=your-github-token
+  ```
+- Adjust the environment variables.
+
 ### Opening the Dev Container
 
 1. **Using VS Code Command Palette:**
