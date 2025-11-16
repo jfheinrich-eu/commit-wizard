@@ -1,0 +1,333 @@
+//! Git repository operations and utilities.
+//!
+//! This module provides functions for interacting with git repositories,
+//! including collecting staged files, extracting branch information, and
+//! executing commits.
+
+use std::io::Write;
+use std::path::Path;
+use std::process::Command;
+use std::time::Duration;
+
+use anyhow::{bail, Context, Result};
+use git2::{Repository, Status, StatusOptions};
+use regex::Regex;
+use tempfile::NamedTempFile;
+
+use crate::types::{ChangedFile, ChangeGroup};
+
+/// Collects all staged files from the git repository.
+///
+/// # Arguments
+///
+/// * `repo` - A reference to the git repository
+///
+/// # Returns
+///
+/// A vector of [`ChangedFile`] representing all staged changes.
+///
+/// # Errors
+///
+/// Returns an error if the git status operation fails.
+///
+/// # Examples
+///
+/// ```no_run
+/// use git2::Repository;
+/// use commit_wizard::git::collect_staged_files;
+///
+/// let repo = Repository::open(".").unwrap();
+/// let files = collect_staged_files(&repo).unwrap();
+/// println!("Found {} staged files", files.len());
+/// ```
+pub fn collect_staged_files(repo: &Repository) -> Result<Vec<ChangedFile>> {
+    let mut opts = StatusOptions::new();
+    opts.include_untracked(false)
+        .renames_head_to_index(true)
+        .renames_index_to_workdir(true);
+
+    let statuses = repo
+        .statuses(Some(&mut opts))
+        .context("Failed to get git status")?;
+
+    let mut result = Vec::new();
+
+    for entry in statuses.iter() {
+        let status = entry.status();
+
+        // Only process staged changes
+        if !status.intersects(
+            Status::INDEX_NEW
+                | Status::INDEX_MODIFIED
+                | Status::INDEX_DELETED
+                | Status::INDEX_RENAMED
+                | Status::INDEX_TYPECHANGE,
+        ) {
+            continue;
+        }
+
+        // Try multiple sources to get the file path
+        let path = entry
+            .head_to_index()
+            .and_then(|diff| diff.new_file().path())
+            .or_else(|| {
+                entry
+                    .index_to_workdir()
+                    .and_then(|diff| diff.new_file().path())
+            })
+            .or_else(|| {
+                entry
+                    .index_to_workdir()
+                    .and_then(|diff| diff.old_file().path())
+            })
+            .or_else(|| entry.head_to_index().and_then(|diff| diff.old_file().path()))
+            .or_else(|| entry.path().map(Path::new));
+
+        if let Some(path) = path {
+            let path_str = path.to_string_lossy().to_string();
+
+            // Validate path (security: prevent directory traversal)
+            if is_valid_path(&path_str) {
+                result.push(ChangedFile::new(path_str, status));
+            }
+        }
+    }
+
+    Ok(result)
+}
+
+/// Validates that a path doesn't contain dangerous patterns.
+///
+/// # Security
+///
+/// This prevents directory traversal attacks and ensures paths are
+/// relative to the repository root.
+fn is_valid_path(path: &str) -> bool {
+    // Reject absolute paths
+    if path.starts_with('/') || path.starts_with('\\') {
+        return false;
+    }
+
+    // Reject paths with parent directory references
+    if path.contains("..") {
+        return false;
+    }
+
+    // Reject paths with null bytes
+    if path.contains('\0') {
+        return false;
+    }
+
+    // On Windows, reject paths with drive letters
+    #[cfg(windows)]
+    {
+        if path.len() >= 2 && path.chars().nth(1) == Some(':') {
+            return false;
+        }
+    }
+
+    true
+}
+
+/// Gets the current branch name from the repository.
+///
+/// # Arguments
+///
+/// * `repo` - A reference to the git repository
+///
+/// # Returns
+///
+/// The name of the current branch.
+///
+/// # Errors
+///
+/// Returns an error if the HEAD is detached or the branch name cannot be determined.
+pub fn get_current_branch(repo: &Repository) -> Result<String> {
+    let head = repo.head().context("Failed to get repository HEAD")?;
+
+    let shorthand = head
+        .shorthand()
+        .context("Cannot get branch shorthand (HEAD may be detached)")?;
+
+    Ok(shorthand.to_string())
+}
+
+/// Extracts a ticket reference from a branch name.
+///
+/// # Arguments
+///
+/// * `branch` - The branch name to parse
+///
+/// # Returns
+///
+/// The ticket reference if found (e.g., "LU-1234", "JIRA-456").
+///
+/// # Pattern
+///
+/// Matches uppercase letters followed by a dash and digits: `[A-Z]+-\d+`
+///
+/// # Examples
+///
+/// ```
+/// use commit_wizard::git::extract_ticket_from_branch;
+///
+/// assert_eq!(
+///     extract_ticket_from_branch("feature/LU-1234-add-login"),
+///     Some("LU-1234".to_string())
+/// );
+/// assert_eq!(extract_ticket_from_branch("main"), None);
+/// ```
+pub fn extract_ticket_from_branch(branch: &str) -> Option<String> {
+    let re = Regex::new(r"([A-Z]+-\d+)").ok()?;
+    let caps = re.captures(branch)?;
+    Some(caps.get(1)?.as_str().to_string())
+}
+
+/// Commits a single change group to the repository.
+///
+/// # Arguments
+///
+/// * `repo_path` - Path to the git repository
+/// * `group` - The change group to commit
+///
+/// # Errors
+///
+/// Returns an error if:
+/// - The commit message file cannot be created
+/// - The git commit command fails
+/// - Any file path in the group is invalid
+///
+/// # Security
+///
+/// - Validates all file paths before passing to git
+/// - Uses temporary files for commit messages
+/// - Sets a timeout to prevent hanging
+pub fn commit_group(repo_path: &Path, group: &ChangeGroup) -> Result<()> {
+    // Validate all file paths first
+    for file in &group.files {
+        if !is_valid_path(&file.path) {
+            bail!("Invalid file path: {}", file.path);
+        }
+    }
+
+    let msg = group.full_message();
+    let mut tmp = NamedTempFile::new().context("Failed to create temporary file")?;
+
+    std::io::Write::write_all(&mut tmp, msg.as_bytes())
+        .context("Failed to write commit message")?;
+    tmp.flush().context("Failed to flush commit message")?;
+
+    let mut cmd = Command::new("git");
+    cmd.arg("-C")
+        .arg(repo_path)
+        .arg("commit")
+        .arg("-F")
+        .arg(tmp.path());
+
+    // Add specific files to this commit
+    for file in &group.files {
+        cmd.arg("--").arg(&file.path);
+    }
+
+    // Execute with timeout for robustness
+    let output = execute_with_timeout(&mut cmd, Duration::from_secs(30))
+        .context("Failed to execute git commit")?;
+
+    if !output.status.success() {
+        let stderr = String::from_utf8_lossy(&output.stderr);
+        bail!("git commit failed: {}", stderr);
+    }
+
+    Ok(())
+}
+
+/// Commits all change groups sequentially.
+///
+/// # Arguments
+///
+/// * `repo_path` - Path to the git repository
+/// * `groups` - Slice of change groups to commit
+///
+/// # Errors
+///
+/// Returns an error if any individual commit fails. Already committed
+/// groups will remain committed; this function does not perform rollback.
+pub fn commit_all_groups(repo_path: &Path, groups: &[ChangeGroup]) -> Result<()> {
+    for (idx, group) in groups.iter().enumerate() {
+        commit_group(repo_path, group)
+            .with_context(|| format!("Failed to commit group {} of {}", idx + 1, groups.len()))?;
+    }
+    Ok(())
+}
+
+/// Executes a command with a timeout.
+///
+/// # Security & Robustness
+///
+/// This prevents commands from hanging indefinitely, which could:
+/// - Freeze the UI
+/// - Consume system resources
+/// - Enable DoS attacks
+fn execute_with_timeout(cmd: &mut Command, timeout: Duration) -> Result<std::process::Output> {
+    use std::sync::mpsc;
+    use std::thread;
+
+    let (tx, rx) = mpsc::channel();
+
+    // Clone command for execution in thread
+    let mut cmd_clone = Command::new(cmd.get_program());
+    cmd_clone.args(cmd.get_args());
+    if let Some(dir) = cmd.get_current_dir() {
+        cmd_clone.current_dir(dir);
+    }
+
+    thread::spawn(move || {
+        let result = cmd_clone.output();
+        let _ = tx.send(result);
+    });
+
+    rx.recv_timeout(timeout)
+        .context("Command execution timed out")?
+        .context("Command execution failed")
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_is_valid_path() {
+        // Valid paths
+        assert!(is_valid_path("src/main.rs"));
+        assert!(is_valid_path("README.md"));
+        assert!(is_valid_path("docs/guide.md"));
+
+        // Invalid paths
+        assert!(!is_valid_path("/etc/passwd"));
+        assert!(!is_valid_path("../../../etc/passwd"));
+        assert!(!is_valid_path("src/../../../etc/passwd"));
+        assert!(!is_valid_path("src/\0null"));
+    }
+
+    #[test]
+    fn test_extract_ticket_from_branch() {
+        assert_eq!(
+            extract_ticket_from_branch("feature/LU-1234-add-feature"),
+            Some("LU-1234".to_string())
+        );
+        assert_eq!(
+            extract_ticket_from_branch("bugfix/JIRA-999"),
+            Some("JIRA-999".to_string())
+        );
+        assert_eq!(extract_ticket_from_branch("main"), None);
+        assert_eq!(extract_ticket_from_branch("develop"), None);
+        assert_eq!(extract_ticket_from_branch("feature/no-ticket"), None);
+    }
+
+    #[test]
+    #[cfg(windows)]
+    fn test_is_valid_path_windows() {
+        assert!(!is_valid_path("C:\\Windows\\System32"));
+        assert!(!is_valid_path("D:\\data"));
+    }
+}
