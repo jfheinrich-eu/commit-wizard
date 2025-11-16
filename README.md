@@ -1,5 +1,5 @@
 <div align="center">
-    <img src="docs/assets/logo.png" alt="commit-wizard">
+    <img src="docs/assets/logo.png" height=200 alt="commit-wizard">
 </div>
 
 ---

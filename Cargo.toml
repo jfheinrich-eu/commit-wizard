@@ -2,7 +2,7 @@
 name = "commit-wizard"
 version = "0.1.0"
 edition = "2021"
-authors = ["jfheinrich-eu"]
+authors = ["jfheinrich <joerg@jfheinrich.eu>"]
 description = "A CLI tool to help create better commit messages"
 readme = "README.md"
 repository = "https://github.com/jfheinrich-eu/commit-wizard"
@@ -11,7 +11,17 @@ keywords = ["cli", "git", "commit", "wizard"]
 categories = ["command-line-utilities", "development-tools"]
 
 [dependencies]
+anyhow = "1"
 clap = { version = "4.5", features = ["derive"] }
+git2 = "0.20.2"
+regex = "1"
+serde = { version = "1", features = ["derive"] }
+tempfile = "3"
+thiserror = "2"
+crossterm = "0.29.0"
+ratatui = { version = "0.29", default-features = false, features = [
+    "crossterm",
+] }
 
 [dev-dependencies]
 
