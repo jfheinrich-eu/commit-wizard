@@ -17,4 +17,4 @@ paths-ignore:
   - examples
 
 # Additional build configuration
-build-mode: manual
+build-mode: none
