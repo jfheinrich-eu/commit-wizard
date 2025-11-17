@@ -39,6 +39,7 @@ jobs:
       - name: Build project with dependencies
         run: |
           # Full clean build to ensure all dependencies are resolved
+          set -e
           cargo clean
           cargo build --release --verbose
 
