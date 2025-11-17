@@ -78,28 +78,9 @@ if [ -d /tmp/host-ssh ]; then
     echo "✅ SSH setup complete"
 fi
 
-# Fix GPG permissions
+# Start GPG agent
 if [ -d ~/.gnupg ]; then
-    echo "🔐 Fixing GPG permissions..."
-    if command -v sudo >/dev/null 2>&1; then
-        sudo chown -R vscode:vscode ~/.gnupg
-    else
-        echo "sudo not available; skipping chown for ~/.gnupg"
-    fi
-    chmod 700 ~/.gnupg
-    find ~/.gnupg -maxdepth 1 -type f -exec chmod 600 {} \;
-    # Start GPG agent
     gpg-agent --daemon 2>/dev/null || echo "Warning: GPG agent failed to start"
-fi
-
-# Fix Git config permissions
-if [ -f ~/.gitconfig ]; then
-    echo "📝 Fixing Git config permissions..."
-    if command -v sudo >/dev/null 2>&1; then
-        sudo chown vscode:vscode ~/.gitconfig
-    else
-        echo "sudo not available; skipping chown for ~/.gitconfig"
-    fi
 fi
 
 # Authenticate with GitHub CLI if token is available
@@ -131,6 +112,10 @@ fi
 echo "🦀 Updating Rust to latest stable..."
 rustup update stable
 rustup default stable
+
+# Add musl target for Alpine Linux static builds
+echo "🏔️  Adding x86_64-unknown-linux-musl target for Alpine builds..."
+rustup target add x86_64-unknown-linux-musl
 
 # Pre-build project dependencies if Cargo.toml exists
 if [ -f "Cargo.toml" ]; then
