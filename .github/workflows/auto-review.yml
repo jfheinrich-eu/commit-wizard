@@ -105,7 +105,7 @@ jobs:
               else
                 PRS_JSON="$WORKFLOW_RUN_PRS"
               fi
-              
+
               # Check if PRs array is not empty
               if echo "$PRS_JSON" | jq -e '. | length > 0' > /dev/null; then
                 PR_NUM=$(echo "$PRS_JSON" | jq -r '.[0].number')
@@ -318,7 +318,7 @@ jobs:
 
           ### Next Steps
           - Code owner review is required from: **@jfheinrich-eu/maintainers**
-            
+
           ---
           *This is an automated review. Please wait for human reviewers to approve before merging.*
 
