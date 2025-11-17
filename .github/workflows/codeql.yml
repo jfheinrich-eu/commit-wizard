@@ -33,8 +33,7 @@ jobs:
         with:
           languages: rust
           config-file: .github/codeql-config.yml
-          # Build mode: manual allows better dependency resolution
-          build-mode: manual
+          build-mode: none
 
       # Build with full dependency resolution
       - name: Build project with dependencies
