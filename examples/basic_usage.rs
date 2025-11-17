@@ -12,8 +12,7 @@ fn main() {
     println!("=== Commit Wizard - Basic Usage Example ===\n");
 
     // Example: Get repository path
-    let repo_path = env::current_dir()
-        .unwrap_or_else(|_| PathBuf::from("."));
+    let repo_path = env::current_dir().unwrap_or_else(|_| PathBuf::from("."));
 
     println!("Repository: {}", repo_path.display());
     println!("\nTypical workflow:");
