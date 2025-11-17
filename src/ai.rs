@@ -111,10 +111,20 @@ pub fn generate_commit_message(
     diff: Option<&str>,
 ) -> Result<(String, Option<String>)> {
     // Try GitHub token first, then OpenAI
-    let (token, api_url, api) = if let Some(gh_token) = get_github_token() {
-        (gh_token, GITHUB_MODELS_API_URL, "GitHub Models")
+    let (token, api_url, api, model) = if let Some(gh_token) = get_github_token() {
+        (
+            gh_token,
+            GITHUB_MODELS_API_URL,
+            "GitHub Models",
+            env::var("GITHUB_COPILOT_MODEL").unwrap_or_else(|_| "gpt-4".to_string()),
+        )
     } else if let Some(openai_token) = get_openai_token() {
-        (openai_token, OPENAI_API_URL, "OpenAI")
+        (
+            openai_token,
+            OPENAI_API_URL,
+            "OpenAI",
+            env::var("OPENAI_MODEL").unwrap_or_else(|_| "gpt-4.1-2025-04-14".to_string()),
+        )
     } else {
         anyhow::bail!(
             "No API token found. Set one of:\n\
@@ -137,9 +147,9 @@ pub fn generate_commit_message(
         .to_string();
 
     if api == "GitHub Models" {
-        github_models_api_call(group, files, diff, content_message, token, api_url)
+        github_models_api_call(group, files, diff, content_message, token, api_url, model)
     } else if api == "OpenAI" {
-        openai_api_call(group, files, diff, content_message, token, api_url)
+        openai_api_call(group, files, diff, content_message, token, api_url, model)
     } else {
         anyhow::bail!("Unsupported API: {}", api);
     }
@@ -153,10 +163,11 @@ fn openai_api_call(
     content_string: String,
     token: String,
     api_url: &str,
+    openai_model: String,
 ) -> Result<(String, Option<String>)> {
     let prompt = build_prompt(group, files, diff);
     let request = OpenAIRequest {
-        model: "gpt-4.1-2025-04-14".to_string(),
+        model: openai_model,
         messages: vec![
             Message {
                 role: "system".to_string(),
@@ -213,6 +224,7 @@ fn github_models_api_call(
     content_string: String,
     token: String,
     api_url: &str,
+    github_copilot_model: String,
 ) -> Result<(String, Option<String>)> {
     let prompt = build_prompt(group, files, diff);
     let request = CopilotRequest {
@@ -226,7 +238,7 @@ fn github_models_api_call(
                 content: prompt,
             },
         ],
-        model: "gpt-4".to_string(),
+        model: github_copilot_model,
         temperature: 0.3,
         max_tokens: 200,
     };
@@ -281,7 +293,13 @@ fn get_openai_token() -> Option<String> {
 }
 
 /// Builds the prompt for the AI based on change context.
-fn build_prompt(group: &ChangeGroup, files: &[ChangedFile], diff: Option<&str>) -> String {
+///
+/// # Note
+///
+/// This function is public for testing purposes but is not part of the stable API.
+/// It may change without notice in future versions.
+#[doc(hidden)]
+pub fn build_prompt(group: &ChangeGroup, files: &[ChangedFile], diff: Option<&str>) -> String {
     let mut prompt = String::new();
 
     prompt.push_str("Generate a conventional commit message for these changes:\n\n");
@@ -322,7 +340,13 @@ fn build_prompt(group: &ChangeGroup, files: &[ChangedFile], diff: Option<&str>) 
 }
 
 /// Parses the AI response into description and optional body.
-fn parse_commit_message(response: &str) -> Result<(String, Option<String>)> {
+///
+/// # Note
+///
+/// This function is public for testing purposes but is not part of the stable API.
+/// It may change without notice in future versions.
+#[doc(hidden)]
+pub fn parse_commit_message(response: &str) -> Result<(String, Option<String>)> {
     let trimmed = response.trim();
 
     // Split on first empty line to separate description from body
@@ -350,61 +374,4 @@ fn parse_commit_message(response: &str) -> Result<(String, Option<String>)> {
     };
 
     Ok((description, body))
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-    use crate::types::CommitType;
-
-    #[test]
-    fn test_parse_commit_message_simple() {
-        let response = "add new user authentication endpoint";
-        let (desc, body) = parse_commit_message(response).unwrap();
-        assert_eq!(desc, "add new user authentication endpoint");
-        assert_eq!(body, None);
-    }
-
-    #[test]
-    fn test_parse_commit_message_with_body() {
-        let response = "add new user authentication endpoint\n\n\
-                       This implements OAuth2 login flow with refresh tokens.";
-        let (desc, body) = parse_commit_message(response).unwrap();
-        assert_eq!(desc, "add new user authentication endpoint");
-        assert_eq!(
-            body,
-            Some("This implements OAuth2 login flow with refresh tokens.".to_string())
-        );
-    }
-
-    #[test]
-    fn test_parse_commit_message_with_quotes() {
-        let response = "\"add new feature\"";
-        let (desc, body) = parse_commit_message(response).unwrap();
-        assert_eq!(desc, "add new feature");
-        assert_eq!(body, None);
-    }
-
-    #[test]
-    fn test_build_prompt() {
-        let files = vec![ChangedFile::new(
-            "src/api.rs".to_string(),
-            git2::Status::INDEX_MODIFIED,
-        )];
-        let group = ChangeGroup::new(
-            CommitType::Feat,
-            Some("api".to_string()),
-            files.clone(),
-            None,
-            "placeholder".to_string(),
-            vec![],
-        );
-
-        let prompt = build_prompt(&group, &files, Some("+ fn test() {}"));
-
-        assert!(prompt.contains("Type: feat"));
-        assert!(prompt.contains("Scope: api"));
-        assert!(prompt.contains("src/api.rs"));
-        assert!(prompt.contains("+ fn test() {}"));
-    }
 }

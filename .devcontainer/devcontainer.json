@@ -39,7 +39,9 @@
 				// Development Utilities
 				"ms-vscode.vscode-json",
 				"redhat.vscode-yaml",
-				"ms-vscode-remote.remote-containers"
+				"ms-vscode-remote.remote-containers",
+				// Github
+				"github.vscode-github-actions"
 			],
 			"settings": {
 				"rust-analyzer.cargo.buildScripts.enable": true,

@@ -19,16 +19,17 @@ jobs:
 
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8 # v5
 
       - name: Setup Rust toolchain
-        uses: dtolnay/rust-toolchain@stable
+        uses: dtolnay/rust-toolchain@e97e2d8cc328f1b50210efc529dca0028893a2d9 # v1
         with:
+          toolchain: stable
           components: rustfmt, clippy, rust-src
 
       # Initialize CodeQL with improved configuration
       - name: Initialize CodeQL
-        uses: github/codeql-action/init@v3
+        uses: github/codeql-action/init@ba454b8ab46733eb6145342877cd148270bb77ab # v2.23.5
         with:
           languages: rust
           config-file: .github/codeql-config.yml
@@ -46,6 +47,6 @@ jobs:
           cargo metadata --format-version 1 > metadata.json
 
       - name: Perform CodeQL Analysis
-        uses: github/codeql-action/analyze@v3
+        uses: github/codeql-action/analyze@ba454b8ab46733eb6145342877cd148270bb77ab # v2.23.5
         with:
           category: "/language:rust"
