@@ -44,7 +44,7 @@ src/
 | `git.rs` | Git operations using libgit2 | `collect_staged_files()`, `commit_group()`, `get_current_branch()`, `get_file_diff()` |
 | `inference.rs` | Heuristic analysis of files to determine commit attributes | `infer_commit_type()`, `build_groups()` |
 | `editor.rs` | External editor spawning with security validation | `edit_text_in_editor()`, `validate_editor_command()` |
-| `ai.rs` | GitHub Copilot API integration for message generation | `generate_commit_message()` |
+| `ai.rs` | GitHub Models API integration for AI commit message generation | `generate_commit_message()` |
 | `ui.rs` | Interactive TUI using ratatui | `run_tui()`, `draw_ui()` |
 
 ## Core Data Types
@@ -482,9 +482,9 @@ feat(inference): add custom pattern support
 
 ## AI Integration
 
-### GitHub Copilot API
+### GitHub Models API
 
-The `ai` module integrates with GitHub's Copilot API to generate commit messages based on file changes and diffs.
+The `ai` module integrates with [GitHub Models API](https://docs.github.com/en/github-models) to generate commit messages using GPT-4 based on file changes and diffs.
 
 **Key Features:**
 
@@ -493,6 +493,13 @@ The `ai` module integrates with GitHub's Copilot API to generate commit messages
 - Temperature 0.3 for consistent, focused output
 - Automatic token retrieval from `GITHUB_TOKEN` or `GH_TOKEN`
 - Diff context limited to 1000 characters to optimize API usage
+- Free access for GitHub users (no additional API keys needed)
+
+**Authentication:**
+
+- Requires GitHub Personal Access Token (PAT) with `read:user` scope
+- Create token at: https://github.com/settings/tokens/new
+- Alternative: Use `gh auth token` from GitHub CLI
 
 **API Request Flow:**
 
@@ -502,7 +509,7 @@ The `ai` module integrates with GitHub's Copilot API to generate commit messages
    - List of changed files
    - Git diff output for context
 3. Build prompt with structured information
-4. Send POST request to `api.githubcopilot.com/chat/completions`
+4. Send POST request to `https://models.github.com/chat/completions`
 5. Parse response and update commit message
 
 **Response Parsing:**
