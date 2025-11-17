@@ -13,6 +13,9 @@ RUN apt-get update && apt-get install -y \
     build-essential \
     pkg-config \
     libssl-dev \
+    # musl for static Alpine builds
+    musl-tools \
+    musl-dev \
     # Git and SSH
     git \
     openssh-client \
@@ -35,6 +38,9 @@ RUN apt-get update && apt-get install -y \
     && apt-get autoremove -y \
     && apt-get clean -y \
     && rm -rf /var/lib/apt/lists/*
+
+# Setup musl-gcc symlink for Rust cross-compilation
+RUN ln -sf /usr/bin/musl-gcc /usr/local/bin/x86_64-linux-musl-gcc
 
 # Install Rust components for CLI development
 RUN rustup component add \
