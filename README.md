@@ -6,6 +6,9 @@
 
 A CLI tool to help create better commit messages.
 
+[![CodeQL](https://github.com/jfheinrich-eu/commit-wizard/actions/workflows/codeql.yml/badge.svg)](https://github.com/jfheinrich-eu/commit-wizard/actions/workflows/codeql.yml)
+[![Rust Tests](https://github.com/jfheinrich-eu/commit-wizard/actions/workflows/rust-tests.yml/badge.svg)](https://github.com/jfheinrich-eu/commit-wizard/actions/workflows/rust-tests.yml)
+
 ---
 
 - [Features](#features)
@@ -16,6 +19,7 @@ A CLI tool to help create better commit messages.
   - [AI-Powered Mode](#ai-powered-mode)
   - [Keyboard Controls](#keyboard-controls)
   - [Advanced Options](#advanced-options)
+- [GitHub Token Setup](docs/github-token-setup.md)
 - [Development](#development)
   - [Prerequisites](#prerequisites)
   - [Dev Container (Recommended)](#dev-container-recommended)
@@ -42,10 +46,32 @@ A CLI tool to help create better commit messages.
 
 # Installation
 
+## Alpine Linux
+
+Quick install to `/usr/local`:
+
+```bash
+# Build and install
+make alpine-package
+sudo make alpine-install
+```
+
+See [Alpine Installation Guide](docs/ALPINE_INSTALL.md) for detailed instructions.
+
 ## From Source
 
 ```bash
 cargo install --path .
+```
+
+## Pre-built Binaries
+
+Download from [GitHub Releases](https://github.com/jfheinrich-eu/commit-wizard/releases):
+
+```bash
+# Download and extract
+wget https://github.com/jfheinrich-eu/commit-wizard/releases/download/v0.1.0/commit-wizard-0.1.0-x86_64.tar.gz
+sudo tar xzf commit-wizard-0.1.0-x86_64.tar.gz -C /
 ```
 
 # Usage
@@ -61,15 +87,49 @@ commit-wizard
 
 ## AI-Powered Mode
 
-Generate commit messages using GitHub Copilot:
+Generate commit messages using AI (GitHub Models or OpenAI):
 
 ```bash
-# Set your GitHub token (required for AI features)
-export GITHUB_TOKEN="your_token_here"
+# Option 1: GitHub Models API (free, if available in your region)
+# Create a Personal Access Token: https://github.com/settings/tokens/new
+# Required scope: "read:user"
+export GITHUB_TOKEN="ghp_xxxxxxxxxxxxxxxxxxxx"
+
+# Option 2: OpenAI API (paid, ~$0.0001 per message, always available)
+# Get API key: https://platform.openai.com/api-keys
+export OPENAI_API_KEY="sk-xxxxxxxxxxxxxxxxxxxx"
+
+# Option 3: Both (automatic fallback if GitHub Models unavailable)
+export GITHUB_TOKEN="ghp_xxxxxxxxxxxxxxxxxxxx"
+export OPENAI_API_KEY="sk-xxxxxxxxxxxxxxxxxxxx"
+
+# Test your token(s)
+commit-wizard test-token
 
 # Run with AI enabled
 commit-wizard --ai
 ```
+
+**Note:** GitHub Models API may not be available in all regions/environments. OpenAI is recommended for production use. See [AI API Configuration](docs/ai-api-configuration.md) for details.
+
+### Testing Your Token
+
+Before using AI features, verify your token works:
+
+```bash
+# Built-in token validator
+commit-wizard test-token
+
+# Or run the bash script
+./scripts/test-github-token.sh
+```
+
+The test will check:
+
+- Token is set and valid format
+- GitHub API authentication works
+- Models API is accessible
+- Full request/response cycle
 
 In the TUI, press `a` to generate a commit message for the selected group using AI.
 
@@ -105,7 +165,15 @@ commit-wizard --ai --verbose --repo /path/to/repo
 
 ## Dev Container (Recommended)
 
-This project includes a VS Code dev container with all tools pre-configured. See [.devcontainer/README.md](.devcontainer/README.md) for details.
+This project includes a VS Code dev container with all tools pre-configured:
+
+- ✅ Rust toolchain with clippy, rustfmt, rust-src
+- ✅ musl-tools for Alpine Linux static builds
+- ✅ x86_64-unknown-linux-musl target pre-installed
+- ✅ All cargo development tools
+- ✅ Git, GitHub CLI, and SSH/GPG support
+
+See [.devcontainer/README.md](.devcontainer/README.md) for details.
 
 ### Quick Start
 

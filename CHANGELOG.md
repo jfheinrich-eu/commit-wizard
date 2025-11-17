@@ -13,7 +13,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Interactive TUI for commit group management
 - Automatic file grouping by type and scope
 - External editor integration
-- **AI-powered commit message generation using GitHub Copilot API**
+- **AI-powered commit message generation using GitHub Models API (free GPT-4 access)**
 - **`--ai` / `--copilot` CLI flag to enable AI features**
 - **`a` keyboard shortcut in TUI to generate commit messages**
 - Ticket extraction from branch names
