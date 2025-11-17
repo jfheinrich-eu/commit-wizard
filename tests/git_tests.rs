@@ -62,7 +62,6 @@ fn test_extract_ticket_multiple_matches() {
 
 #[cfg(test)]
 mod path_validation_indirect {
-    use super::*;
 
     // These tests verify that the public API handles invalid paths correctly
     // The actual validation happens in the private `is_valid_path` function
