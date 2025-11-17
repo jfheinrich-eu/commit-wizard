@@ -22,8 +22,6 @@ use crate::editor::edit_text_in_editor;
 use crate::git::{commit_all_groups, commit_group};
 use crate::types::AppState;
 
-
-
 /// Runs the terminal user interface event loop.
 ///
 /// # Arguments
@@ -164,6 +162,9 @@ fn handle_edit_action<B: ratatui::backend::Backend + std::io::Write>(
         execute!(terminal.backend_mut(), terminal::EnterAlternateScreen)?;
         terminal.hide_cursor()?;
 
+        // Clear and redraw the terminal after returning from editor
+        terminal.clear()?;
+
         match result {
             Ok(text) => {
                 group.set_from_commit_text(&text);
@@ -196,21 +197,19 @@ fn handle_ai_generate_action<B: ratatui::backend::Backend + std::io::Write>(
     app.set_status("🤖 Generating commit message with AI...");
 
     // Try to get git diff for better context
-    let diff = Repository::discover(".")
-        .ok()
-        .and_then(|repo| {
-            let mut diff_text = String::new();
-            for file in &files_clone {
-                if let Ok(diff) = crate::git::get_file_diff(&repo, &file.path) {
-                    diff_text.push_str(&diff);
-                }
+    let diff = Repository::discover(".").ok().and_then(|repo| {
+        let mut diff_text = String::new();
+        for file in &files_clone {
+            if let Ok(diff) = crate::git::get_file_diff(&repo, &file.path) {
+                diff_text.push_str(&diff);
             }
-            if diff_text.is_empty() {
-                None
-            } else {
-                Some(diff_text)
-            }
-        });
+        }
+        if diff_text.is_empty() {
+            None
+        } else {
+            Some(diff_text)
+        }
+    });
 
     match generate_commit_message(&group_clone, &files_clone, diff.as_deref()) {
         Ok((description, body)) => {
@@ -225,7 +224,10 @@ fn handle_ai_generate_action<B: ratatui::backend::Backend + std::io::Write>(
             app.set_status("✓ AI generated commit message successfully");
         }
         Err(e) => {
-            app.set_status(format!("✗ AI generation failed: {}. Check GITHUB_TOKEN.", e));
+            app.set_status(format!(
+                "✗ AI generation failed: {}. Check GITHUB_TOKEN.",
+                e
+            ));
         }
     }
 
@@ -285,11 +287,7 @@ fn draw_ui<B: ratatui::backend::Backend>(
 }
 
 /// Draws the left panel showing the list of commit groups.
-fn draw_groups_panel(
-    f: &mut ratatui::Frame,
-    app: &AppState,
-    area: ratatui::layout::Rect,
-) {
+fn draw_groups_panel(f: &mut ratatui::Frame, app: &AppState, area: ratatui::layout::Rect) {
     let items: Vec<ListItem> = app
         .groups
         .iter()
@@ -314,23 +312,18 @@ fn draw_groups_panel(
         .collect();
 
     let title = format!(" Commit Groups ({}) ", app.groups.len());
-    let list = List::new(items)
-        .block(
-            Block::default()
-                .title(title)
-                .borders(Borders::ALL)
-                .border_style(Style::default().fg(Color::Cyan)),
-        );
+    let list = List::new(items).block(
+        Block::default()
+            .title(title)
+            .borders(Borders::ALL)
+            .border_style(Style::default().fg(Color::Cyan)),
+    );
 
     f.render_widget(list, area);
 }
 
 /// Draws the right panel showing commit message and files.
-fn draw_details_panel(
-    f: &mut ratatui::Frame,
-    app: &AppState,
-    area: ratatui::layout::Rect,
-) {
+fn draw_details_panel(f: &mut ratatui::Frame, app: &AppState, area: ratatui::layout::Rect) {
     let chunks = Layout::default()
         .direction(Direction::Vertical)
         .constraints([
@@ -390,12 +383,11 @@ fn draw_details_panel(
             .wrap(Wrap { trim: false });
         f.render_widget(files_paragraph, chunks[1]);
     } else {
-        let empty = Paragraph::new("No group selected")
-            .block(
-                Block::default()
-                    .title(" Commit Message ")
-                    .borders(Borders::ALL),
-            );
+        let empty = Paragraph::new("No group selected").block(
+            Block::default()
+                .title(" Commit Message ")
+                .borders(Borders::ALL),
+        );
         f.render_widget(empty, chunks[0]);
     }
 

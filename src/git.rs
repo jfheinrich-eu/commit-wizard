@@ -14,7 +14,7 @@ use git2::{Repository, Status, StatusOptions};
 use regex::Regex;
 use tempfile::NamedTempFile;
 
-use crate::types::{ChangedFile, ChangeGroup};
+use crate::types::{ChangeGroup, ChangedFile};
 
 /// Collects all staged files from the git repository.
 ///
@@ -80,7 +80,11 @@ pub fn collect_staged_files(repo: &Repository) -> Result<Vec<ChangedFile>> {
                     .index_to_workdir()
                     .and_then(|diff| diff.old_file().path())
             })
-            .or_else(|| entry.head_to_index().and_then(|diff| diff.old_file().path()))
+            .or_else(|| {
+                entry
+                    .head_to_index()
+                    .and_then(|diff| diff.old_file().path())
+            })
             .or_else(|| entry.path().map(Path::new));
 
         if let Some(path) = path {
@@ -155,7 +159,10 @@ pub fn get_file_diff(repo: &Repository, file_path: &str) -> Result<String> {
         .context("Failed to execute git diff")?;
 
     if !output.status.success() {
-        bail!("git diff failed: {}", String::from_utf8_lossy(&output.stderr));
+        bail!(
+            "git diff failed: {}",
+            String::from_utf8_lossy(&output.stderr)
+        );
     }
 
     Ok(String::from_utf8_lossy(&output.stdout).to_string())
@@ -254,11 +261,12 @@ pub fn commit_group(repo_path: &Path, group: &ChangeGroup) -> Result<()> {
         .arg(repo_path)
         .arg("commit")
         .arg("-F")
-        .arg(tmp.path());
+        .arg(tmp.path())
+        .arg("--");
 
     // Add specific files to this commit
     for file in &group.files {
-        cmd.arg("--").arg(&file.path);
+        cmd.arg(&file.path);
     }
 
     // Execute with timeout for robustness

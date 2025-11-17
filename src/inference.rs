@@ -5,7 +5,7 @@
 
 use std::collections::BTreeMap;
 
-use crate::types::{ChangedFile, ChangeGroup, CommitType};
+use crate::types::{ChangeGroup, ChangedFile, CommitType};
 
 /// Infers the appropriate commit type based on file path heuristics.
 ///
@@ -74,7 +74,7 @@ fn is_documentation_file(path: &str) -> bool {
     if path.contains("cmake") || path.contains("makefile") {
         return false;
     }
-    
+
     path.ends_with(".md")
         || path.ends_with(".rst")
         || path.ends_with(".txt")
@@ -197,11 +197,7 @@ pub fn infer_description(
         format!("{} {}", action, scope_value)
     } else if files.len() == 1 {
         let file = &files[0];
-        let file_name = file
-            .path
-            .rsplit('/')
-            .next()
-            .unwrap_or(&file.path);
+        let file_name = file.path.rsplit('/').next().unwrap_or(&file.path);
         format!("{} {}", action, file_name)
     } else {
         format!("{} {} files", action, files.len())

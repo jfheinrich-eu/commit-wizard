@@ -8,10 +8,14 @@ use serde::{Deserialize, Serialize};
 use std::env;
 use std::time::Duration;
 
-use crate::types::{ChangedFile, ChangeGroup};
+use crate::types::{ChangeGroup, ChangedFile};
 
-/// GitHub Copilot API endpoint for chat completions
-const COPILOT_API_URL: &str = "https://api.githubcopilot.com/chat/completions";
+/// GitHub Models API endpoint for chat completions
+/// See: https://docs.github.com/en/github-models
+const GITHUB_MODELS_API_URL: &str = "https://models.github.com/chat/completions";
+
+/// OpenAI API endpoint (fallback)
+const OPENAI_API_URL: &str = "https://api.openai.com/v1/chat/completions";
 
 /// Timeout for API requests (30 seconds)
 const API_TIMEOUT: Duration = Duration::from_secs(30);
@@ -23,6 +27,15 @@ struct CopilotRequest {
     model: String,
     temperature: f32,
     max_tokens: u32,
+}
+
+/// Request structure for OpenAI API
+#[derive(Debug, Serialize)]
+struct OpenAIRequest {
+    model: String,
+    messages: Vec<Message>,
+    temperature: f32,
+    max_completion_tokens: u32,
 }
 
 /// Message in the chat conversation
@@ -65,7 +78,9 @@ struct Choice {
 ///
 /// # Environment Variables
 ///
-/// Requires `GITHUB_TOKEN` or `GH_TOKEN` environment variable with a valid GitHub token.
+/// Requires `GITHUB_TOKEN` or `GH_TOKEN` environment variable with a GitHub Personal Access Token.
+/// The token needs the `read:user` scope for GitHub Models API access.
+/// Create one at: https://github.com/settings/tokens
 ///
 /// # Examples
 ///
@@ -95,15 +110,22 @@ pub fn generate_commit_message(
     files: &[ChangedFile],
     diff: Option<&str>,
 ) -> Result<(String, Option<String>)> {
-    let token = get_github_token()
-        .context("GitHub token not found. Set GITHUB_TOKEN or GH_TOKEN environment variable.")?;
+    // Try GitHub token first, then OpenAI
+    let (token, api_url, api) = if let Some(gh_token) = get_github_token() {
+        (gh_token, GITHUB_MODELS_API_URL, "GitHub Models")
+    } else if let Some(openai_token) = get_openai_token() {
+        (openai_token, OPENAI_API_URL, "OpenAI")
+    } else {
+        anyhow::bail!(
+            "No API token found. Set one of:\n\
+             - GITHUB_TOKEN or GH_TOKEN (for GitHub Models API)\n\
+             - OPENAI_API_KEY (for OpenAI API)\n\n\
+             Create GitHub token at: https://github.com/settings/tokens\n\
+             Create OpenAI key at: https://platform.openai.com/api-keys"
+        );
+    };
 
-    let prompt = build_prompt(group, files, diff);
-    let request = CopilotRequest {
-        messages: vec![
-            Message {
-                role: "system".to_string(),
-                content: "You are a commit message generator. Follow these rules: \
+    let content_message = "You are a commit message generator. Follow these rules: \
                           - Use imperative mood: 'add feature' NOT 'added feature' \
                           - Keep description concise and factual \
                           - Do NOT include type/scope prefix (feat:, fix:, etc.) \
@@ -112,7 +134,92 @@ pub fn generate_commit_message(
                           - If providing a body, separate it with a blank line \
                           - Body should use bullet points starting with '-' \
                           - Mention breaking changes if applicable"
-                    .to_string(),
+        .to_string();
+
+    if api == "GitHub Models" {
+        github_models_api_call(group, files, diff, content_message, token, api_url)
+    } else if api == "OpenAI" {
+        openai_api_call(group, files, diff, content_message, token, api_url)
+    } else {
+        anyhow::bail!("Unsupported API: {}", api);
+    }
+}
+
+/// Makes an API call to OpenAI to generate commit message.
+fn openai_api_call(
+    group: &ChangeGroup,
+    files: &[ChangedFile],
+    diff: Option<&str>,
+    content_string: String,
+    token: String,
+    api_url: &str,
+) -> Result<(String, Option<String>)> {
+    let prompt = build_prompt(group, files, diff);
+    let request = OpenAIRequest {
+        model: "gpt-4.1-2025-04-14".to_string(),
+        messages: vec![
+            Message {
+                role: "system".to_string(),
+                content: content_string,
+            },
+            Message {
+                role: "user".to_string(),
+                content: prompt,
+            },
+        ],
+        temperature: 0.3,
+        max_completion_tokens: 200,
+    };
+
+    let client = reqwest::blocking::Client::builder()
+        .timeout(API_TIMEOUT)
+        .build()
+        .context("Failed to create HTTP client")?;
+
+    let response = client
+        .post(api_url)
+        .header("Authorization", format!("Bearer {}", token))
+        .header("Content-Type", "application/json")
+        .json(&request)
+        .send()
+        .context("Failed to send request to OpenAI API")?;
+
+    if !response.status().is_success() {
+        let status = response.status();
+        let body = response.text().unwrap_or_default();
+        anyhow::bail!("OpenAI API returned error {}: {}", status, body);
+    }
+
+    let openai_response: CopilotResponse = response
+        .json()
+        .context("Failed to parse OpenAI API response")?;
+
+    parse_commit_message(
+        openai_response
+            .choices
+            .first()
+            .context("No response from OpenAI API")?
+            .message
+            .content
+            .as_str(),
+    )
+}
+
+/// Makes an API call to GitHub Models API to generate commit message.
+fn github_models_api_call(
+    group: &ChangeGroup,
+    files: &[ChangedFile],
+    diff: Option<&str>,
+    content_string: String,
+    token: String,
+    api_url: &str,
+) -> Result<(String, Option<String>)> {
+    let prompt = build_prompt(group, files, diff);
+    let request = CopilotRequest {
+        messages: vec![
+            Message {
+                role: "system".to_string(),
+                content: content_string,
             },
             Message {
                 role: "user".to_string(),
@@ -130,7 +237,7 @@ pub fn generate_commit_message(
         .context("Failed to create HTTP client")?;
 
     let response = client
-        .post(COPILOT_API_URL)
+        .post(api_url)
         .header("Authorization", format!("Bearer {}", token))
         .header("Content-Type", "application/json")
         .json(&request)
@@ -140,11 +247,7 @@ pub fn generate_commit_message(
     if !response.status().is_success() {
         let status = response.status();
         let body = response.text().unwrap_or_default();
-        anyhow::bail!(
-            "GitHub Copilot API returned error {}: {}",
-            status,
-            body
-        );
+        anyhow::bail!("GitHub Copilot API returned error {}: {}", status, body);
     }
 
     let copilot_response: CopilotResponse = response
@@ -169,6 +272,12 @@ fn get_github_token() -> Option<String> {
     env::var("GITHUB_TOKEN")
         .ok()
         .or_else(|| env::var("GH_TOKEN").ok())
+        .filter(|t| !t.is_empty())
+}
+
+/// Retrieves the OpenAI API key from environment variables.
+fn get_openai_token() -> Option<String> {
+    env::var("OPENAI_API_KEY").ok().filter(|t| !t.is_empty())
 }
 
 /// Builds the prompt for the AI based on change context.

@@ -238,8 +238,8 @@ impl ChangeGroup {
         let mut body = Vec::new();
         for line in lines {
             let trimmed = line.trim();
-            if trimmed.starts_with("- ") {
-                body.push(trimmed[2..].to_string());
+            if let Some(stripped) = trimmed.strip_prefix("- ") {
+                body.push(stripped.to_string());
             } else if !trimmed.is_empty() {
                 // Non-empty, non-bullet lines are treated as bullet items
                 body.push(trimmed.to_string());

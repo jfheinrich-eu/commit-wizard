@@ -74,12 +74,15 @@ pub fn edit_text_in_editor(initial: &str) -> Result<String> {
         .with_context(|| format!("Failed to spawn editor: {}", editor_cmd))?;
 
     if !status.success() {
-        bail!("Editor '{}' exited with non-zero status: {}", editor_cmd, status);
+        bail!(
+            "Editor '{}' exited with non-zero status: {}",
+            editor_cmd,
+            status
+        );
     }
 
     // Read back edited content
-    let content = std::fs::read_to_string(&tmp_path)
-        .context("Failed to read edited content")?;
+    let content = std::fs::read_to_string(&tmp_path).context("Failed to read edited content")?;
 
     Ok(content)
 }
@@ -125,7 +128,7 @@ pub fn validate_editor_command(cmd: &str) -> Result<()> {
     let base_cmd = cmd.split_whitespace().next().unwrap_or(cmd);
 
     // Check if it's a known safe editor
-    if SAFE_EDITORS.iter().any(|&safe| base_cmd == safe) {
+    if SAFE_EDITORS.contains(&base_cmd) {
         return Ok(());
     }
 
@@ -134,7 +137,7 @@ pub fn validate_editor_command(cmd: &str) -> Result<()> {
         let file_name = base_cmd.rsplit('/').next().unwrap_or(base_cmd);
         let file_name = file_name.rsplit('\\').next().unwrap_or(file_name);
 
-        if SAFE_EDITORS.iter().any(|&safe| file_name == safe) {
+        if SAFE_EDITORS.contains(&file_name) {
             return Ok(());
         }
     }

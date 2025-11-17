@@ -12,4 +12,4 @@ pub mod types;
 pub mod ui;
 
 // Re-export commonly used types
-pub use types::{AppState, ChangedFile, ChangeGroup, CommitType};
+pub use types::{AppState, ChangeGroup, ChangedFile, CommitType};
