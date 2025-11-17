@@ -5,7 +5,7 @@
 use git2::Status;
 
 // Import types from the library
-use commit_wizard::types::{AppState, ChangedFile, ChangeGroup, CommitType};
+use commit_wizard::types::{AppState, ChangeGroup, ChangedFile, CommitType};
 
 #[test]
 fn test_commit_type_as_str() {
@@ -132,7 +132,7 @@ fn test_change_group_full_message_with_body() {
     assert!(msg.contains("- add null checks"));
     assert!(msg.contains("- update tests"));
     assert!(msg.contains("- improve error messages"));
-    
+
     // Verify format: header + blank line + body
     let lines: Vec<&str> = msg.lines().collect();
     assert!(lines.len() >= 5); // header + blank + 3 body lines
@@ -176,14 +176,7 @@ fn test_change_group_set_from_commit_text() {
 
 #[test]
 fn test_change_group_set_from_commit_text_no_bullets() {
-    let mut group = ChangeGroup::new(
-        CommitType::Fix,
-        None,
-        vec![],
-        None,
-        "".to_string(),
-        vec![],
-    );
+    let mut group = ChangeGroup::new(CommitType::Fix, None, vec![], None, "".to_string(), vec![]);
 
     let edited_text = "fix: update logic\n\nSome regular text\nAnother line";
     group.set_from_commit_text(edited_text);
@@ -197,8 +190,22 @@ fn test_change_group_set_from_commit_text_no_bullets() {
 #[test]
 fn test_app_state_creation() {
     let groups = vec![
-        ChangeGroup::new(CommitType::Feat, None, vec![], None, "test1".to_string(), vec![]),
-        ChangeGroup::new(CommitType::Fix, None, vec![], None, "test2".to_string(), vec![]),
+        ChangeGroup::new(
+            CommitType::Feat,
+            None,
+            vec![],
+            None,
+            "test1".to_string(),
+            vec![],
+        ),
+        ChangeGroup::new(
+            CommitType::Fix,
+            None,
+            vec![],
+            None,
+            "test2".to_string(),
+            vec![],
+        ),
     ];
     let app = AppState::new(groups);
 
@@ -210,9 +217,30 @@ fn test_app_state_creation() {
 #[test]
 fn test_app_state_navigation() {
     let groups = vec![
-        ChangeGroup::new(CommitType::Feat, None, vec![], None, "test1".to_string(), vec![]),
-        ChangeGroup::new(CommitType::Fix, None, vec![], None, "test2".to_string(), vec![]),
-        ChangeGroup::new(CommitType::Docs, None, vec![], None, "test3".to_string(), vec![]),
+        ChangeGroup::new(
+            CommitType::Feat,
+            None,
+            vec![],
+            None,
+            "test1".to_string(),
+            vec![],
+        ),
+        ChangeGroup::new(
+            CommitType::Fix,
+            None,
+            vec![],
+            None,
+            "test2".to_string(),
+            vec![],
+        ),
+        ChangeGroup::new(
+            CommitType::Docs,
+            None,
+            vec![],
+            None,
+            "test3".to_string(),
+            vec![],
+        ),
     ];
     let mut app = AppState::new(groups);
 
@@ -248,8 +276,22 @@ fn test_app_state_empty_groups_navigation() {
 #[test]
 fn test_app_state_selected_group() {
     let groups = vec![
-        ChangeGroup::new(CommitType::Feat, None, vec![], None, "test1".to_string(), vec![]),
-        ChangeGroup::new(CommitType::Fix, None, vec![], None, "test2".to_string(), vec![]),
+        ChangeGroup::new(
+            CommitType::Feat,
+            None,
+            vec![],
+            None,
+            "test1".to_string(),
+            vec![],
+        ),
+        ChangeGroup::new(
+            CommitType::Fix,
+            None,
+            vec![],
+            None,
+            "test2".to_string(),
+            vec![],
+        ),
     ];
     let mut app = AppState::new(groups);
 

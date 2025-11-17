@@ -64,7 +64,7 @@ fn test_validate_absolute_paths_unknown_editor() {
 fn test_get_editor_default() {
     // Save original EDITOR value
     let old_editor = env::var("EDITOR").ok();
-    
+
     // Remove EDITOR variable
     env::remove_var("EDITOR");
 
@@ -80,7 +80,7 @@ fn test_get_editor_default() {
 #[test]
 fn test_get_editor_from_env() {
     let old_editor = env::var("EDITOR").ok();
-    
+
     env::set_var("EDITOR", "nvim");
     let editor = get_editor().unwrap();
     assert_eq!(editor, "nvim");
@@ -100,7 +100,7 @@ fn test_get_editor_from_env() {
 #[test]
 fn test_get_editor_empty_string() {
     let old_editor = env::var("EDITOR").ok();
-    
+
     // Empty string should fall back to vi
     env::set_var("EDITOR", "");
     let editor = get_editor().unwrap();
@@ -152,7 +152,7 @@ fn test_editor_validation_edge_cases() {
     assert!(validate_editor_command("vim").is_ok());
     assert!(validate_editor_command("vim-gtk").is_ok()); // vim variant
     assert!(validate_editor_command("/usr/bin/vim").is_ok());
-    
+
     // Editors with common prefixes should be handled correctly
     assert!(validate_editor_command("nvim").is_ok());
     assert!(validate_editor_command("gvim").is_ok());

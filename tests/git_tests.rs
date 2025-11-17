@@ -41,10 +41,10 @@ fn test_extract_ticket_from_branch_no_ticket() {
 fn test_extract_ticket_from_branch_edge_cases() {
     // Lowercase should not match
     assert_eq!(extract_ticket_from_branch("feature/lu-1234"), None);
-    
+
     // Only numbers should not match
     assert_eq!(extract_ticket_from_branch("feature/1234"), None);
-    
+
     // Only letters should not match
     assert_eq!(extract_ticket_from_branch("feature/ABCD"), None);
 }
@@ -111,11 +111,7 @@ mod path_validation_indirect {
     #[test]
     fn test_windows_drive_letters() {
         // Windows drive letters should be rejected
-        let windows_paths = vec![
-            "C:\\Windows\\System32",
-            "D:\\data",
-            "E:\\files\\secret.txt",
-        ];
+        let windows_paths = vec!["C:\\Windows\\System32", "D:\\data", "E:\\files\\secret.txt"];
 
         for path in windows_paths {
             // Verify drive letter pattern

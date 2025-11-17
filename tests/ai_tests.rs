@@ -1,12 +1,13 @@
 use commit_wizard::ai::generate_commit_message;
-use commit_wizard::types::{ChangedFile, ChangeGroup, CommitType};
+use commit_wizard::types::{ChangeGroup, ChangedFile, CommitType};
 use git2::Status;
 
 #[test]
 fn test_generate_requires_github_token() {
-    // Remove token if set
+    // Remove all API tokens
     std::env::remove_var("GITHUB_TOKEN");
     std::env::remove_var("GH_TOKEN");
+    std::env::remove_var("OPENAI_API_KEY");
 
     let files = vec![ChangedFile::new(
         "src/main.rs".to_string(),
@@ -26,7 +27,7 @@ fn test_generate_requires_github_token() {
     assert!(result
         .unwrap_err()
         .to_string()
-        .contains("GitHub token not found"));
+        .contains("No API token found"));
 }
 
 #[test]

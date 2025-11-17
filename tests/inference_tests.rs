@@ -36,7 +36,10 @@ fn test_infer_commit_type_documentation() {
 
 #[test]
 fn test_infer_commit_type_ci_files() {
-    assert_eq!(infer_commit_type(".github/workflows/ci.yml"), CommitType::Ci);
+    assert_eq!(
+        infer_commit_type(".github/workflows/ci.yml"),
+        CommitType::Ci
+    );
     assert_eq!(infer_commit_type(".gitlab-ci.yml"), CommitType::Ci);
     assert_eq!(infer_commit_type(".travis.yml"), CommitType::Ci);
     assert_eq!(infer_commit_type("jenkins/Jenkinsfile"), CommitType::Ci);
@@ -84,7 +87,7 @@ fn test_infer_scope_without_directory() {
     // if they end with .md or are top-level files
     assert_eq!(infer_scope("README.md"), None); // Filtered: ends with .md
     assert_eq!(infer_scope("LICENSE"), Some("LICENSE".to_string())); // Has no extension
-    // Note: Implementation returns first segment even for top-level files
+                                                                     // Note: Implementation returns first segment even for top-level files
 }
 
 #[test]
@@ -97,12 +100,18 @@ fn test_infer_scope_hidden_directories() {
 fn test_infer_scope_nested_paths() {
     // Should only return first segment
     assert_eq!(infer_scope("src/api/users.rs"), Some("src".to_string()));
-    assert_eq!(infer_scope("backend/db/schema.sql"), Some("backend".to_string()));
+    assert_eq!(
+        infer_scope("backend/db/schema.sql"),
+        Some("backend".to_string())
+    );
 }
 
 #[test]
 fn test_infer_description_with_scope() {
-    let files = vec![ChangedFile::new("src/main.rs".to_string(), Status::INDEX_NEW)];
+    let files = vec![ChangedFile::new(
+        "src/main.rs".to_string(),
+        Status::INDEX_NEW,
+    )];
 
     assert_eq!(
         infer_description(&files, CommitType::Feat, &Some("src".to_string())),
@@ -124,7 +133,10 @@ fn test_infer_description_with_scope() {
 
 #[test]
 fn test_infer_description_single_file_no_scope() {
-    let files = vec![ChangedFile::new("README.md".to_string(), Status::INDEX_MODIFIED)];
+    let files = vec![ChangedFile::new(
+        "README.md".to_string(),
+        Status::INDEX_MODIFIED,
+    )];
 
     assert_eq!(
         infer_description(&files, CommitType::Docs, &None),
@@ -203,12 +215,12 @@ fn test_build_groups_multiple_types() {
 
     // Should have multiple groups
     assert!(groups.len() >= 2);
-    
+
     // Verify we have different commit types
     let has_docs = groups.iter().any(|g| g.commit_type == CommitType::Docs);
     let has_test = groups.iter().any(|g| g.commit_type == CommitType::Test);
     assert!(has_docs || has_test, "Should have docs or test commits");
-    
+
     // All should have the ticket
     assert_eq!(groups[0].ticket, Some("TICKET-123".to_string()));
     assert_eq!(groups[1].ticket, Some("TICKET-123".to_string()));
@@ -227,7 +239,7 @@ fn test_build_groups_same_type_different_scopes() {
 
     // Should create 3 groups (different scopes)
     assert_eq!(groups.len(), 3);
-    
+
     let scopes: Vec<_> = groups.iter().map(|g| g.scope.as_ref()).collect();
     assert!(scopes.contains(&Some(&"src".to_string())));
     assert!(scopes.contains(&Some(&"backend".to_string())));
