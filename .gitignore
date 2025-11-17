@@ -40,3 +40,11 @@ cobertura.xml
 # Documentation build
 docs/book/
 target/doc/
+
+# secret files
+.env
+openai.sh
+
+# build and distribution
+pkg/
+dist/
