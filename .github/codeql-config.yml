@@ -1,0 +1,20 @@
+# CodeQL configuration for Rust analysis
+# https://docs.github.com/en/code-security/code-scanning/creating-an-advanced-setup-for-code-scanning/customizing-your-advanced-setup-for-code-scanning
+
+name: "CodeQL Config"
+
+# Improve macro resolution
+queries:
+  - uses: security-and-quality
+
+# Ensure proper dependency resolution
+paths:
+  - src
+  - tests
+
+paths-ignore:
+  - target
+  - examples
+
+# Additional build configuration
+build-mode: manual
