@@ -42,7 +42,7 @@ jobs:
           token: ${{ secrets.GITHUB_TOKEN }}
 
   check-pr:
-    if: ${{ github.actor != 'dependabot[bot]' }} &&  ${{ github.actor != 'pre-commit[bot]' }}
+    if: ${{ github.actor != 'dependabot[bot]' && github.actor != 'pre-commit[bot]' }}
     needs: generate-pr-description
     name: Validate Release Label and Notes
     runs-on: ubuntu-latest

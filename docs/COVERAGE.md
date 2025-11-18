@@ -80,7 +80,7 @@ coverage:
         if_ci_failed: error
 
 comment:
-  layout: "diff, flags, files"
+  layout: "header, diff, flags, components, footer"
   behavior: default
   require_changes: false
   require_base: false
@@ -92,8 +92,10 @@ github_checks:
 # Codecov AI configuration
 ai:
   enabled: true
-  coverage_analysis: true
-  test_suggestions: true
+  coverage_analysis:
+    enabled: true
+  test_suggestions:
+    enabled: true
 ```
 
 **Key Settings:**
@@ -135,7 +137,7 @@ coverage:
       run: cargo llvm-cov --all-features --workspace --lcov --output-path lcov.info
     
     - name: Upload coverage to Codecov
-      uses: codecov/codecov-action@v4
+      uses: codecov/codecov-action@v5.5.1
       with:
         token: ${{ secrets.CODECOV_TOKEN || '' }}
         files: lcov.info
