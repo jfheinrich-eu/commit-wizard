@@ -6,8 +6,11 @@ ci:
 dependencies:
   - changed-files:
       - any-glob-to-any-file:
+          - Cargo.toml
+          - Cargo.lock
+          - package.json
           - package-lock.json
-          - yarn.lockfile
+          - yarn.lock
           - requirements.txt
           - composer.lock
 documentation:
@@ -32,6 +35,10 @@ labels:
 lint:
   - changed-files:
       - any-glob-to-any-file:
+          - .clippy.toml
+          - clippy.toml
+          - rustfmt.toml
+          - .rustfmt.toml
           - .stylelintrc.json
           - .flake8
 npm:
@@ -59,8 +66,10 @@ test:
 python:
   - changed-files:
       - any-glob-to-any-file:
-          - pyproject.toml
-          - src/**/*.py
+          - "**/*.rs"
+          - Cargo.toml
+          - Cargo.lock
+          - rust-toolchain.toml
 vscode:
   - changed-files:
       - any-glob-to-any-file:

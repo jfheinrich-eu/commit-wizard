@@ -31,7 +31,6 @@ comment:
 github_checks:
   annotations: true
 
-# Codecov AI features (automatically enabled with Codecov AI app)
 ai:
   coverage_analysis:
     enabled: true

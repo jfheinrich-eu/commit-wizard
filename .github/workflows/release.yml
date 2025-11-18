@@ -10,6 +10,7 @@ on:
 jobs:
   release:
     runs-on: ubuntu-latest
+    timeout-minutes: 10
     defaults:
       run:
         shell: bash
@@ -17,7 +18,7 @@ jobs:
     steps:
       - name: Fetch secrets
         id: fetch_secrets
-        uses: jfheinrich-eu/psono-secret-whisperer@b42169213e4392bdd2f1d5a7be76bfeb8c246074 # v1.1.0
+        uses: jfheinrich-eu/psono-secret-whisperer@ba6cda54d4dfb23d7ff1a2fd4f2dfc87bd833f1f # v1.2.0
         with:
           ci_api_key_id: ${{ secrets.PSONO_API_KEY_ID }}
           ci_api_secret_key_hex: ${{ secrets.PSONO_API_SECRET_KEY_HEX }}
@@ -39,7 +40,7 @@ jobs:
         id: changelog
         uses: requarks/changelog-action@b78a3354a01f4a1affb484b9264b506a815c46b1 # v1.10.3
         with:
-          token: ${{ github.token }}
+          token: ${{ secrets.GITHUB_TOKEN }}
           tag: ${{ github.ref_name }}
 
       - name: Create Release

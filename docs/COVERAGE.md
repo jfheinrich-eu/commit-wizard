@@ -63,6 +63,7 @@ codecov:
 
 coverage:
   precision: 2
+  round: down
   range: "70...100"
 
   status:
@@ -70,11 +71,29 @@ coverage:
       default:
         target: auto
         threshold: 1%
+        if_ci_failed: error
 
     patch:
       default:
         target: auto
         threshold: 1%
+        if_ci_failed: error
+
+comment:
+  layout: "diff, flags, files"
+  behavior: default
+  require_changes: false
+  require_base: false
+  require_head: true
+
+github_checks:
+  annotations: true
+
+# Codecov AI configuration
+ai:
+  enabled: true
+  coverage_analysis: true
+  test_suggestions: true
 ```
 
 **Key Settings:**
@@ -137,7 +156,7 @@ token: ${{ secrets.CODECOV_TOKEN || '' }}
 1. **Primary**: GitHub App authentication (Codecov app installed at organization level)
 2. **Fallback**: Organization Secret `CODECOV_TOKEN` if app authentication fails
 3. **Public repos**: App authentication is usually sufficient (no token needed)
-4. **Private repos**: Token from organization secret is automatically used
+# Verify the secret is accessible in the repository
 
 **Benefits:**
 
@@ -156,7 +175,7 @@ The token is configured at the **organization level** and automatically availabl
 # Check if organization secret exists
 gh secret list --org jfheinrich-eu | grep CODECOV_TOKEN
 
-# 3. Verify
+# 3. Verify the secret is accessible in the repository
 gh secret list | grep CODECOV_TOKEN
 ```
 
@@ -340,4 +359,3 @@ curl -X POST --data-binary @lcov.info \
 - [Codecov Documentation](https://docs.codecov.com/)
 - [Codecov YAML Reference](https://docs.codecov.com/docs/codecov-yaml)
 - [Codecov AI Features](https://docs.codecov.com/docs/codecov-ai)
-
