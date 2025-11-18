@@ -48,3 +48,4 @@ openai.sh
 # build and distribution
 pkg/
 dist/
+lcov.info

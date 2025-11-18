@@ -57,3 +57,38 @@ jobs:
           else
             echo "No library target found, skipping doc tests"
           fi
+
+  coverage:
+    name: Code Coverage
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8 # v5
+        with:
+          fetch-depth: 0
+
+      - name: Setup Rust toolchain
+        uses: actions-rust-lang/setup-rust-toolchain@1780873c7b576612439a134613cc4cc74ce5538c # v1.15.2
+        with:
+          toolchain: stable
+          components: llvm-tools-preview
+          cache: true
+
+      - name: Install cargo-llvm-cov
+        uses: taiki-e/install-action@56ab7930c591507f833cbaed864d201386d518a8 # v2.44.28
+        with:
+          tool: cargo-llvm-cov
+
+      - name: Generate code coverage
+        run: cargo llvm-cov --all-features --workspace --lcov --output-path lcov.info
+
+      - name: Upload coverage to Codecov
+        uses: codecov/codecov-action@5a1091511ad55cbe89839c7260b706298ca349f7 # v5.5.1
+        with:
+          token: ${{ secrets.CODECOV_TOKEN || '' }}
+          files: lcov.info
+          slug: jfheinrich-eu/commit-wizard
+          fail_ci_if_error: true
+          verbose: true

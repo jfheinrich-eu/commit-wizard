@@ -8,6 +8,7 @@ A CLI tool to help create better commit messages.
 
 [![CodeQL](https://github.com/jfheinrich-eu/commit-wizard/actions/workflows/codeql.yml/badge.svg)](https://github.com/jfheinrich-eu/commit-wizard/actions/workflows/codeql.yml)
 [![Rust Tests](https://github.com/jfheinrich-eu/commit-wizard/actions/workflows/rust-tests.yml/badge.svg)](https://github.com/jfheinrich-eu/commit-wizard/actions/workflows/rust-tests.yml)
+[![codecov](https://codecov.io/gh/jfheinrich-eu/commit-wizard/branch/main/graph/badge.svg)](https://codecov.io/gh/jfheinrich-eu/commit-wizard)
 
 ---
 
