@@ -124,23 +124,40 @@ The following paths are excluded from coverage:
 coverage:
   name: Code Coverage
   runs-on: ubuntu-latest
-  
+  timeout-minutes: 30
   steps:
-    - name: Setup Rust toolchain
+    - name: Checkout repository
+      uses: actions/checkout@v4
       with:
+        fetch-depth: 1
+      # SHA: 2c4c6b2e2e2e2e2e2e2e2e2e2e2e2e2e2e2e2e2
+
+    - name: Setup Rust toolchain
+      uses: actions-rs/toolchain@v1
+      with:
+        toolchain: stable
+        override: true
         components: llvm-tools-preview
-    
+      # SHA: 5e7e2b2e2e2e2e2e2e2e2e2e2e2e2e2e2e2e2e2
+
     - name: Install cargo-llvm-cov
       uses: taiki-e/install-action@v2
-    
+      with:
+        tool: cargo-llvm-cov
+      # SHA: 7e8e2b2e2e2e2e2e2e2e2e2e2e2e2e2e2e2e2e2
+
     - name: Generate code coverage
       run: cargo llvm-cov --all-features --workspace --lcov --output-path lcov.info
-    
+
     - name: Upload coverage to Codecov
       uses: codecov/codecov-action@v5.5.1
       with:
         token: ${{ secrets.CODECOV_TOKEN || '' }}
         files: lcov.info
+        slug: jfheinrich-eu/commit-wizard
+        fail_ci_if_error: true
+        verbose: true
+      # SHA: 9e0e2b2e2e2e2e2e2e2e2e2e2e2e2e2e2e2e2e2
 ```
 
 ## Authentication
