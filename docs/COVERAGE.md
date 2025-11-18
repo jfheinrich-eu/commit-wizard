@@ -176,7 +176,7 @@ The token is configured at the **organization level** and automatically availabl
 # Check if organization secret exists
 gh secret list --org jfheinrich-eu | grep CODECOV_TOKEN
 
-# 3. Verify the secret is accessible in the repository
+# Verify the secret is accessible in the repository
 gh secret list | grep CODECOV_TOKEN
 ```
 
