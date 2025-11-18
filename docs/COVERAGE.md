@@ -158,7 +158,6 @@ token: ${{ secrets.CODECOV_TOKEN || '' }}
 1. **Primary**: GitHub App authentication (Codecov app installed at organization level)
 2. **Fallback**: Organization Secret `CODECOV_TOKEN` if app authentication fails
 3. **Public repos**: App authentication is usually sufficient (no token needed)
-# Verify the secret is accessible in the repository
 
 **Benefits:**
 
