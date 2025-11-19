@@ -12,11 +12,15 @@ use crossterm::event::{self, Event as CEvent, KeyCode, KeyEvent, KeyModifiers};
 use crossterm::terminal::{disable_raw_mode, enable_raw_mode};
 use crossterm::{execute, terminal};
 use ratatui::backend::CrosstermBackend;
-use ratatui::layout::{Constraint, Direction, Layout};
+use ratatui::layout::{Alignment, Constraint, Direction, Layout, Margin, Rect};
 use ratatui::style::{Color, Modifier, Style};
 use ratatui::text::{Line, Span};
-use ratatui::widgets::{Block, Borders, List, ListItem, Paragraph, Wrap};
+use ratatui::widgets::{
+    Block, Borders, Clear, List, ListItem, Paragraph, Scrollbar, ScrollbarOrientation,
+    ScrollbarState, Wrap,
+};
 use ratatui::Terminal;
+use tui_framework_experiment::Button;
 
 use crate::editor::edit_text_in_editor;
 use crate::git::{commit_all_groups, commit_group};
@@ -75,7 +79,7 @@ fn run_event_loop<B: ratatui::backend::Backend + std::io::Write>(
 
     loop {
         // Draw UI
-        draw_ui(terminal, app)?;
+        draw_ui(terminal, app, ai_enabled)?;
 
         // Handle events
         let timeout = tick_rate
@@ -109,6 +113,26 @@ fn handle_key_event<B: ratatui::backend::Backend + std::io::Write>(
     terminal: &mut Terminal<B>,
     ai_enabled: bool,
 ) -> Result<bool> {
+    // If popup is active, handle popup-specific keys first
+    if app.popup_active {
+        match key.code {
+            KeyCode::Esc | KeyCode::Enter => {
+                app.clear_status();
+                return Ok(false);
+            }
+            KeyCode::Down | KeyCode::Char('j') => {
+                app.scroll_popup_down();
+                return Ok(false);
+            }
+            KeyCode::Up | KeyCode::Char('k') => {
+                app.scroll_popup_up();
+                return Ok(false);
+            }
+            _ => return Ok(false),
+        }
+    }
+
+    // Normal mode key handling
     match key.code {
         KeyCode::Char('q') | KeyCode::Esc => {
             return Ok(true);
@@ -266,21 +290,45 @@ fn handle_commit_all_action(app: &mut AppState, repo_path: &Path) -> Result<()> 
 fn draw_ui<B: ratatui::backend::Backend>(
     terminal: &mut Terminal<B>,
     app: &AppState,
+    ai_enabled: bool,
 ) -> io::Result<()> {
     terminal.draw(|f| {
         let size = f.area();
 
-        // Main layout: left panel (groups) and right panel (details)
-        let main_chunks = Layout::default()
-            .direction(Direction::Horizontal)
-            .constraints([Constraint::Percentage(35), Constraint::Percentage(65)])
+        // Main vertical layout: content area and shortcuts bar (3 lines for one text line)
+        let vertical_chunks = Layout::default()
+            .direction(Direction::Vertical)
+            .constraints([Constraint::Min(5), Constraint::Length(3)])
             .split(size);
 
-        // Left panel: group list
-        draw_groups_panel(f, app, main_chunks[0]);
+        // Content area: left panel (50%) and right panel (50%)
+        let content_chunks = Layout::default()
+            .direction(Direction::Horizontal)
+            .constraints([Constraint::Percentage(50), Constraint::Percentage(50)])
+            .split(vertical_chunks[0]);
 
-        // Right panel: message and files
-        draw_details_panel(f, app, main_chunks[1]);
+        // Left panel: group list
+        draw_groups_panel(f, app, content_chunks[0]);
+
+        // Right panel split horizontally: commit message (50%) and files (50%)
+        let right_chunks = Layout::default()
+            .direction(Direction::Vertical)
+            .constraints([Constraint::Percentage(50), Constraint::Percentage(50)])
+            .split(content_chunks[1]);
+
+        // Right top: commit message
+        draw_commit_message_panel(f, app, right_chunks[0]);
+
+        // Right bottom: files
+        draw_files_panel(f, app, right_chunks[1]);
+
+        // Bottom shortcuts bar
+        draw_shortcuts_bar(f, ai_enabled, vertical_chunks[1]);
+
+        // Draw status popup overlay if there's a status message
+        if !app.status_message.is_empty() {
+            draw_status_popup(f, app, size);
+        }
     })?;
 
     Ok(())
@@ -320,22 +368,28 @@ fn draw_groups_panel(f: &mut ratatui::Frame, app: &AppState, area: ratatui::layo
     );
 
     f.render_widget(list, area);
+
+    // Add scrollbar on the right edge
+    let scrollbar = Scrollbar::new(ScrollbarOrientation::VerticalRight)
+        .begin_symbol(Some("↑"))
+        .end_symbol(Some("↓"));
+    let mut scrollbar_state =
+        ScrollbarState::new(app.groups.len().saturating_sub(1)).position(app.selected_index);
+    f.render_stateful_widget(
+        scrollbar,
+        area.inner(Margin {
+            horizontal: 0,
+            vertical: 1,
+        }),
+        &mut scrollbar_state,
+    );
 }
 
-/// Draws the right panel showing commit message and files.
-fn draw_details_panel(f: &mut ratatui::Frame, app: &AppState, area: ratatui::layout::Rect) {
-    let chunks = Layout::default()
-        .direction(Direction::Vertical)
-        .constraints([
-            Constraint::Percentage(50),
-            Constraint::Percentage(40),
-            Constraint::Length(3),
-        ])
-        .split(area);
-
-    // Top: commit message
+/// Draws the commit message panel (right top).
+fn draw_commit_message_panel(f: &mut ratatui::Frame, app: &AppState, area: ratatui::layout::Rect) {
     if let Some(group) = app.selected_group() {
         let msg = group.full_message();
+        let line_count = msg.lines().count();
         let paragraph = Paragraph::new(msg)
             .block(
                 Block::default()
@@ -344,9 +398,37 @@ fn draw_details_panel(f: &mut ratatui::Frame, app: &AppState, area: ratatui::lay
                     .border_style(Style::default().fg(Color::Green)),
             )
             .wrap(Wrap { trim: false });
-        f.render_widget(paragraph, chunks[0]);
+        f.render_widget(paragraph, area);
 
-        // Middle: file list
+        // Add scrollbar if content is longer than visible area
+        if line_count > area.height.saturating_sub(2) as usize {
+            let scrollbar = Scrollbar::new(ScrollbarOrientation::VerticalRight)
+                .begin_symbol(Some("↑"))
+                .end_symbol(Some("↓"));
+            let mut scrollbar_state = ScrollbarState::new(line_count.saturating_sub(1)).position(0);
+            f.render_stateful_widget(
+                scrollbar,
+                area.inner(ratatui::layout::Margin {
+                    horizontal: 0,
+                    vertical: 1,
+                }),
+                &mut scrollbar_state,
+            );
+        }
+    } else {
+        let empty = Paragraph::new("No group selected").block(
+            Block::default()
+                .title(" Commit Message ")
+                .borders(Borders::ALL)
+                .border_style(Style::default().fg(Color::Green)),
+        );
+        f.render_widget(empty, area);
+    }
+}
+
+/// Draws the files panel (right bottom).
+fn draw_files_panel(f: &mut ratatui::Frame, app: &AppState, area: ratatui::layout::Rect) {
+    if let Some(group) = app.selected_group() {
         let file_lines: Vec<Line> = group
             .files
             .iter()
@@ -373,7 +455,7 @@ fn draw_details_panel(f: &mut ratatui::Frame, app: &AppState, area: ratatui::lay
             })
             .collect();
 
-        let files_paragraph = Paragraph::new(file_lines)
+        let files_paragraph = Paragraph::new(file_lines.clone())
             .block(
                 Block::default()
                     .title(format!(" Files ({}) ", group.files.len()))
@@ -381,24 +463,238 @@ fn draw_details_panel(f: &mut ratatui::Frame, app: &AppState, area: ratatui::lay
                     .border_style(Style::default().fg(Color::Blue)),
             )
             .wrap(Wrap { trim: false });
-        f.render_widget(files_paragraph, chunks[1]);
-    } else {
-        let empty = Paragraph::new("No group selected").block(
-            Block::default()
-                .title(" Commit Message ")
-                .borders(Borders::ALL),
-        );
-        f.render_widget(empty, chunks[0]);
-    }
+        f.render_widget(files_paragraph, area);
 
-    // Bottom: status bar
-    let status = Paragraph::new(app.status_message.as_str())
+        // Add scrollbar if there are many files
+        if file_lines.len() > area.height.saturating_sub(2) as usize {
+            let scrollbar = Scrollbar::new(ScrollbarOrientation::VerticalRight)
+                .begin_symbol(Some("↑"))
+                .end_symbol(Some("↓"));
+            let mut scrollbar_state =
+                ScrollbarState::new(file_lines.len().saturating_sub(1)).position(0);
+            f.render_stateful_widget(
+                scrollbar,
+                area.inner(ratatui::layout::Margin {
+                    horizontal: 0,
+                    vertical: 1,
+                }),
+                &mut scrollbar_state,
+            );
+        }
+    } else {
+        let empty = Paragraph::new("No files").block(
+            Block::default()
+                .title(" Files ")
+                .borders(Borders::ALL)
+                .border_style(Style::default().fg(Color::Blue)),
+        );
+        f.render_widget(empty, area);
+    }
+}
+
+/// Draws the keyboard shortcuts bar at the bottom.
+fn draw_shortcuts_bar(f: &mut ratatui::Frame, ai_enabled: bool, area: ratatui::layout::Rect) {
+    let shortcuts = if ai_enabled {
+        vec![
+            Span::styled(
+                " ↑↓/jk ",
+                Style::default()
+                    .fg(Color::Yellow)
+                    .add_modifier(Modifier::BOLD),
+            ),
+            Span::raw("Navigate "),
+            Span::styled(
+                " e ",
+                Style::default()
+                    .fg(Color::Cyan)
+                    .add_modifier(Modifier::BOLD),
+            ),
+            Span::raw("Edit "),
+            Span::styled(
+                " a ",
+                Style::default()
+                    .fg(Color::Magenta)
+                    .add_modifier(Modifier::BOLD),
+            ),
+            Span::raw("AI "),
+            Span::styled(
+                " c ",
+                Style::default()
+                    .fg(Color::Green)
+                    .add_modifier(Modifier::BOLD),
+            ),
+            Span::raw("Commit "),
+            Span::styled(
+                " C ",
+                Style::default()
+                    .fg(Color::Green)
+                    .add_modifier(Modifier::BOLD),
+            ),
+            Span::raw("Commit All "),
+            Span::styled(
+                " Ctrl+L ",
+                Style::default()
+                    .fg(Color::White)
+                    .add_modifier(Modifier::BOLD),
+            ),
+            Span::raw("Clear Status "),
+            Span::styled(
+                " q ",
+                Style::default().fg(Color::Red).add_modifier(Modifier::BOLD),
+            ),
+            Span::raw("Quit"),
+        ]
+    } else {
+        vec![
+            Span::styled(
+                " ↑↓/jk ",
+                Style::default()
+                    .fg(Color::Yellow)
+                    .add_modifier(Modifier::BOLD),
+            ),
+            Span::raw("Navigate "),
+            Span::styled(
+                " e ",
+                Style::default()
+                    .fg(Color::Cyan)
+                    .add_modifier(Modifier::BOLD),
+            ),
+            Span::raw("Edit "),
+            Span::styled(
+                " c ",
+                Style::default()
+                    .fg(Color::Green)
+                    .add_modifier(Modifier::BOLD),
+            ),
+            Span::raw("Commit "),
+            Span::styled(
+                " C ",
+                Style::default()
+                    .fg(Color::Green)
+                    .add_modifier(Modifier::BOLD),
+            ),
+            Span::raw("Commit All "),
+            Span::styled(
+                " Ctrl+L ",
+                Style::default()
+                    .fg(Color::White)
+                    .add_modifier(Modifier::BOLD),
+            ),
+            Span::raw("Clear Status "),
+            Span::styled(
+                " q ",
+                Style::default().fg(Color::Red).add_modifier(Modifier::BOLD),
+            ),
+            Span::raw("Quit"),
+        ]
+    };
+
+    let shortcuts_line = Line::from(shortcuts);
+    let shortcuts_paragraph = Paragraph::new(shortcuts_line)
         .block(
             Block::default()
-                .title(" Status ")
+                .title(" Keyboard Shortcuts ")
                 .borders(Borders::ALL)
-                .border_style(Style::default().fg(Color::White)),
+                .border_style(Style::default().fg(Color::Cyan)),
         )
-        .wrap(Wrap { trim: true });
-    f.render_widget(status, chunks[2]);
+        .alignment(Alignment::Center);
+
+    f.render_widget(shortcuts_paragraph, area);
+}
+
+/// Draws a centered status popup overlay.
+fn draw_status_popup(f: &mut ratatui::Frame, app: &AppState, area: ratatui::layout::Rect) {
+    // Calculate popup size (70% width, 10% height)
+    let popup_width = (area.width as f32 * 0.7) as u16;
+    let popup_height = 6; //(area.height as f32 * 0.1) as u16;
+
+    // Center the popup
+    let popup_x = (area.width.saturating_sub(popup_width)) / 2;
+    let popup_y = (area.height.saturating_sub(popup_height)) / 2;
+
+    let popup_area = Rect {
+        x: area.x + popup_x,
+        y: area.y + popup_y,
+        width: popup_width,
+        height: popup_height,
+    };
+
+    // Clear the area for the popup
+    f.render_widget(Clear, popup_area);
+
+    // Render popup border first - highlight if active
+    let border_color = if app.popup_active {
+        Color::Green
+    } else {
+        Color::Yellow
+    };
+    let title = if app.popup_active {
+        " Status (↑↓ scroll, Enter/Esc close) "
+    } else {
+        " Status "
+    };
+    let popup_block = Block::default()
+        .title(title)
+        .borders(Borders::ALL)
+        .border_style(Style::default().fg(border_color));
+    f.render_widget(popup_block, popup_area);
+
+    // Add scrollbar if there more text than fits
+    let total_lines = app.status_message.lines().count();
+    let visible_lines = popup_area.height.saturating_sub(3) as usize;
+    if total_lines > visible_lines {
+        let scrollbar = Scrollbar::new(ScrollbarOrientation::VerticalRight)
+            .begin_symbol(Some("↑"))
+            .end_symbol(Some("↓"));
+        let mut scrollbar_state =
+            ScrollbarState::new(total_lines.saturating_sub(1)).position(app.popup_scroll_offset);
+        f.render_stateful_widget(
+            scrollbar,
+            popup_area.inner(ratatui::layout::Margin {
+                horizontal: 0,
+                vertical: 1,
+            }),
+            &mut scrollbar_state,
+        );
+    }
+
+    // Inner area for content (inside borders)
+    let inner_area = Rect {
+        x: popup_area.x + 1,
+        y: popup_area.y + 1,
+        width: popup_area.width.saturating_sub(2),
+        height: popup_area.height.saturating_sub(2),
+    };
+
+    // Split inner area into message area and button area
+    let popup_chunks = Layout::default()
+        .direction(Direction::Vertical)
+        .constraints([Constraint::Min(3), Constraint::Length(3)])
+        .split(inner_area);
+
+    // Status message with scroll offset applied
+    let lines: Vec<_> = app.status_message.lines().collect();
+    let visible_lines = popup_chunks[0].height as usize;
+    let start_line = app.popup_scroll_offset;
+    let end_line = (start_line + visible_lines).min(lines.len());
+    let visible_text = lines[start_line..end_line].join("\n");
+
+    let status_text = Paragraph::new(visible_text)
+        .wrap(Wrap { trim: true })
+        .alignment(Alignment::Center);
+    f.render_widget(status_text, popup_chunks[0]);
+
+    // Close button (bottom right, inside popup)
+    let button_width = 10u16;
+    let button_height = 1u16;
+    let button_area = Rect {
+        x: popup_chunks[1].x + popup_chunks[1].width.saturating_sub(button_width + 1),
+        y: popup_chunks[1].y,
+        width: button_width,
+        height: button_height,
+    };
+
+    // Create close button with default theme
+    let close_button = Button::new(" Close ");
+    f.render_widget(&close_button, button_area);
 }
