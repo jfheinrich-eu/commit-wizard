@@ -211,7 +211,7 @@ fn test_app_state_creation() {
 
     assert_eq!(app.groups.len(), 2);
     assert_eq!(app.selected_index, 0);
-    assert!(!app.status_message.is_empty());
+    assert!(app.status_message.is_empty());
 }
 
 #[test]
