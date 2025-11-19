@@ -257,6 +257,10 @@ pub struct AppState {
     pub selected_index: usize,
     /// Status message to display to the user
     pub status_message: String,
+    /// Scroll offset for the status popup (number of lines scrolled)
+    pub popup_scroll_offset: usize,
+    /// Whether the status popup is currently active (accepts input)
+    pub popup_active: bool,
 }
 
 impl AppState {
@@ -265,7 +269,9 @@ impl AppState {
         Self {
             groups,
             selected_index: 0,
-            status_message: "↑/↓ select, e edit, c commit group, C commit all, q quit".to_string(),
+            status_message: "".to_string(),
+            popup_scroll_offset: 0,
+            popup_active: false,
         }
     }
 
@@ -297,13 +303,34 @@ impl AppState {
         }
     }
 
-    /// Sets the status message.
+    /// Sets the status message and activates the popup.
     pub fn set_status(&mut self, message: impl Into<String>) {
         self.status_message = message.into();
+        self.popup_scroll_offset = 0;
+        self.popup_active = true;
     }
 
-    /// Clears the status message.
+    /// Clears the status message and deactivates the popup.
     pub fn clear_status(&mut self) {
         self.status_message.clear();
+        self.popup_scroll_offset = 0;
+        self.popup_active = false;
+    }
+
+    /// Scrolls the popup content down by one line.
+    pub fn scroll_popup_down(&mut self) {
+        if !self.status_message.is_empty() {
+            let max_offset = self.status_message.lines().count().saturating_sub(1);
+            if self.popup_scroll_offset < max_offset {
+                self.popup_scroll_offset += 1;
+            }
+        }
+    }
+
+    /// Scrolls the popup content up by one line.
+    pub fn scroll_popup_up(&mut self) {
+        if self.popup_scroll_offset > 0 {
+            self.popup_scroll_offset = self.popup_scroll_offset.saturating_sub(1);
+        }
     }
 }
