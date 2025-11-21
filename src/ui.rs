@@ -20,11 +20,10 @@ use ratatui::widgets::{
     ScrollbarState, Wrap,
 };
 use ratatui::Terminal;
-use tui_framework_experiment::Button;
 
 use crate::editor::edit_text_in_editor;
 use crate::git::{commit_all_groups, commit_group};
-use crate::types::AppState;
+use crate::types::{ActivePanel, AppState};
 
 /// Runs the terminal user interface event loop.
 ///
@@ -136,6 +135,16 @@ fn handle_key_event<B: ratatui::backend::Backend + std::io::Write>(
     match key.code {
         KeyCode::Char('q') | KeyCode::Esc => {
             return Ok(true);
+        }
+        KeyCode::Tab => {
+            if key.modifiers.contains(KeyModifiers::SHIFT) {
+                app.activate_previous_panel();
+            } else {
+                app.activate_next_panel();
+            }
+        }
+        KeyCode::BackTab => {
+            app.activate_previous_panel();
         }
         KeyCode::Down | KeyCode::Char('j') => {
             app.select_next();
@@ -304,11 +313,12 @@ fn draw_ui<B: ratatui::backend::Backend>(
         // Content area: left panel (50%) and right panel (50%)
         let content_chunks = Layout::default()
             .direction(Direction::Horizontal)
-            .constraints([Constraint::Percentage(50), Constraint::Percentage(50)])
+            .constraints([Constraint::Percentage(35), Constraint::Percentage(65)])
             .split(vertical_chunks[0]);
 
         // Left panel: group list
-        draw_groups_panel(f, app, content_chunks[0]);
+        let is_groups_active = app.active_panel == ActivePanel::Groups;
+        draw_groups_panel(f, app, content_chunks[0], is_groups_active);
 
         // Right panel split horizontally: commit message (50%) and files (50%)
         let right_chunks = Layout::default()
@@ -317,10 +327,12 @@ fn draw_ui<B: ratatui::backend::Backend>(
             .split(content_chunks[1]);
 
         // Right top: commit message
-        draw_commit_message_panel(f, app, right_chunks[0]);
+        let is_message_active = app.active_panel == ActivePanel::CommitMessage;
+        draw_commit_message_panel(f, app, right_chunks[0], is_message_active);
 
         // Right bottom: files
-        draw_files_panel(f, app, right_chunks[1]);
+        let is_files_active = app.active_panel == ActivePanel::Files;
+        draw_files_panel(f, app, right_chunks[1], is_files_active);
 
         // Bottom shortcuts bar
         draw_shortcuts_bar(f, ai_enabled, vertical_chunks[1]);
@@ -335,7 +347,12 @@ fn draw_ui<B: ratatui::backend::Backend>(
 }
 
 /// Draws the left panel showing the list of commit groups.
-fn draw_groups_panel(f: &mut ratatui::Frame, app: &AppState, area: ratatui::layout::Rect) {
+fn draw_groups_panel(
+    f: &mut ratatui::Frame,
+    app: &AppState,
+    area: ratatui::layout::Rect,
+    is_active: bool,
+) {
     let items: Vec<ListItem> = app
         .groups
         .iter()
@@ -359,12 +376,13 @@ fn draw_groups_panel(f: &mut ratatui::Frame, app: &AppState, area: ratatui::layo
         })
         .collect();
 
+    let border_color = if is_active { Color::Green } else { Color::Cyan };
     let title = format!(" Commit Groups ({}) ", app.groups.len());
     let list = List::new(items).block(
         Block::default()
             .title(title)
             .borders(Borders::ALL)
-            .border_style(Style::default().fg(Color::Cyan)),
+            .border_style(Style::default().fg(border_color)),
     );
 
     f.render_widget(list, area);
@@ -386,16 +404,26 @@ fn draw_groups_panel(f: &mut ratatui::Frame, app: &AppState, area: ratatui::layo
 }
 
 /// Draws the commit message panel (right top).
-fn draw_commit_message_panel(f: &mut ratatui::Frame, app: &AppState, area: ratatui::layout::Rect) {
+fn draw_commit_message_panel(
+    f: &mut ratatui::Frame,
+    app: &AppState,
+    area: ratatui::layout::Rect,
+    is_active: bool,
+) {
     if let Some(group) = app.selected_group() {
         let msg = group.full_message();
         let line_count = msg.lines().count();
+        let border_color = if is_active {
+            Color::Green
+        } else {
+            Color::White
+        };
         let paragraph = Paragraph::new(msg)
             .block(
                 Block::default()
                     .title(" Commit Message ")
                     .borders(Borders::ALL)
-                    .border_style(Style::default().fg(Color::Green)),
+                    .border_style(Style::default().fg(border_color)),
             )
             .wrap(Wrap { trim: false });
         f.render_widget(paragraph, area);
@@ -416,18 +444,28 @@ fn draw_commit_message_panel(f: &mut ratatui::Frame, app: &AppState, area: ratat
             );
         }
     } else {
+        let border_color = if is_active {
+            Color::Green
+        } else {
+            Color::White
+        };
         let empty = Paragraph::new("No group selected").block(
             Block::default()
                 .title(" Commit Message ")
                 .borders(Borders::ALL)
-                .border_style(Style::default().fg(Color::Green)),
+                .border_style(Style::default().fg(border_color)),
         );
         f.render_widget(empty, area);
     }
 }
 
 /// Draws the files panel (right bottom).
-fn draw_files_panel(f: &mut ratatui::Frame, app: &AppState, area: ratatui::layout::Rect) {
+fn draw_files_panel(
+    f: &mut ratatui::Frame,
+    app: &AppState,
+    area: ratatui::layout::Rect,
+    is_active: bool,
+) {
     if let Some(group) = app.selected_group() {
         let file_lines: Vec<Line> = group
             .files
@@ -455,12 +493,13 @@ fn draw_files_panel(f: &mut ratatui::Frame, app: &AppState, area: ratatui::layou
             })
             .collect();
 
+        let border_color = if is_active { Color::Green } else { Color::Blue };
         let files_paragraph = Paragraph::new(file_lines.clone())
             .block(
                 Block::default()
                     .title(format!(" Files ({}) ", group.files.len()))
                     .borders(Borders::ALL)
-                    .border_style(Style::default().fg(Color::Blue)),
+                    .border_style(Style::default().fg(border_color)),
             )
             .wrap(Wrap { trim: false });
         f.render_widget(files_paragraph, area);
@@ -482,11 +521,12 @@ fn draw_files_panel(f: &mut ratatui::Frame, app: &AppState, area: ratatui::layou
             );
         }
     } else {
+        let border_color = if is_active { Color::Green } else { Color::Blue };
         let empty = Paragraph::new("No files").block(
             Block::default()
                 .title(" Files ")
                 .borders(Borders::ALL)
-                .border_style(Style::default().fg(Color::Blue)),
+                .border_style(Style::default().fg(border_color)),
         );
         f.render_widget(empty, area);
     }
@@ -684,8 +724,8 @@ fn draw_status_popup(f: &mut ratatui::Frame, app: &AppState, area: ratatui::layo
         .alignment(Alignment::Center);
     f.render_widget(status_text, popup_chunks[0]);
 
-    // Close button (bottom right, inside popup)
-    let button_width = 10u16;
+    // Close button (bottom right, inside popup) - visually highlighted as active
+    let button_width = 12u16;
     let button_height = 1u16;
     let button_area = Rect {
         x: popup_chunks[1].x + popup_chunks[1].width.saturating_sub(button_width + 1),
@@ -694,7 +734,14 @@ fn draw_status_popup(f: &mut ratatui::Frame, app: &AppState, area: ratatui::layo
         height: button_height,
     };
 
-    // Create close button with default theme
-    let close_button = Button::new(" Close ");
-    f.render_widget(&close_button, button_area);
+    // Create close button highlighted to show it's active (Enter closes)
+    let button_text = "[ Close ]";
+    let button_style = Style::default()
+        .fg(Color::Black)
+        .bg(Color::Green)
+        .add_modifier(Modifier::BOLD);
+    let button = Paragraph::new(button_text)
+        .style(button_style)
+        .alignment(Alignment::Center);
+    f.render_widget(button, button_area);
 }

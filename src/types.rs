@@ -5,6 +5,37 @@
 
 use git2::Status;
 
+/// Represents which panel is currently active for user interaction.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum ActivePanel {
+    /// Groups panel (left side)
+    Groups,
+    /// Commit message panel (right top)
+    CommitMessage,
+    /// Files panel (right bottom)
+    Files,
+}
+
+impl ActivePanel {
+    /// Returns the next panel in clockwise order (Tab).
+    pub fn next(self) -> Self {
+        match self {
+            Self::Groups => Self::CommitMessage,
+            Self::CommitMessage => Self::Files,
+            Self::Files => Self::Groups,
+        }
+    }
+
+    /// Returns the previous panel in counter-clockwise order (Shift+Tab).
+    pub fn previous(self) -> Self {
+        match self {
+            Self::Groups => Self::Files,
+            Self::CommitMessage => Self::Groups,
+            Self::Files => Self::CommitMessage,
+        }
+    }
+}
+
 /// Conventional commit types following the Conventional Commits specification.
 ///
 /// See: <https://www.conventionalcommits.org/>
@@ -261,6 +292,8 @@ pub struct AppState {
     pub popup_scroll_offset: usize,
     /// Whether the status popup is currently active (accepts input)
     pub popup_active: bool,
+    /// Currently active panel for user interaction
+    pub active_panel: ActivePanel,
 }
 
 impl AppState {
@@ -272,6 +305,7 @@ impl AppState {
             status_message: "".to_string(),
             popup_scroll_offset: 0,
             popup_active: false,
+            active_panel: ActivePanel::Groups,
         }
     }
 
@@ -330,7 +364,17 @@ impl AppState {
     /// Scrolls the popup content up by one line.
     pub fn scroll_popup_up(&mut self) {
         if self.popup_scroll_offset > 0 {
-            self.popup_scroll_offset = self.popup_scroll_offset.saturating_sub(1);
+            self.popup_scroll_offset -= 1;
         }
+    }
+
+    /// Activates the next panel (Tab - clockwise).
+    pub fn activate_next_panel(&mut self) {
+        self.active_panel = self.active_panel.next();
+    }
+
+    /// Activates the previous panel (Shift+Tab - counter-clockwise).
+    pub fn activate_previous_panel(&mut self) {
+        self.active_panel = self.active_panel.previous();
     }
 }
