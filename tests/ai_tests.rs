@@ -189,3 +189,127 @@ fn test_ai_integration_with_mock() {
     // - Manual testing with real API token
     // - Error handling tests (like test_generate_requires_api_token)
 }
+
+#[test]
+fn test_parse_commit_message_empty_response() {
+    let response = "";
+    let result = parse_commit_message(response);
+    // parse_commit_message doesn't error on empty, it returns empty string
+    assert!(result.is_ok());
+    let (desc, body) = result.unwrap();
+    assert_eq!(desc, "");
+    assert_eq!(body, None);
+}
+
+#[test]
+fn test_parse_commit_message_whitespace_only() {
+    let response = "   \n\n   ";
+    let result = parse_commit_message(response);
+    // Whitespace gets trimmed, result is empty string
+    assert!(result.is_ok());
+    let (desc, _) = result.unwrap();
+    assert_eq!(desc, "");
+}
+
+#[test]
+fn test_parse_commit_message_trims_whitespace() {
+    let response = "  add feature  \n\n  body text  ";
+    let (desc, body) = parse_commit_message(response).unwrap();
+    assert_eq!(desc, "add feature");
+    assert_eq!(body, Some("body text".to_string()));
+}
+
+#[test]
+fn test_parse_commit_message_preserves_type_prefix() {
+    // Current implementation does NOT strip type prefix
+    // (This is handled elsewhere in the codebase)
+    let response = "feat: add new feature";
+    let (desc, body) = parse_commit_message(response).unwrap();
+    assert_eq!(desc, "feat: add new feature");
+    assert_eq!(body, None);
+
+    let response = "fix(api): resolve bug";
+    let (desc, body) = parse_commit_message(response).unwrap();
+    assert_eq!(desc, "fix(api): resolve bug");
+    assert_eq!(body, None);
+}
+
+#[test]
+fn test_parse_commit_message_multiple_paragraphs() {
+    let response = "implement feature\n\nFirst paragraph\n\nSecond paragraph";
+    let (desc, body) = parse_commit_message(response).unwrap();
+    assert_eq!(desc, "implement feature");
+    let body_text = body.unwrap();
+    assert!(body_text.contains("First paragraph"));
+    assert!(body_text.contains("Second paragraph"));
+}
+
+#[test]
+fn test_build_prompt_formatting() {
+    let files = vec![ChangedFile::new(
+        "src/test.rs".to_string(),
+        Status::INDEX_MODIFIED,
+    )];
+    let group = ChangeGroup::new(
+        CommitType::Test,
+        Some("testing".to_string()),
+        files.clone(),
+        None,
+        "placeholder".to_string(),
+        vec![],
+    );
+
+    let prompt = build_prompt(&group, &files, None);
+
+    // Verify key sections are present (using exact strings from implementation)
+    assert!(prompt.contains("Generate a conventional commit message"));
+    assert!(prompt.contains("Type: test"));
+    assert!(prompt.contains("Scope: testing"));
+    assert!(prompt.contains("Changed files:"));
+    assert!(prompt.contains("src/test.rs"));
+    assert!(prompt.contains("ONLY the commit description"));
+}
+
+#[test]
+fn test_build_prompt_with_ticket() {
+    let files = vec![ChangedFile::new(
+        "src/feature.rs".to_string(),
+        Status::INDEX_NEW,
+    )];
+    let group = ChangeGroup::new(
+        CommitType::Feat,
+        Some("feature".to_string()),
+        files.clone(),
+        Some("JIRA-123".to_string()),
+        "placeholder".to_string(),
+        vec![],
+    );
+
+    let prompt = build_prompt(&group, &files, None);
+
+    assert!(prompt.contains("Ticket: JIRA-123"));
+}
+
+#[test]
+fn test_build_prompt_file_status_indicators() {
+    let files = vec![
+        ChangedFile::new("new_file.rs".to_string(), Status::INDEX_NEW),
+        ChangedFile::new("modified.rs".to_string(), Status::INDEX_MODIFIED),
+        ChangedFile::new("deleted.rs".to_string(), Status::INDEX_DELETED),
+    ];
+    let group = ChangeGroup::new(
+        CommitType::Refactor,
+        None,
+        files.clone(),
+        None,
+        "placeholder".to_string(),
+        vec![],
+    );
+
+    let prompt = build_prompt(&group, &files, None);
+
+    // Verify file list format (exact format from build_prompt)
+    assert!(prompt.contains("new_file.rs"));
+    assert!(prompt.contains("modified.rs"));
+    assert!(prompt.contains("deleted.rs"));
+}

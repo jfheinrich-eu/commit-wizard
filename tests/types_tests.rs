@@ -312,12 +312,125 @@ fn test_app_state_selected_group() {
 fn test_app_state_status_management() {
     let mut app = AppState::new(vec![]);
 
+    // Test set_status activates popup and resets scroll
     app.set_status("Test message");
     assert_eq!(app.status_message, "Test message");
+    assert!(app.popup_active);
+    assert_eq!(app.popup_scroll_offset, 0);
 
+    // Test set_status with String
+    app.popup_scroll_offset = 5; // Simulate scrolling
     app.set_status("Another message".to_string());
     assert_eq!(app.status_message, "Another message");
+    assert!(app.popup_active);
+    assert_eq!(app.popup_scroll_offset, 0); // Should reset
 
+    // Test clear_status deactivates popup and clears all
     app.clear_status();
     assert!(app.status_message.is_empty());
+    assert!(!app.popup_active);
+    assert_eq!(app.popup_scroll_offset, 0);
+}
+
+#[test]
+fn test_app_state_popup_scrolling() {
+    let mut app = AppState::new(vec![]);
+
+    // Set multi-line status message
+    app.set_status("Line 1\nLine 2\nLine 3\nLine 4\nLine 5");
+    assert_eq!(app.popup_scroll_offset, 0);
+    assert!(app.popup_active);
+
+    // Test scroll down
+    app.scroll_popup_down();
+    assert_eq!(app.popup_scroll_offset, 1);
+
+    app.scroll_popup_down();
+    assert_eq!(app.popup_scroll_offset, 2);
+
+    // Test scroll up
+    app.scroll_popup_up();
+    assert_eq!(app.popup_scroll_offset, 1);
+
+    app.scroll_popup_up();
+    assert_eq!(app.popup_scroll_offset, 0);
+
+    // Test scroll up at boundary (should not underflow)
+    app.scroll_popup_up();
+    assert_eq!(app.popup_scroll_offset, 0);
+
+    // Test scroll down to max
+    for _ in 0..10 {
+        app.scroll_popup_down();
+    }
+    // Max offset is lines.count() - 1 = 4
+    assert_eq!(app.popup_scroll_offset, 4);
+
+    // Test scrolling with empty message
+    app.clear_status();
+    app.scroll_popup_down(); // Should not panic
+    assert_eq!(app.popup_scroll_offset, 0);
+}
+
+#[test]
+fn test_app_state_active_panel() {
+    use commit_wizard::types::ActivePanel;
+
+    let mut app = AppState::new(vec![]);
+
+    // Default panel should be Groups
+    assert_eq!(app.active_panel, ActivePanel::Groups);
+
+    // Test activate_next_panel (clockwise)
+    app.activate_next_panel();
+    assert_eq!(app.active_panel, ActivePanel::CommitMessage);
+
+    app.activate_next_panel();
+    assert_eq!(app.active_panel, ActivePanel::Files);
+
+    app.activate_next_panel();
+    assert_eq!(app.active_panel, ActivePanel::Groups); // Wraps around
+
+    // Test activate_previous_panel (counter-clockwise)
+    app.activate_previous_panel();
+    assert_eq!(app.active_panel, ActivePanel::Files);
+
+    app.activate_previous_panel();
+    assert_eq!(app.active_panel, ActivePanel::CommitMessage);
+
+    app.activate_previous_panel();
+    assert_eq!(app.active_panel, ActivePanel::Groups);
+}
+
+#[test]
+fn test_active_panel_navigation() {
+    use commit_wizard::types::ActivePanel;
+
+    // Test next() method
+    assert_eq!(ActivePanel::Groups.next(), ActivePanel::CommitMessage);
+    assert_eq!(ActivePanel::CommitMessage.next(), ActivePanel::Files);
+    assert_eq!(ActivePanel::Files.next(), ActivePanel::Groups);
+
+    // Test previous() method
+    assert_eq!(ActivePanel::Groups.previous(), ActivePanel::Files);
+    assert_eq!(ActivePanel::Files.previous(), ActivePanel::CommitMessage);
+    assert_eq!(ActivePanel::CommitMessage.previous(), ActivePanel::Groups);
+}
+
+#[test]
+fn test_active_panel_derives() {
+    use commit_wizard::types::ActivePanel;
+
+    // Test Debug
+    let panel = ActivePanel::Groups;
+    assert_eq!(format!("{:?}", panel), "Groups");
+
+    // Test Clone and Copy
+    let panel1 = ActivePanel::CommitMessage;
+    let panel2 = panel1;
+    assert_eq!(panel1, panel2);
+
+    // Test PartialEq and Eq
+    assert_eq!(ActivePanel::Files, ActivePanel::Files);
+    assert_ne!(ActivePanel::Groups, ActivePanel::Files);
 }
