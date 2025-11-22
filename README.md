@@ -42,7 +42,8 @@ A CLI tool to help create better commit messages.
 - ✅ **Conventional Commits**: Automatically follows the Conventional Commits specification
 - ✅ **Smart Grouping**: Intelligently groups files by commit type and scope
 - ✅ **AI-Powered**: Generate commit messages using GitHub Copilot (optional)
-- ✅ **Editor Integration**: Edit commit messages in your favorite editor
+- ✅ **Integrated Editor**: Built-in vim-style editor with keyboard shortcuts help
+- ✅ **Diff Viewer**: View file changes with syntax highlighting
 - ✅ **Ticket Detection**: Automatically extracts ticket numbers from branch names
 
 # Installation
@@ -136,13 +137,30 @@ In the TUI, press `a` to generate a commit message for the selected group using 
 
 ## Keyboard Controls
 
+### Main Interface
+
 - `↑`/`↓` or `k`/`j` - Navigate between commit groups
-- `e` - Edit commit message in external editor
+- `Tab` / `Shift+Tab` - Switch between panels (Groups, Message, Files)
+- `e` - Edit commit message in integrated editor
+- `d` - View diff for selected file
 - `a` - Generate commit message with AI (requires `--ai` flag)
 - `c` - Commit selected group
 - `C` - Commit all groups
 - `Ctrl+L` - Clear status message
 - `q` or `Esc` - Quit
+
+### Editor Mode
+
+- `?` - Toggle help popup (shows all vim commands)
+- `Ctrl+S` - Save and close editor
+- `Ctrl+C` - Cancel without saving
+- Vim-style navigation: `h`/`j`/`k`/`l`, `w`/`b`, `gg`/`G`, `0`/`$`
+- Vim-style editing: `i`/`a`/`o`, `x`/`dd`, `yy`/`p`, `u`/`Ctrl+R`
+
+### Diff Viewer
+
+- `↑`/`↓` or `k`/`j` - Scroll through diff
+- `Esc` - Close diff viewer
 
 ## Advanced Options
 

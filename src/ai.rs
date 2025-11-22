@@ -80,7 +80,7 @@ struct Choice {
 ///
 /// Requires `GITHUB_TOKEN` or `GH_TOKEN` environment variable with a GitHub Personal Access Token.
 /// The token needs the `read:user` scope for GitHub Models API access.
-/// Create one at: https://github.com/settings/tokens
+/// Create one at: <https://github.com/settings/tokens>
 ///
 /// # Examples
 ///

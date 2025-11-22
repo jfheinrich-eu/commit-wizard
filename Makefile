@@ -1,7 +1,7 @@
 # Makefile for commit-wizard
 # Provides convenient shortcuts for common development tasks
 
-.PHONY: help build test lint clean install dev ci release \
+.PHONY: help build test lint clean install dev ci release docs \
 	alpine-package alpine-install alpine-uninstall alpine-clean alpine-static \
 	alpine-info alpine-test alpine-dist
 
@@ -90,7 +90,9 @@ deps-audit:
 
 # Generate documentation
 docs:
-	cargo doc --no-deps --open
+	@echo "Generating documentation..."
+	cargo doc --no-deps && lynx target/doc/commit_wizard/index.html
+
 
 # Alpine Linux package variables
 PACKAGE_NAME = commit-wizard
