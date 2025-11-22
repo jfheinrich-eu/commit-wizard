@@ -1,194 +1,130 @@
-//! External editor integration for commit message editing.
+//! Integrated text editor for commit message editing.
 //!
-//! This module handles spawning external text editors and safely
-//! managing temporary files for editing commit messages.
+//! This module provides an embedded text editor using the edtui widget,
+//! eliminating the need for external editor processes.
 
-use std::env;
-use std::io::Write;
-use std::process::Command;
-use std::time::Duration;
+use anyhow::Result;
+use edtui::{EditorEventHandler, EditorState, Lines};
+use ratatui::crossterm::event::{Event as CrosstermEvent, KeyCode, KeyModifiers};
 
-use anyhow::{bail, Context, Result};
-use tempfile::NamedTempFile;
-
-/// List of safe, commonly available text editors.
-const SAFE_EDITORS: &[&str] = &[
-    "nano", "vim", "vi", "emacs", "nvim", "code", "subl", "atom", "gedit", "kate",
-];
-
-/// Opens the given text in an external editor and returns the edited result.
+/// Editor for commit messages with vim-style keybindings.
 ///
-/// # Arguments
-///
-/// * `initial` - The initial text to populate the editor with
-///
-/// # Returns
-///
-/// The edited text after the user closes the editor.
-///
-/// # Errors
-///
-/// Returns an error if:
-/// - The temporary file cannot be created or written
-/// - The editor environment variable contains an invalid/unsafe command
-/// - The editor process fails to start or exits with an error
-/// - The editor times out (after 5 minutes)
-///
-/// # Environment
-///
-/// Respects the `EDITOR` environment variable. Falls back to `vi` if not set.
-///
-/// # Security
-///
-/// - Validates editor commands against a whitelist
-/// - Prevents command injection by only accepting simple editor names
-/// - Does not allow shell constructs or arguments in the editor variable
-/// - Uses temporary files with appropriate permissions
-///
-/// # Examples
-///
-/// ```no_run
-/// use commit_wizard::editor::edit_text_in_editor;
-///
-/// let initial = "feat: add new feature\n\n- initial implementation";
-/// let edited = edit_text_in_editor(initial).unwrap();
-/// println!("Edited text: {}", edited);
-/// ```
-pub fn edit_text_in_editor(initial: &str) -> Result<String> {
-    // Get and validate editor
-    let editor_cmd = get_editor()?;
-    validate_editor_command(&editor_cmd)?;
-
-    // Create temporary file with initial content
-    let mut tmp = NamedTempFile::new().context("Failed to create temporary file")?;
-    tmp.write_all(initial.as_bytes())
-        .context("Failed to write initial content")?;
-    tmp.flush().context("Failed to flush temporary file")?;
-
-    let tmp_path = tmp.path().to_path_buf();
-
-    // Spawn editor process
-    let status = Command::new(&editor_cmd)
-        .arg(&tmp_path)
-        .status()
-        .with_context(|| format!("Failed to spawn editor: {}", editor_cmd))?;
-
-    if !status.success() {
-        bail!(
-            "Editor '{}' exited with non-zero status: {}",
-            editor_cmd,
-            status
-        );
-    }
-
-    // Read back edited content
-    let content = std::fs::read_to_string(&tmp_path).context("Failed to read edited content")?;
-
-    Ok(content)
+/// This editor provides an integrated text editing experience without
+/// spawning external processes. It uses vim-style navigation and editing.
+#[derive(Clone)]
+pub struct CommitMessageEditor {
+    /// The edtui editor state managing the text buffer and cursor
+    state: EditorState,
+    /// Event handler for processing key events
+    event_handler: EditorEventHandler,
+    /// Original text for cancel functionality
+    original_text: String,
+    /// Whether the editor is currently active
+    active: bool,
 }
 
-/// Gets the editor command from environment or default.
-pub fn get_editor() -> Result<String> {
-    match env::var("EDITOR") {
-        Ok(editor) if !editor.trim().is_empty() => Ok(editor.trim().to_string()),
-        _ => Ok("vi".to_string()),
-    }
-}
+impl CommitMessageEditor {
+    /// Creates a new editor with the given initial text.
+    pub fn new(initial_text: String) -> Self {
+        let state = EditorState::new(Lines::from(initial_text.as_str()));
+        let event_handler = EditorEventHandler::default();
 
-/// Validates that the editor command is safe to execute.
-///
-/// # Security
-///
-/// This function prevents command injection by ensuring:
-/// - The command doesn't contain shell metacharacters
-/// - The command is in the safe editors whitelist OR is an absolute path to a known editor
-/// - No arguments or options are smuggled in the command string
-pub fn validate_editor_command(cmd: &str) -> Result<()> {
-    let cmd_lower = cmd.to_lowercase();
-
-    // Check for shell metacharacters that could enable injection
-    if cmd.contains(';')
-        || cmd.contains('|')
-        || cmd.contains('&')
-        || cmd.contains('`')
-        || cmd.contains('$')
-        || cmd.contains('(')
-        || cmd.contains(')')
-        || cmd.contains('<')
-        || cmd.contains('>')
-    {
-        bail!(
-            "Editor command contains unsafe characters: {}. \
-             Please set EDITOR to a simple editor name (e.g., 'vim', 'nano')",
-            cmd
-        );
-    }
-
-    // Extract base command (before any spaces)
-    let base_cmd = cmd.split_whitespace().next().unwrap_or(cmd);
-
-    // Check if it's a known safe editor
-    if SAFE_EDITORS.contains(&base_cmd) {
-        return Ok(());
-    }
-
-    // Check if it's an absolute path to a known safe editor
-    if base_cmd.starts_with('/') || base_cmd.starts_with('\\') {
-        let file_name = base_cmd.rsplit('/').next().unwrap_or(base_cmd);
-        let file_name = file_name.rsplit('\\').next().unwrap_or(file_name);
-
-        if SAFE_EDITORS.contains(&file_name) {
-            return Ok(());
+        Self {
+            state,
+            event_handler,
+            original_text: initial_text,
+            active: false,
         }
     }
 
-    // For unknown editors, warn but allow (user's responsibility)
-    eprintln!(
-        "⚠️  Warning: Editor '{}' is not in the safe list. \
-         Proceeding anyway, but be cautious of command injection.",
-        cmd_lower
-    );
+    /// Creates an empty editor.
+    pub fn empty() -> Self {
+        Self::new(String::new())
+    }
 
-    Ok(())
-}
+    /// Returns a reference to the editor state for rendering.
+    pub fn state(&self) -> &EditorState {
+        &self.state
+    }
 
-/// Spawns an editor with a timeout to prevent hanging.
-///
-/// # Arguments
-///
-/// * `editor` - The editor command to execute
-/// * `file_path` - Path to the file to edit
-/// * `timeout` - Maximum time to wait for the editor
-///
-/// # Returns
-///
-/// The exit status of the editor.
-///
-/// # Errors
-///
-/// Returns an error if the editor times out or fails to execute.
-#[allow(dead_code)]
-fn spawn_editor_with_timeout(
-    editor: &str,
-    file_path: &std::path::Path,
-    timeout: Duration,
-) -> Result<std::process::ExitStatus> {
-    use std::sync::mpsc;
-    use std::thread;
+    /// Returns a mutable reference to the editor state for updates.
+    pub fn state_mut(&mut self) -> &mut EditorState {
+        &mut self.state
+    }
 
-    let (tx, rx) = mpsc::channel();
-    let editor_clone = editor.to_string();
-    let file_path = file_path.to_path_buf();
+    /// Returns a reference to the event handler.
+    pub fn event_handler_mut(&mut self) -> &mut EditorEventHandler {
+        &mut self.event_handler
+    }
 
-    thread::spawn(move || {
-        let result = Command::new(&editor_clone).arg(&file_path).status();
-        let _ = tx.send(result);
-    });
+    /// Gets the current text content.
+    pub fn text(&self) -> String {
+        // Convert Lines (Jagged<char>) to String using the From trait
+        String::from(self.state.lines.clone())
+    }
 
-    let result = rx
-        .recv_timeout(timeout)
-        .context("Editor timed out")?
-        .with_context(|| format!("Failed to spawn editor: {}", editor))?;
+    /// Sets the text content.
+    pub fn set_text(&mut self, text: String) {
+        self.state = EditorState::new(Lines::from(text.as_str()));
+        self.original_text = text;
+    }
 
-    Ok(result)
+    /// Returns whether the editor is active.
+    pub fn is_active(&self) -> bool {
+        self.active
+    }
+
+    /// Activates the editor with the given text.
+    pub fn activate(&mut self, text: String) {
+        self.original_text = text.clone();
+        self.state = EditorState::new(Lines::from(text.as_str()));
+        self.active = true;
+    }
+
+    /// Deactivates the editor.
+    pub fn deactivate(&mut self) {
+        self.active = false;
+    }
+
+    /// Cancels editing and restores original text.
+    pub fn cancel(&mut self) {
+        self.state = EditorState::new(Lines::from(self.original_text.as_str()));
+        self.deactivate();
+    }
+
+    pub fn save(&mut self) {
+        self.state = EditorState::new(Lines::from(self.text().as_str()));
+        self.original_text = self.text();
+        self.deactivate();
+    }
+
+    /// Handles a crossterm event and returns whether it should exit.
+    ///
+    /// Returns `Ok(true)` to continue editing, `Ok(false)` to exit.
+    /// Special keys:
+    /// - Esc: Cancel without saving
+    /// - Ctrl+C: Cancel without saving
+    /// - Ctrl+S: Save and close
+    pub fn handle_event(&mut self, event: CrosstermEvent) -> Result<bool> {
+        // Check for exit keys first
+        if let CrosstermEvent::Key(key) = event {
+            match (key.code, key.modifiers) {
+                (KeyCode::Char('s'), KeyModifiers::CONTROL) => {
+                    // Save and close
+                    self.save();
+                    return Ok(false);
+                }
+                (KeyCode::Char('c'), KeyModifiers::CONTROL) => {
+                    // Cancel without saving
+                    self.cancel();
+                    return Ok(false);
+                }
+                _ => {}
+            }
+        }
+
+        // Forward event to edtui handler
+        self.event_handler.on_event(event, &mut self.state);
+        Ok(true)
+    }
 }

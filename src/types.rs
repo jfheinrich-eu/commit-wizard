@@ -160,6 +160,8 @@ pub struct ChangeGroup {
     pub description: String,
     /// Detailed bullet points for the commit body
     pub body_lines: Vec<String>,
+    /// Whether this group has been committed
+    pub committed: bool,
 }
 
 impl ChangeGroup {
@@ -182,14 +184,25 @@ impl ChangeGroup {
             ticket,
             description,
             body_lines,
+            committed: false,
         }
+    }
+
+    /// Marks this group as committed.
+    pub fn mark_as_committed(&mut self) {
+        self.committed = true;
+    }
+
+    /// Checks if this group has been committed.
+    pub fn is_committed(&self) -> bool {
+        self.committed
     }
 
     /// Generates the commit message header line.
     ///
     /// Format: `<type>[(<scope>)]: <ticket>: <description>`
     ///
-    /// The header is automatically truncated if it exceeds [`MAX_HEADER_LENGTH`].
+    /// The header is automatically truncated if it exceeds [`Self::MAX_HEADER_LENGTH`].
     pub fn header(&self) -> String {
         let ctype = self.commit_type.as_str();
         let scope_part = self
@@ -294,6 +307,18 @@ pub struct AppState {
     pub popup_active: bool,
     /// Currently active panel for user interaction
     pub active_panel: ActivePanel,
+    /// Integrated text editor for commit messages
+    pub editor: crate::editor::CommitMessageEditor,
+    /// Whether the editor help popup is currently shown
+    pub show_editor_help: bool,
+    /// Whether the diff viewer popup is currently shown
+    pub show_diff_viewer: bool,
+    /// Content of the diff being viewed
+    pub diff_content: String,
+    /// Scroll offset for the diff viewer
+    pub diff_scroll_offset: usize,
+    /// Path of the file being diffed
+    pub diff_file_path: String,
 }
 
 impl AppState {
@@ -306,6 +331,12 @@ impl AppState {
             popup_scroll_offset: 0,
             popup_active: false,
             active_panel: ActivePanel::Groups,
+            editor: crate::editor::CommitMessageEditor::empty(),
+            show_editor_help: false,
+            show_diff_viewer: false,
+            diff_content: String::new(),
+            diff_scroll_offset: 0,
+            diff_file_path: String::new(),
         }
     }
 
@@ -376,5 +407,48 @@ impl AppState {
     /// Activates the previous panel (Shift+Tab - counter-clockwise).
     pub fn activate_previous_panel(&mut self) {
         self.active_panel = self.active_panel.previous();
+    }
+
+    /// Shows the diff viewer with the given content.
+    pub fn show_diff(&mut self, file_path: String, content: String) {
+        self.diff_file_path = file_path;
+        self.diff_content = content;
+        self.diff_scroll_offset = 0;
+        self.show_diff_viewer = true;
+    }
+
+    /// Closes the diff viewer.
+    pub fn close_diff(&mut self) {
+        self.show_diff_viewer = false;
+        self.diff_content.clear();
+        self.diff_file_path.clear();
+        self.diff_scroll_offset = 0;
+    }
+
+    /// Scrolls the diff viewer down.
+    pub fn scroll_diff_down(&mut self) {
+        if !self.diff_content.is_empty() {
+            let max_offset = self.diff_content.lines().count().saturating_sub(1);
+            if self.diff_scroll_offset < max_offset {
+                self.diff_scroll_offset += 1;
+            }
+        }
+    }
+
+    /// Scrolls the diff viewer up.
+    pub fn scroll_diff_up(&mut self) {
+        if self.diff_scroll_offset > 0 {
+            self.diff_scroll_offset -= 1;
+        }
+    }
+
+    /// Toggles the editor help popup.
+    pub fn toggle_editor_help(&mut self) {
+        self.show_editor_help = !self.show_editor_help;
+    }
+
+    /// Closes the editor help popup.
+    pub fn close_editor_help(&mut self) {
+        self.show_editor_help = false;
     }
 }
