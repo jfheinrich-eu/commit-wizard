@@ -43,3 +43,5 @@ ignore:
   - "tests/"
   - "**/*_test.rs"
   - "**/*_tests.rs"
+  - "src/main.rs" # CLI entry point - external interaction
+  - "src/ui.rs" # Terminal UI - requires terminal/human interaction
