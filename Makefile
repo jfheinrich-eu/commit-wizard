@@ -1,7 +1,7 @@
 # Makefile for commit-wizard
 # Provides convenient shortcuts for common development tasks
 
-.PHONY: help build test lint clean install dev ci release docs \
+.PHONY: help build test lint clean install dev ci release docs coverage coverage-html \
 	alpine-package alpine-install alpine-uninstall alpine-clean alpine-static \
 	alpine-info alpine-test alpine-dist
 
@@ -34,6 +34,10 @@ help:
 	@echo ""
 	@echo "Documentation:"
 	@echo "  make docs           - Generate and open documentation"
+	@echo ""
+	@echo "Code Coverage:"
+	@echo "  make coverage       - Generate coverage report (text summary)"
+	@echo "  make coverage-html  - Generate HTML coverage report"
 	@echo ""
 	@echo "For Alpine installation guide, see: docs/ALPINE_INSTALL.md"
 
@@ -93,6 +97,27 @@ docs:
 	@echo "Generating documentation..."
 	cargo doc --no-deps && lynx target/doc/commit_wizard/index.html
 
+# Generate code coverage report (text summary)
+coverage:
+	@echo "Generating code coverage report..."
+	@cargo llvm-cov --all-features --workspace --lcov --output-path lcov.info
+	@echo ""
+	@echo "=== Coverage Summary ==="
+	@cargo llvm-cov --all-features --workspace --summary-only
+	@echo ""
+	@echo "Detailed report saved to: lcov.info"
+
+# Generate HTML coverage report
+coverage-html:
+	@echo "Generating HTML coverage report..."
+	@cargo llvm-cov --all-features --workspace --html
+	@echo ""
+	@echo "✅ HTML report generated at: target/llvm-cov/html/index.html"
+	@if [ -n "$$BROWSER" ]; then \
+		$$BROWSER target/llvm-cov/html/index.html; \
+	else \
+		echo "Open in browser: file://$(PWD)/target/llvm-cov/html/index.html"; \
+	fi
 
 # Alpine Linux package variables
 PACKAGE_NAME = commit-wizard
