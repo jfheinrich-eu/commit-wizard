@@ -41,7 +41,13 @@
 				"redhat.vscode-yaml",
 				"ms-vscode-remote.remote-containers",
 				// Github
-				"github.vscode-github-actions"
+				"github.vscode-github-actions",
+				// Additional Rust Tools
+				"jscearcy.rust-doc-viewer",
+				// HTML Preview
+				"george-alisson.html-preview-vscode",
+				// Open in Browser
+				"sandcastle.vscode-open"
 			],
 			"settings": {
 				"rust-analyzer.cargo.buildScripts.enable": true,
