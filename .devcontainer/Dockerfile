@@ -46,11 +46,12 @@ RUN ln -sf /usr/bin/musl-gcc /usr/local/bin/x86_64-linux-musl-gcc
 RUN rustup component add \
     clippy \
     rustfmt \
-    rust-src
+    rust-src \
+    llvm-tools
 
 # Install cargo tools for CLI development
 RUN set -e; \
-  tools="cargo-edit cargo-watch cargo-audit cargo-outdated cargo-expand"; \
+  tools="cargo-edit cargo-watch cargo-audit cargo-outdated cargo-expand cargo-llvm-cov"; \
   failed=""; \
   for tool in $tools; do \
     echo "Installing $tool..."; \
