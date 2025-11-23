@@ -8,8 +8,16 @@ This dev container provides a complete Rust CLI development environment with all
 
 - **Rust Analyzer** - Advanced Rust language support
 - **LLDB Debugger** - Native debugging support
-- **Cargo Tools** - Enhanced package management (cargo-edit, cargo-watch, etc.)
+- **Cargo Tools** - Enhanced package management:
+  - `cargo-edit` - Add, remove, upgrade dependencies
+  - `cargo-watch` - Auto-rebuild on file changes
+  - `cargo-audit` - Security vulnerability scanning
+  - `cargo-outdated` - Check for outdated dependencies
+  - `cargo-expand` - Expand macros
+  - `cargo-llvm-cov` - Code coverage analysis
 - **Clippy & Rustfmt** - Code linting and formatting
+- **LLVM Tools** - Coverage and profiling support
+- **Rust Toolchain** - Managed by `rust-toolchain.toml` in project root
 
 ### 🛠️ Development Tools
 
@@ -20,13 +28,57 @@ This dev container provides a complete Rust CLI development environment with all
 
 ### 📝 VS Code Extensions
 
+**Rust Development:**
+
 - **rust-lang.rust-analyzer** - Rust language server
 - **vadimcn.vscode-lldb** - Native debugging
 - **fill-labs.dependi** - Cargo.toml assistance
+- **dustypomerleau.rust-syntax** - Enhanced Rust syntax
+- **jscearcy.rust-doc-viewer** - View Rust documentation in VS Code
+
+**TOML & Configuration:**
+
 - **tamasfe.even-better-toml** - TOML file support
+
+**Git & GitHub:**
+
 - **github.vscode-pull-request-github** - GitHub integration
+- **github.copilot** - AI pair programming
+- **github.copilot-chat** - AI chat assistant
+- **github.vscode-github-actions** - GitHub Actions support
 - **eamodio.gitlens** - Enhanced Git capabilities
+
+**Documentation & Preview:**
+
 - **yzhang.markdown-all-in-one** - Markdown support
+- **davidanson.vscode-markdownlint** - Markdown linting
+- **george-alisson.html-preview-vscode** - HTML preview for cargo doc
+
+**Development Utilities:**
+
+- **usernamehw.errorlens** - Inline error display
+- **streetsidesoftware.code-spell-checker** - Spell checking
+- **sandcastle.vscode-open** - Open files in browser
+- **ms-vscode-remote.remote-containers** - Container support
+
+## Rust Toolchain Management
+
+The project uses `rust-toolchain.toml` in the project root to manage the Rust version:
+
+```toml
+[toolchain]
+channel = "stable"
+components = ["rustfmt", "clippy", "rust-src"]
+profile = "default"
+```
+
+This ensures:
+
+- **Consistent Rust Version** - All developers use the same Rust channel
+- **Required Components** - Essential tools are automatically installed
+- **Build Reproducibility** - CI/CD uses identical toolchain configuration
+
+The dev container automatically respects this configuration via `rustup`.
 
 ## Usage
 
