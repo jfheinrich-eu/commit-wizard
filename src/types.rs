@@ -319,6 +319,12 @@ pub struct AppState {
     pub diff_scroll_offset: usize,
     /// Path of the file being diffed
     pub diff_file_path: String,
+    /// Scroll offset for commit message panel
+    pub commit_message_scroll_offset: usize,
+    /// Selected file index in files panel
+    pub selected_file_index: usize,
+    /// Scroll offset for files panel
+    pub files_scroll_offset: usize,
 }
 
 impl AppState {
@@ -337,6 +343,9 @@ impl AppState {
             diff_content: String::new(),
             diff_scroll_offset: 0,
             diff_file_path: String::new(),
+            commit_message_scroll_offset: 0,
+            selected_file_index: 0,
+            files_scroll_offset: 0,
         }
     }
 
@@ -354,6 +363,8 @@ impl AppState {
     pub fn select_next(&mut self) {
         if !self.groups.is_empty() {
             self.selected_index = (self.selected_index + 1) % self.groups.len();
+            self.reset_file_selection();
+            self.reset_commit_message_scroll();
         }
     }
 
@@ -365,6 +376,8 @@ impl AppState {
             } else {
                 self.selected_index - 1
             };
+            self.reset_file_selection();
+            self.reset_commit_message_scroll();
         }
     }
 
@@ -450,5 +463,62 @@ impl AppState {
     /// Closes the editor help popup.
     pub fn close_editor_help(&mut self) {
         self.show_editor_help = false;
+    }
+
+    /// Scrolls commit message panel down.
+    pub fn scroll_commit_message_down(&mut self) {
+        if let Some(group) = self.selected_group() {
+            let line_count = group.full_message().lines().count();
+            let max_offset = line_count.saturating_sub(1);
+            if self.commit_message_scroll_offset < max_offset {
+                self.commit_message_scroll_offset += 1;
+            }
+        }
+    }
+
+    /// Scrolls commit message panel up.
+    pub fn scroll_commit_message_up(&mut self) {
+        if self.commit_message_scroll_offset > 0 {
+            self.commit_message_scroll_offset -= 1;
+        }
+    }
+
+    /// Moves file selection down.
+    pub fn select_next_file(&mut self) {
+        if let Some(group) = self.selected_group() {
+            if !group.files.is_empty() {
+                self.selected_file_index = (self.selected_file_index + 1) % group.files.len();
+            }
+        }
+    }
+
+    /// Moves file selection up.
+    pub fn select_previous_file(&mut self) {
+        if let Some(group) = self.selected_group() {
+            if !group.files.is_empty() {
+                self.selected_file_index = if self.selected_file_index == 0 {
+                    group.files.len() - 1
+                } else {
+                    self.selected_file_index - 1
+                };
+            }
+        }
+    }
+
+    /// Resets file selection when changing groups.
+    pub fn reset_file_selection(&mut self) {
+        self.selected_file_index = 0;
+        self.files_scroll_offset = 0;
+    }
+
+    /// Resets commit message scroll when changing groups.
+    pub fn reset_commit_message_scroll(&mut self) {
+        self.commit_message_scroll_offset = 0;
+    }
+
+    /// Returns the currently selected file from the active group.
+    pub fn selected_file(&self) -> Option<&ChangedFile> {
+        self.selected_group()
+            .and_then(|group| group.files.get(self.selected_file_index))
     }
 }

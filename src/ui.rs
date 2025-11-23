@@ -204,10 +204,20 @@ fn handle_key_event<B: ratatui::backend::Backend + std::io::Write>(
             app.activate_previous_panel();
         }
         KeyCode::Down | KeyCode::Char('j') => {
-            app.select_next();
+            // Navigate based on active panel
+            match app.active_panel {
+                ActivePanel::Groups => app.select_next(),
+                ActivePanel::CommitMessage => app.scroll_commit_message_down(),
+                ActivePanel::Files => app.select_next_file(),
+            }
         }
         KeyCode::Up | KeyCode::Char('k') => {
-            app.select_previous();
+            // Navigate based on active panel
+            match app.active_panel {
+                ActivePanel::Groups => app.select_previous(),
+                ActivePanel::CommitMessage => app.scroll_commit_message_up(),
+                ActivePanel::Files => app.select_previous_file(),
+            }
         }
         KeyCode::Char('e') => {
             handle_edit_action(app, terminal)?;
@@ -266,6 +276,12 @@ fn handle_edit_action<B: ratatui::backend::Backend + std::io::Write>(
 fn handle_diff_action(app: &mut AppState, repo_path: &Path) -> Result<()> {
     use git2::Repository;
 
+    // Only allow diff from Files panel
+    if app.active_panel != ActivePanel::Files {
+        app.set_status("ℹ Switch to Files panel (Tab) to view diffs");
+        return Ok(());
+    }
+
     // Check if group is committed first
     let is_committed = app
         .selected_group()
@@ -275,18 +291,8 @@ fn handle_diff_action(app: &mut AppState, repo_path: &Path) -> Result<()> {
         app.set_status("ℹ Viewing diff for already committed group");
     }
 
-    // Get the selected group and determine which file to show
-    let selected_group = match app.selected_group() {
-        Some(group) => group,
-        None => {
-            app.set_status("✗ No commit group selected");
-            return Ok(());
-        }
-    };
-
-    // For now, show diff for the first file in the group
-    // TODO: Track which file is selected in the Files panel
-    let file_path = match selected_group.files.first() {
+    // Get the selected file from the active group
+    let file_path = match app.selected_file() {
         Some(file) => file.path.clone(),
         None => {
             app.set_status("✗ No files in selected group");
@@ -604,28 +610,38 @@ fn draw_commit_message_panel(
 ) {
     if let Some(group) = app.selected_group() {
         let msg = group.full_message();
-        let line_count = msg.lines().count();
+        let all_lines: Vec<&str> = msg.lines().collect();
+        let line_count = all_lines.len();
+
         let border_color = if is_active {
             Color::Green
         } else {
             Color::White
         };
-        let paragraph = Paragraph::new(msg)
+
+        // Calculate visible lines with scroll offset
+        let visible_height = area.height.saturating_sub(2) as usize;
+        let start_line = app.commit_message_scroll_offset;
+        let end_line = (start_line + visible_height).min(line_count);
+        let visible_text = all_lines[start_line..end_line].join("\n");
+
+        let paragraph = Paragraph::new(visible_text)
             .block(
                 Block::default()
                     .title(" Commit Message ")
                     .borders(Borders::ALL)
                     .border_style(Style::default().fg(border_color)),
             )
-            .wrap(Wrap { trim: false });
+            .wrap(Wrap { trim: true });
         f.render_widget(paragraph, area);
 
-        // Add scrollbar if content is longer than visible area
-        if line_count > area.height.saturating_sub(2) as usize {
+        // Add scrollbar if active and content is longer than visible area
+        if is_active && line_count > visible_height {
             let scrollbar = Scrollbar::new(ScrollbarOrientation::VerticalRight)
                 .begin_symbol(Some("↑"))
                 .end_symbol(Some("↓"));
-            let mut scrollbar_state = ScrollbarState::new(line_count.saturating_sub(1)).position(0);
+            let mut scrollbar_state = ScrollbarState::new(line_count.saturating_sub(1))
+                .position(app.commit_message_scroll_offset);
             f.render_stateful_widget(
                 scrollbar,
                 area.inner(ratatui::layout::Margin {
@@ -662,7 +678,10 @@ fn draw_files_panel(
         let file_lines: Vec<Line> = group
             .files
             .iter()
-            .map(|file| {
+            .enumerate()
+            .map(|(idx, file)| {
+                let is_selected = idx == app.selected_file_index;
+
                 let status_icon = if file.is_new() {
                     "+"
                 } else if file.is_deleted() {
@@ -675,12 +694,22 @@ fn draw_files_panel(
                     "•"
                 };
 
+                let prefix = if is_selected { "▶ " } else { "  " };
+                let style = if is_selected {
+                    Style::default()
+                        .fg(Color::Yellow)
+                        .add_modifier(Modifier::BOLD)
+                } else {
+                    Style::default()
+                };
+
                 Line::from(vec![
+                    Span::raw(prefix),
                     Span::styled(
-                        format!(" {} ", status_icon),
+                        format!("{} ", status_icon),
                         Style::default().fg(Color::Magenta),
                     ),
-                    Span::raw(&file.path),
+                    Span::styled(&file.path, style),
                 ])
             })
             .collect();
@@ -697,13 +726,13 @@ fn draw_files_panel(
             .wrap(Wrap { trim: false });
         f.render_widget(files_paragraph, area);
 
-        // Add scrollbar if there are many files
-        if file_lines_len > area.height.saturating_sub(2) as usize {
+        // Add scrollbar if active and there are many files
+        if is_active && file_lines_len > area.height.saturating_sub(2) as usize {
             let scrollbar = Scrollbar::new(ScrollbarOrientation::VerticalRight)
                 .begin_symbol(Some("↑"))
                 .end_symbol(Some("↓"));
-            let mut scrollbar_state =
-                ScrollbarState::new(file_lines_len.saturating_sub(1)).position(0);
+            let mut scrollbar_state = ScrollbarState::new(file_lines_len.saturating_sub(1))
+                .position(app.selected_file_index);
             f.render_stateful_widget(
                 scrollbar,
                 area.inner(ratatui::layout::Margin {
