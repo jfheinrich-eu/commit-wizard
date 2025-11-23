@@ -840,7 +840,7 @@ fn draw_status_popup(f: &mut ratatui::Frame, app: &AppState, area: ratatui::layo
         .border_style(Style::default().fg(border_color));
     f.render_widget(popup_block, popup_area);
 
-    // Add scrollbar if there more text than fits
+    // Add scrollbar if there is more text than fits
     let total_lines = app.status_message.lines().count();
     let visible_lines = popup_area.height.saturating_sub(3) as usize;
     if total_lines > visible_lines {
