@@ -14,11 +14,6 @@ PR_NUMBER="${1:?PR number is required}"
 
 # Get PR details for the review comment
 PR_DATA=$(gh pr view "$PR_NUMBER" --json title,author,headRefName,additions,deletions)
-PR_TITLE=$(echo "$PR_DATA" | jq -r '.title')
-PR_AUTHOR=$(echo "$PR_DATA" | jq -r '.author.login')
-PR_BRANCH=$(echo "$PR_DATA" | jq -r '.headRefName')
-ADDITIONS=$(echo "$PR_DATA" | jq -r '.additions')
-DELETIONS=$(echo "$PR_DATA" | jq -r '.deletions')
 
 # Create review comment with properly escaped values
 # Escape all variables that come from PR metadata using jq
