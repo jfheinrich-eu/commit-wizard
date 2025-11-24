@@ -4,8 +4,8 @@
 
 **Commit Wizard** is an interactive command-line tool designed to help developers create well-structured commits following the [Conventional Commits](https://www.conventionalcommits.org/) specification. It analyzes staged files, automatically groups them by logical criteria, and provides an interactive terminal UI for review and customization.
 
-**Version:** 0.1.0  
-**Language:** Rust  
+**Version:** 0.1.0
+**Language:** Rust
 **Minimum Rust Version:** 1.70+
 
 ## Architecture
@@ -421,19 +421,22 @@ cargo install commit-wizard
 ### Planned Features
 
 1. **Configuration File**: `~/.config/commit-wizard/config.toml`
-   - Custom commit types
-   - User-defined inference patterns
-   - Default editor preferences
+
+- Custom commit types
+- User-defined inference patterns
+- Default editor preferences
 
 2. **Breaking Change Detection**:
-   - Parse API signatures
-   - Detect version bumps
-   - Add `BREAKING CHANGE:` footer
+
+- Parse API signatures
+- Detect version bumps
+- Add `BREAKING CHANGE:` footer
 
 3. **Commit Templates**:
-   - Per-project templates
-   - Company-specific formats
-   - Jira/GitHub integration
+
+- Per-project templates
+- Company-specific formats
+- Jira/GitHub integration
 
 4. **Dry-Run Mode**:
    - Preview commits without execution
@@ -505,9 +508,9 @@ The `ai` module integrates with [GitHub Models API](https://docs.github.com/en/g
 
 1. User presses `a` in TUI (requires `--ai` flag)
 2. System collects:
-   - Commit type and scope from group
-   - List of changed files
-   - Git diff output for context
+- Commit type and scope from group
+- List of changed files
+- Git diff output for context
 3. Build prompt with structured information
 4. Send POST request to `https://models.github.com/chat/completions`
 5. Parse response and update commit message
@@ -546,7 +549,7 @@ commit-wizard --copilot
 
 ### Threat Model
 
-**Trusted**: User's git repository, git binary, editor binary, GitHub API  
+**Trusted**: User's git repository, git binary, editor binary, GitHub API
 **Untrusted**: File paths, branch names, commit messages (from previous commits), API responses
 
 ### Attack Vectors
@@ -571,16 +574,16 @@ commit-wizard --copilot
 
 ### Common Issues
 
-**Issue**: "No staged changes found"  
+**Issue**: "No staged changes found"
 **Solution**: Run `git add <files>` before commit-wizard
 
-**Issue**: "Editor failed with status 1"  
+**Issue**: "Editor failed with status 1"
 **Solution**: Check `$EDITOR` variable, ensure editor is in `$PATH`
 
-**Issue**: "Not a git repository"  
+**Issue**: "Not a git repository"
 **Solution**: Run from git repo root or use `--repo <path>`
 
-**Issue**: Terminal corrupted after crash  
+**Issue**: Terminal corrupted after crash
 **Solution**: Run `reset` command to restore terminal state
 
 ### Debug Mode
@@ -620,7 +623,6 @@ MIT License - See LICENSE file for details.
 
 ---
 
-**Maintained by**: Commit Wizard Contributors  
-**Documentation Version**: 1.0  
+**Maintained by**: Commit Wizard Contributors
+**Documentation Version**: 1.0
 **Last Updated**: 2025-11-16
-

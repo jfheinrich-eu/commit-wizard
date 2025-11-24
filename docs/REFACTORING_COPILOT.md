@@ -198,12 +198,12 @@ pub fn build_prompt(group: &ChangeGroup, files: &[ChangedFile], diff: Option<&st
     // More specific instructions for Copilot CLI
     prompt.push_str("You are an expert at writing conventional commit messages.\n");
     prompt.push_str("Generate ONLY a commit message following these rules:\n\n");
-    
+
     prompt.push_str("FORMAT:\n");
     prompt.push_str("- First line: Short description in imperative mood (50 chars max)\n");
     prompt.push_str("- Blank line\n");
     prompt.push_str("- Body: Detailed explanation with bullet points (optional)\n\n");
-    
+
     prompt.push_str("CONTEXT:\n");
     prompt.push_str(&format!("Type: {}\n", group.commit_type.as_str()));
 
@@ -343,7 +343,7 @@ mod tests {
     fn test_generate_with_copilot_integration() {
         let prompt = "Generate a commit message for: Added new feature";
         let result = generate_with_copilot(prompt);
-        
+
         if is_copilot_installed() {
             assert!(result.is_ok());
             let response = result.unwrap();
@@ -447,14 +447,14 @@ fn test_full_ai_workflow_with_copilot() {
     );
 
     let result = generate_commit_message(&group, &files, None);
-    
+
     assert!(result.is_ok(), "Failed: {:?}", result);
     let (desc, body) = result.unwrap();
-    
+
     // Basic validation
     assert!(!desc.is_empty());
     assert!(desc.len() < 72); // Reasonable length
-    
+
     println!("Generated description: {}", desc);
     if let Some(b) = body {
         println!("Generated body: {}", b);
@@ -671,4 +671,3 @@ fn handle_ai_generate_action(...) {
 3. **Future Features:** MCP server support, better code understanding
 4. **Simplified Auth:** Uses existing GitHub authentication
 5. **Community:** Large user base, better support
-

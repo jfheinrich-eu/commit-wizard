@@ -225,4 +225,3 @@ If tests still fail:
 2. Review token permissions: https://github.com/settings/tokens
 3. Check GitHub status: https://www.githubstatus.com/
 4. Open issue: https://github.com/jfheinrich-eu/commit-wizard/issues
-

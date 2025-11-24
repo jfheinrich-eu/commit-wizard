@@ -76,7 +76,7 @@ impl CommitMessageEditor {
     pub fn new(initial_text: String) -> Self {
         let mut state = EditorState::default();
         state.set_text(&initial_text);
-        
+
         Self {
             state,
             active: false,
@@ -117,7 +117,7 @@ impl CommitMessageEditor {
                 EditorAction::Save
             }
             // Cancel: Ctrl+C or Ctrl+Q
-            (KeyCode::Char('c'), KeyModifiers::CONTROL) 
+            (KeyCode::Char('c'), KeyModifiers::CONTROL)
             | (KeyCode::Char('q'), KeyModifiers::CONTROL) => {
                 EditorAction::Cancel
             }
@@ -144,7 +144,7 @@ pub enum EditorAction {
 
 pub struct AppState {
     // ... existing fields ...
-    
+
     /// Optional editor instance (None when not editing)
     pub editor: Option<CommitMessageEditor>,
 }
@@ -192,30 +192,30 @@ impl AppState {
 fn draw_ui<B: Backend>(terminal: &mut Terminal<B>, app: &AppState, ai_enabled: bool) {
     terminal.draw(|f| {
         let size = f.area();
-        
+
         // If editor is active, show full-screen editor
         if app.is_editing() {
             if let Some(editor) = &mut app.editor {
                 // Full screen or large centered overlay
                 let editor_area = centered_rect(90, 90, size);
-                
+
                 // Clear area
                 f.render_widget(Clear, editor_area);
-                
+
                 // Border with instructions
                 let block = Block::default()
                     .title(" Edit Commit Message (Esc: Save, Ctrl+C: Cancel) ")
                     .borders(Borders::ALL)
                     .border_style(Style::default().fg(Color::Yellow));
                 f.render_widget(block, editor_area);
-                
+
                 // Inner editor
                 let inner = editor_area.inner(&Margin { horizontal: 1, vertical: 1 });
                 editor.render(f, inner);
             }
             return;
         }
-        
+
         // Normal UI rendering
         // ... existing code ...
     })?;
@@ -239,7 +239,7 @@ fn handle_key_event(...) -> Result<bool> {
         }
         return Ok(false); // Don't quit
     }
-    
+
     // Normal key handling
     match key.code {
         KeyCode::Char('e') => {
@@ -247,7 +247,7 @@ fn handle_key_event(...) -> Result<bool> {
         }
         // ... existing handlers ...
     }
-    
+
     Ok(false)
 }
 
@@ -318,11 +318,11 @@ mod tests {
     #[test]
     fn test_editor_key_handling() {
         let mut editor = CommitMessageEditor::new("Test".to_string());
-        
+
         // Test save key
         let key = KeyEvent::new(KeyCode::Esc, KeyModifiers::NONE);
         assert!(matches!(editor.handle_key(key), EditorAction::Save));
-        
+
         // Test cancel key
         let key = KeyEvent::new(KeyCode::Char('c'), KeyModifiers::CONTROL);
         assert!(matches!(editor.handle_key(key), EditorAction::Cancel));
@@ -347,20 +347,20 @@ fn test_appstate_editor_workflow() {
         vec![],
     );
     let mut app = AppState::new(vec![group]);
-    
+
     // Not editing initially
     assert!(!app.is_editing());
-    
+
     // Start editing
     app.start_editing();
     assert!(app.is_editing());
-    
+
     // Modify and save
     if let Some(editor) = &mut app.editor {
         editor.state.set_text("new message");
     }
     app.save_editor();
-    
+
     assert!(!app.is_editing());
     assert!(app.selected_group().unwrap().description.contains("new message"));
 }
@@ -376,13 +376,13 @@ fn test_appstate_editor_cancel() {
         vec![],
     );
     let mut app = AppState::new(vec![group]);
-    
+
     app.start_editing();
     if let Some(editor) = &mut app.editor {
         editor.state.set_text("modified");
     }
     app.cancel_editor();
-    
+
     assert!(!app.is_editing());
     assert_eq!(app.selected_group().unwrap().description, "original");
 }
@@ -499,4 +499,3 @@ impl AppState {
 - ✅ Code coverage maintained (editor is testable)
 - ✅ No external process spawning
 - ✅ Consistent UX across platforms
-

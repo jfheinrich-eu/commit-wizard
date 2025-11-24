@@ -14,18 +14,18 @@ A CLI tool to help create better commit messages.
 
 - [Features](#features)
 - [Installation](#installation)
-  - [From Source](#from-source)
+- [From Source](#from-source)
 - [Usage](#usage)
-  - [Basic Usage](#basic-usage)
-  - [AI-Powered Mode](#ai-powered-mode)
-  - [Keyboard Controls](#keyboard-controls)
-  - [Advanced Options](#advanced-options)
+- [Basic Usage](#basic-usage)
+- [AI-Powered Mode](#ai-powered-mode)
+- [Keyboard Controls](#keyboard-controls)
+- [Advanced Options](#advanced-options)
 - [GitHub Token Setup](docs/github-token-setup.md)
 - [Development](#development)
-  - [Prerequisites](#prerequisites)
-  - [Dev Container (Recommended)](#dev-container-recommended)
-    - [Quick Start](#quick-start)
-  - [Building](#building)
+- [Prerequisites](#prerequisites)
+- [Dev Container (Recommended)](#dev-container-recommended)
+- [Quick Start](#quick-start)
+- [Building](#building)
   - [Running](#running)
   - [Testing](#testing)
   - [Linting](#linting)
@@ -230,7 +230,30 @@ cargo clippy
 cargo fmt
 ```
 
-# Contributing
+## Pre-commit Hooks
+
+This project uses [pre-commit](https://pre-commit.com/) hooks to ensure code quality:
+
+```bash
+# Install hooks (one-time setup)
+make pre-commit-install
+
+# Run manually on all files
+make pre-commit-run
+```
+
+**What it checks:**
+
+- 🦀 Rust formatting (rustfmt) and linting (clippy)
+- 📦 Unused dependencies (cargo-machete)
+- 🔒 Security vulnerabilities (cargo-audit, gitleaks)
+- 📝 Markdown linting
+- ✅ Conventional commit messages
+- 🐚 Shell script validation
+
+See [docs/PRE_COMMIT.md](docs/PRE_COMMIT.md) for detailed documentation.
+
+## Contributing
 
 Please read [BRANCH_PROTECTION.md](.github/BRANCH_PROTECTION.md) for details on our branch protection rules and the process for submitting pull requests.
 
