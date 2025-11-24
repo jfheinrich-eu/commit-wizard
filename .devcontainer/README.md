@@ -15,7 +15,10 @@ This dev container provides a complete Rust CLI development environment with all
   - `cargo-outdated` - Check for outdated dependencies
   - `cargo-expand` - Expand macros
   - `cargo-llvm-cov` - Code coverage analysis
+  - `cargo-machete` - Unused dependency detection
 - **Clippy & Rustfmt** - Code linting and formatting
+- **Pre-commit** - Git hooks for code quality checks
+- **Ruby & Gems** - Required for markdownlint (`mdl`)
 - **LLVM Tools** - Coverage and profiling support
 - **Rust Toolchain** - Managed by `rust-toolchain.toml` in project root
 
@@ -85,7 +88,7 @@ The dev container automatically respects this configuration via `rustup`.
 ### Requirements
 
 - Copy `.devcontainer/.devcontainer.env.example` to `.devcontainer/.devcontainer.env`
-  
+
   ```env
   GITHUB_USER=your-github-username
   GITHUB_TOKEN=your-github-token
@@ -102,8 +105,8 @@ The dev container automatically respects this configuration via `rustup`.
    ```
 
 2. **Using VS Code Interface:**
-   - Click the remote connection button (bottom-left corner)
-   - Select "Reopen in Container"
+- Click the remote connection button (bottom-left corner)
+- Select "Reopen in Container"
 
 ### First Time Setup
 
@@ -123,7 +126,7 @@ The container will automatically:
 
 ```bash
 cb      # cargo build
-cr      # cargo run  
+cr      # cargo run
 ct      # cargo test
 cc      # cargo check
 cf      # cargo fmt
@@ -132,6 +135,26 @@ cw      # cargo watch (auto-rebuild)
 cu      # cargo update
 tree    # cargo tree
 ```
+
+**Pre-commit Hooks:**
+
+Pre-commit hooks are automatically installed during container setup. Use these commands:
+
+```bash
+make pre-commit-run       # Run all hooks manually
+make pre-commit-update    # Update hook versions
+make pre-commit-uninstall # Remove hooks
+make deps-machete         # Check for unused dependencies
+```
+
+Hooks run automatically on `git commit` and validate:
+
+- Rust formatting and linting
+- Unused dependencies
+- Security vulnerabilities
+- Commit message format
+- Markdown/YAML/TOML syntax
+- Secrets detection
 
 **Git Conventional Commit Shortcuts:**
 

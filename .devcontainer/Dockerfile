@@ -22,6 +22,13 @@ RUN apt-get update && apt-get install -y \
     # GPG support
     gnupg2 \
     pinentry-curses \
+    # Python for pre-commit
+    python3 \
+    python3-pip \
+    python3-venv \
+    # Ruby for markdownlint
+    ruby \
+    ruby-dev \
     # CLI tools
     curl \
     wget \
@@ -51,7 +58,7 @@ RUN rustup component add \
 
 # Install cargo tools for CLI development
 RUN set -e; \
-  tools="cargo-edit cargo-watch cargo-audit cargo-outdated cargo-expand cargo-llvm-cov"; \
+  tools="cargo-edit cargo-watch cargo-audit cargo-outdated cargo-expand cargo-llvm-cov cargo-machete"; \
   failed=""; \
   for tool in $tools; do \
     echo "Installing $tool..."; \
@@ -66,6 +73,12 @@ RUN set -e; \
     echo "ERROR: The following cargo tools failed to install:$failed"; \
     exit 1; \
   fi
+
+# Install pre-commit
+RUN python3 -m pip install --no-cache-dir pre-commit
+
+# Install markdownlint gem
+RUN gem install mdl
 
 # Create symlinks for fd (some systems use fdfind)
 RUN if [ -x /usr/bin/fdfind ]; then ln -sf /usr/bin/fdfind /usr/local/bin/fd || echo "Warning: Could not create fd symlink"; fi

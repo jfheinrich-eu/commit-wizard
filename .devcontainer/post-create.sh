@@ -10,23 +10,23 @@ if [ -d /tmp/host-ssh ]; then
     echo "🔐 Setting up SSH keys for GitHub..."
     mkdir -p ~/.ssh
     chmod 700 ~/.ssh
-    
+
     # Copy SSH config if it exists
     if [ -f /tmp/host-ssh/config ]; then
         cp /tmp/host-ssh/config ~/.ssh/config
         chmod 644 ~/.ssh/config
-        
+
         # Extract IdentityFile paths for github.com from SSH config
         GITHUB_KEYS=$(awk '
             /^Host github\.com/ { in_github=1; next }
             in_github && /^Host / { in_github=0 }
-            in_github && /IdentityFile/ { 
+            in_github && /IdentityFile/ {
                 gsub(/^[[:space:]]*IdentityFile[[:space:]]*/, "");
                 gsub(/~/, ENVIRON["HOME"]);
-                print 
+                print
             }
         ' ~/.ssh/config)
-        
+
         # Copy identified keys for github.com
         if [ -n "$GITHUB_KEYS" ]; then
             echo "Found GitHub SSH keys in config:"
@@ -68,13 +68,13 @@ if [ -d /tmp/host-ssh ]; then
             fi
         done
     fi
-    
+
     # Copy known_hosts if exists
     if [ -f /tmp/host-ssh/known_hosts ]; then
         cp /tmp/host-ssh/known_hosts ~/.ssh/
         chmod 644 ~/.ssh/known_hosts
     fi
-    
+
     echo "✅ SSH setup complete"
 fi
 
@@ -91,7 +91,7 @@ fi
 # Do NOT set GITHUB_TOKEN in shell history, logs, or other insecure locations.
 if [ -n "${GITHUB_TOKEN:-}" ]; then
     # Basic format check (GitHub tokens usually start with 'ghp_' or 'github_pat_')
-    if [[ "$GITHUB_TOKEN" =~ ^(ghp_|github_pat_|gho_|ghs_|ghu_|ghr_) ]]; then  
+    if [[ "$GITHUB_TOKEN" =~ ^(ghp_|github_pat_|gho_|ghs_|ghu_|ghr_) ]]; then
         echo "🐙 Authenticating with GitHub CLI..."
         if printf '%s\n' "$GITHUB_TOKEN" | gh auth login --with-token >/dev/null 2>&1; then
             # Test token validity with a minimal API call
@@ -121,11 +121,11 @@ rustup target add x86_64-unknown-linux-musl
 if [ -f "Cargo.toml" ]; then
     echo "📦 Pre-building project dependencies..."
     cargo fetch
-    
+
     # Run initial checks
     echo "🔍 Running initial project checks..."
     cargo check --all-targets
-    
+
     # Install project-specific tools if they exist in Cargo.toml
     if grep -q "clap" Cargo.toml; then
         echo "🛠️  Installing additional CLI development tools..."
@@ -164,6 +164,19 @@ else
   echo "ℹ️  Aliases already present in ~/.bashrc"
 fi
 
+# Install pre-commit hooks if .pre-commit-config.yaml exists
+if [ -f ".pre-commit-config.yaml" ]; then
+    echo "🪝 Installing pre-commit hooks..."
+    if command -v pre-commit >/dev/null 2>&1; then
+        pre-commit install --install-hooks
+        pre-commit install --hook-type commit-msg
+        echo "✅ Pre-commit hooks installed"
+    else
+        echo "⚠️  pre-commit not found, skipping hook installation"
+    fi
+fi
+
 echo "✅ Development environment setup complete!"
 echo "💡 Available aliases: cb, cr, ct, cc, cf, ccl, cw, cu, tree"
 echo "🔗 Git commit aliases: gcf, gcfix, gcd, gcs, gcr, gct, gcc"
+echo "🪝 Pre-commit hooks: make pre-commit-run"
