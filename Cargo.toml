@@ -11,9 +11,13 @@ license = "MIT"
 keywords = ["cli", "git", "commit", "wizard"]
 categories = ["command-line-utilities", "development-tools"]
 
+[package.metadata.cargo-machete]
+# Ignore false positives - these dependencies are used via re-exports or in specific contexts
+ignored = ["crossterm", "async-openai", "thiserror", "tui-framework-experiment"]
+
 [dependencies]
 anyhow = "1"
-clap = { version = "4.5", features = ["derive"] }
+clap = { version = "4.5.53", features = ["derive"] }
 git2 = "^0.20"
 regex = "1"
 reqwest = { version = "0.12", features = [

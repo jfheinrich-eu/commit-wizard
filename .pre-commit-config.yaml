@@ -1,0 +1,155 @@
+# Pre-commit hooks for commit-wizard
+# See https://pre-commit.com for more information
+# See https://pre-commit.com/hooks.html for more hooks
+
+default_install_hook_types: [pre-commit, commit-msg]
+default_stages: [pre-commit]
+
+repos:
+  # General file checks
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v5.0.0
+    hooks:
+      - id: trailing-whitespace
+        exclude: '\.md$|\.diff$|\.patch$'
+      - id: end-of-file-fixer
+        exclude: '\.diff$|\.patch$'
+      - id: check-yaml
+        args: ["--unsafe"] # Allow custom YAML tags
+      - id: check-toml
+      # - id: check-json
+      - id: check-added-large-files
+        args: ["--maxkb=1000"]
+      - id: check-case-conflict
+      - id: check-merge-conflict
+      - id: check-executables-have-shebangs
+      - id: check-shebang-scripts-are-executable
+      - id: mixed-line-ending
+        args: ["--fix=lf"]
+      - id: detect-private-key
+      - id: forbid-new-submodules
+
+  # Check json files with comments
+  - repo: https://gitlab.com/bmares/check-json5
+    rev: v1.0.0
+    hooks:
+      - id: check-json5
+
+  # Rust-specific checks
+  - repo: local
+    hooks:
+      # Cargo format check
+      - id: cargo-fmt
+        name: cargo fmt
+        description: Format Rust code with rustfmt
+        entry: cargo fmt
+        args: ["--all", "--", "--check"]
+        language: system
+        types: [rust]
+        pass_filenames: false
+
+      # Cargo clippy linting
+      - id: cargo-clippy
+        name: cargo clippy
+        description: Lint Rust code with clippy
+        entry: cargo clippy
+        args: ["--all-targets", "--all-features", "--", "-D", "warnings"]
+        language: system
+        types: [rust]
+        pass_filenames: false
+
+      # Cargo check
+      - id: cargo-check
+        name: cargo check
+        description: Check Rust code compiles
+        entry: cargo check
+        args: ["--all-targets", "--all-features"]
+        language: system
+        types: [rust]
+        pass_filenames: false
+
+      # Cargo test
+      - id: cargo-test
+        name: cargo test
+        description: Run Rust tests
+        entry: cargo test
+        args: ["--all-features", "--workspace"]
+        language: system
+        types: [rust]
+        pass_filenames: false
+        stages: [pre-push]
+
+      # Cargo machete - unused dependencies
+      - id: cargo-machete
+        name: cargo machete
+        description: Check for unused dependencies
+        entry: cargo machete
+        language: system
+        types: [toml]
+        files: 'Cargo\.toml$'
+        pass_filenames: false
+
+      # Cargo audit - security vulnerabilities
+      - id: cargo-audit
+        name: cargo audit
+        description: Audit Rust dependencies for security vulnerabilities
+        entry: cargo audit
+        language: system
+        types: [toml]
+        files: 'Cargo\.(toml|lock)$'
+        pass_filenames: false
+        stages: [pre-push]
+
+  # Markdown linting
+  - repo: https://github.com/markdownlint/markdownlint
+    rev: v0.13.0
+    hooks:
+      - id: markdownlint
+        name: markdownlint
+        description: Lint Markdown files
+        args: ["--style", ".mdl_style.rb"]
+
+  # Commit message validation (conventional commits)
+  - repo: https://github.com/compilerla/conventional-pre-commit
+    rev: v3.6.0
+    hooks:
+      - id: conventional-pre-commit
+        stages: [commit-msg]
+        args:
+          - feat
+          - fix
+          - docs
+          - style
+          - refactor
+          - perf
+          - test
+          - build
+          - ci
+          - chore
+          - revert
+
+  # Secrets detection
+  - repo: https://github.com/gitleaks/gitleaks
+    rev: v8.24.0
+    hooks:
+      - id: gitleaks
+
+  # Shell script linting
+  - repo: https://github.com/shellcheck-py/shellcheck-py
+    rev: v0.10.0.1
+    hooks:
+      - id: shellcheck
+        args: ["-x", "-e", "SC1091"]
+
+# Additional configuration
+ci:
+  autofix_commit_msg: |
+    style: auto-fix pre-commit hooks
+
+    [pre-commit.ci] auto fixes from pre-commit.ci hooks
+  autoupdate_commit_msg: |
+    chore(deps): update pre-commit hooks
+
+    [pre-commit.ci] automatic update of pre-commit hooks
+  skip: []
+  submodules: false
