@@ -281,15 +281,27 @@ fn github_models_api_call(
 ///
 /// Checks `GITHUB_TOKEN` first, then falls back to `GH_TOKEN`.
 fn get_github_token() -> Option<String> {
-    env::var("GITHUB_TOKEN")
+    // Example logic
+    let token = std::env::var("GITHUB_TOKEN")
         .ok()
-        .or_else(|| env::var("GH_TOKEN").ok())
-        .filter(|t| !t.is_empty())
+        .filter(|t| !t.trim().is_empty())
+        .or_else(|| {
+            std::env::var("GH_TOKEN")
+                .ok()
+                .filter(|t| !t.trim().is_empty())
+        });
+
+    token
 }
 
 /// Retrieves the OpenAI API key from environment variables.
 fn get_openai_token() -> Option<String> {
-    env::var("OPENAI_API_KEY").ok().filter(|t| !t.is_empty())
+    // Example logic
+    let token = std::env::var("OPENAI_API_KEY")
+        .ok()
+        .filter(|t| !t.trim().is_empty());
+
+    token
 }
 
 /// Builds the prompt for the AI based on change context.
