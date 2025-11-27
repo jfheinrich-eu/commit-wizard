@@ -89,6 +89,5 @@ jobs:
         with:
           token: ${{ secrets.CODECOV_TOKEN || '' }}
           files: lcov.info
-          slug: jfheinrich-eu/commit-wizard
           fail_ci_if_error: true
           verbose: true
