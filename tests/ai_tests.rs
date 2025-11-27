@@ -313,3 +313,208 @@ fn test_build_prompt_file_status_indicators() {
     assert!(prompt.contains("modified.rs"));
     assert!(prompt.contains("deleted.rs"));
 }
+
+#[test]
+fn test_build_prompt_truncates_large_diff() {
+    let files = vec![ChangedFile::new(
+        "large_file.rs".to_string(),
+        Status::INDEX_MODIFIED,
+    )];
+    let group = ChangeGroup::new(
+        CommitType::Refactor,
+        None,
+        files.clone(),
+        None,
+        "placeholder".to_string(),
+        vec![],
+    );
+
+    // Create a diff larger than 1000 characters
+    let large_diff = "a".repeat(1500);
+    let prompt = build_prompt(&group, &files, Some(&large_diff));
+
+    // Verify truncation message is present
+    assert!(prompt.contains("(truncated)"));
+    // Prompt shouldn't contain the full 1500 characters
+    assert!(prompt.len() < large_diff.len() + 500);
+}
+
+#[test]
+fn test_build_prompt_no_ticket() {
+    let files = vec![ChangedFile::new(
+        "src/test.rs".to_string(),
+        Status::INDEX_MODIFIED,
+    )];
+    let group = ChangeGroup::new(
+        CommitType::Fix,
+        Some("core".to_string()),
+        files.clone(),
+        None, // No ticket
+        "placeholder".to_string(),
+        vec![],
+    );
+
+    let prompt = build_prompt(&group, &files, None);
+
+    // Should not contain "Ticket:" line
+    assert!(!prompt.contains("Ticket:"));
+    assert!(prompt.contains("Type: fix"));
+    assert!(prompt.contains("Scope: core"));
+}
+
+#[test]
+fn test_parse_commit_message_strips_backticks() {
+    let response = "`add new feature`";
+    let (desc, body) = parse_commit_message(response).unwrap();
+    assert_eq!(desc, "add new feature");
+    assert_eq!(body, None);
+}
+
+#[test]
+fn test_parse_commit_message_mixed_quotes_backticks() {
+    let response = "```\"add feature\"```";
+    let (desc, body) = parse_commit_message(response).unwrap();
+    assert_eq!(desc, "\"add feature\"");
+    assert_eq!(body, None);
+}
+
+#[test]
+fn test_parse_commit_message_body_with_blank_lines() {
+    let response = "add feature\n\n\
+                   First paragraph\n\n\n\
+                   Second paragraph after multiple blanks";
+    let (desc, body) = parse_commit_message(response).unwrap();
+    assert_eq!(desc, "add feature");
+    let body_text = body.unwrap();
+    assert!(body_text.contains("First paragraph"));
+    assert!(body_text.contains("Second paragraph"));
+}
+
+#[test]
+fn test_generate_with_github_token_env() {
+    // Set GITHUB_TOKEN and ensure OPENAI_API_KEY is not set
+    std::env::set_var("GITHUB_TOKEN", "test-token-123");
+    std::env::remove_var("OPENAI_API_KEY");
+    std::env::remove_var("GH_TOKEN");
+
+    let files = vec![ChangedFile::new(
+        "src/main.rs".to_string(),
+        Status::INDEX_MODIFIED,
+    )];
+    let group = ChangeGroup::new(
+        CommitType::Feat,
+        None,
+        files.clone(),
+        None,
+        "placeholder".to_string(),
+        vec![],
+    );
+
+    // This will fail because we're not actually calling the API, but it verifies
+    // that the token detection logic works (doesn't error with "No API token found")
+    let result = generate_commit_message(&group, &files, None);
+
+    // Clean up
+    std::env::remove_var("GITHUB_TOKEN");
+
+    // Should fail on API call, not on token detection
+    assert!(result.is_err());
+    let error_msg = result.unwrap_err().to_string();
+    assert!(!error_msg.contains("No API token found"));
+}
+
+#[test]
+fn test_generate_with_gh_token_fallback() {
+    // Set GH_TOKEN (fallback) and ensure others are not set
+    std::env::remove_var("GITHUB_TOKEN");
+    std::env::remove_var("OPENAI_API_KEY");
+    std::env::set_var("GH_TOKEN", "fallback-token-456");
+
+    let files = vec![ChangedFile::new(
+        "src/lib.rs".to_string(),
+        Status::INDEX_MODIFIED,
+    )];
+    let group = ChangeGroup::new(
+        CommitType::Fix,
+        None,
+        files.clone(),
+        None,
+        "placeholder".to_string(),
+        vec![],
+    );
+
+    let result = generate_commit_message(&group, &files, None);
+
+    // Clean up
+    std::env::remove_var("GH_TOKEN");
+
+    // Should fail on API call, not on token detection
+    assert!(result.is_err());
+    let error_msg = result.unwrap_err().to_string();
+    assert!(!error_msg.contains("No API token found"));
+}
+
+#[test]
+fn test_generate_with_openai_token() {
+    // Set OPENAI_API_KEY and ensure GITHUB tokens are not set
+    std::env::remove_var("GITHUB_TOKEN");
+    std::env::remove_var("GH_TOKEN");
+    std::env::set_var("OPENAI_API_KEY", "openai-key-789");
+
+    let files = vec![ChangedFile::new(
+        "src/api.rs".to_string(),
+        Status::INDEX_NEW,
+    )];
+    let group = ChangeGroup::new(
+        CommitType::Feat,
+        Some("api".to_string()),
+        files.clone(),
+        None,
+        "placeholder".to_string(),
+        vec![],
+    );
+
+    let result = generate_commit_message(&group, &files, None);
+
+    // Clean up
+    std::env::remove_var("OPENAI_API_KEY");
+
+    // Should fail on API call, not on token detection
+    assert!(result.is_err());
+    let error_msg = result.unwrap_err().to_string();
+    assert!(!error_msg.contains("No API token found"));
+}
+
+#[test]
+fn test_generate_empty_token_treated_as_missing() {
+    // Empty tokens should be treated as missing
+    std::env::set_var("GITHUB_TOKEN", "");
+    std::env::set_var("GH_TOKEN", "");
+    std::env::set_var("OPENAI_API_KEY", "");
+
+    let files = vec![ChangedFile::new(
+        "test.rs".to_string(),
+        Status::INDEX_MODIFIED,
+    )];
+    let group = ChangeGroup::new(
+        CommitType::Test,
+        None,
+        files.clone(),
+        None,
+        "placeholder".to_string(),
+        vec![],
+    );
+
+    let result = generate_commit_message(&group, &files, None);
+
+    // Clean up
+    std::env::remove_var("GITHUB_TOKEN");
+    std::env::remove_var("GH_TOKEN");
+    std::env::remove_var("OPENAI_API_KEY");
+
+    assert!(result.is_err());
+    assert!(result
+        .unwrap_err()
+        .to_string()
+        .contains("No API token found"));
+}

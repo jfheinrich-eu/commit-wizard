@@ -47,7 +47,9 @@
 				// HTML Preview
 				"george-alisson.html-preview-vscode",
 				// Open in Browser
-				"sandcastle.vscode-open"
+				"sandcastle.vscode-open",
+				// Code Coverage
+				"markis.code-coverage"
 			],
 			"settings": {
 				"rust-analyzer.cargo.buildScripts.enable": true,
