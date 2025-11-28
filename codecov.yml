@@ -31,13 +31,6 @@ comment:
 github_checks:
   annotations: true
 
-ai:
-  enabled: true
-  coverage_analysis:
-    enabled: true
-  test_suggestions:
-    enabled: true
-
 ignore:
   - "target/" # Build artifacts
   - "src/main.rs" # CLI entry point - external interaction
