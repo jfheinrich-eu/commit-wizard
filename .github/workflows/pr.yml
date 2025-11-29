@@ -66,7 +66,7 @@ jobs:
           secret_fields: "password"
           mask_secrets: "password"
 
-      - uses: jefflinse/pr-semver-bump@a0f7df89cce6675d4b4cc249327882d1788a726b # v1.7.3
+      - uses: jefflinse/pr-semver-bump@6b735b474f354e20438496d978e2a80953073d74 # v1.7.3
         name: Validate Pull Request Metadata
         with:
           mode: validate
