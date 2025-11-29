@@ -33,6 +33,8 @@ RUN apt-get update && apt-get install -y \
     curl \
     wget \
     unzip \
+    # For documentation viewing
+    lynx \
     # Process tools
     htop \
     tree \

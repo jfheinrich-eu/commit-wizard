@@ -11,7 +11,7 @@ use std::time::Duration;
 use crate::types::{ChangeGroup, ChangedFile};
 
 /// GitHub Models API endpoint for chat completions
-/// See: https://docs.github.com/en/github-models
+/// See: <https://docs.github.com/en/github-models>
 const GITHUB_MODELS_API_URL: &str = "https://models.github.com/chat/completions";
 
 /// OpenAI API endpoint (fallback)
@@ -155,6 +155,14 @@ pub fn generate_commit_message(
     }
 }
 
+/// API configuration parameters
+pub struct ApiConfig {
+    pub token: String,
+    pub api_url: String,
+    pub model: String,
+    pub system_prompt: String,
+}
+
 /// Makes an API call to OpenAI to generate commit message.
 fn openai_api_call(
     group: &ChangeGroup,
@@ -165,13 +173,37 @@ fn openai_api_call(
     api_url: &str,
     openai_model: String,
 ) -> Result<(String, Option<String>)> {
+    let client = reqwest::blocking::Client::builder()
+        .timeout(API_TIMEOUT)
+        .build()
+        .context("Failed to create HTTP client")?;
+
+    let config = ApiConfig {
+        token,
+        api_url: api_url.to_string(),
+        model: openai_model,
+        system_prompt: content_string,
+    };
+
+    openai_api_call_with_client(&client, group, files, diff, &config)
+}
+
+/// Makes an API call to OpenAI with a provided HTTP client (for testing).
+#[doc(hidden)]
+pub fn openai_api_call_with_client(
+    client: &reqwest::blocking::Client,
+    group: &ChangeGroup,
+    files: &[ChangedFile],
+    diff: Option<&str>,
+    config: &ApiConfig,
+) -> Result<(String, Option<String>)> {
     let prompt = build_prompt(group, files, diff);
     let request = OpenAIRequest {
-        model: openai_model,
+        model: config.model.clone(),
         messages: vec![
             Message {
                 role: "system".to_string(),
-                content: content_string,
+                content: config.system_prompt.clone(),
             },
             Message {
                 role: "user".to_string(),
@@ -182,14 +214,9 @@ fn openai_api_call(
         max_completion_tokens: 200,
     };
 
-    let client = reqwest::blocking::Client::builder()
-        .timeout(API_TIMEOUT)
-        .build()
-        .context("Failed to create HTTP client")?;
-
     let response = client
-        .post(api_url)
-        .header("Authorization", format!("Bearer {}", token))
+        .post(&config.api_url)
+        .header("Authorization", format!("Bearer {}", config.token))
         .header("Content-Type", "application/json")
         .json(&request)
         .send()
@@ -215,7 +242,6 @@ fn openai_api_call(
             .as_str(),
     )
 }
-
 /// Makes an API call to GitHub Models API to generate commit message.
 fn github_models_api_call(
     group: &ChangeGroup,
@@ -226,31 +252,50 @@ fn github_models_api_call(
     api_url: &str,
     github_copilot_model: String,
 ) -> Result<(String, Option<String>)> {
+    let client = reqwest::blocking::Client::builder()
+        .timeout(API_TIMEOUT)
+        .build()
+        .context("Failed to create HTTP client")?;
+
+    let config = ApiConfig {
+        token,
+        api_url: api_url.to_string(),
+        model: github_copilot_model,
+        system_prompt: content_string,
+    };
+
+    github_models_api_call_with_client(&client, group, files, diff, &config)
+}
+
+/// Makes an API call to GitHub Models with a provided HTTP client (for testing).
+#[doc(hidden)]
+pub fn github_models_api_call_with_client(
+    client: &reqwest::blocking::Client,
+    group: &ChangeGroup,
+    files: &[ChangedFile],
+    diff: Option<&str>,
+    config: &ApiConfig,
+) -> Result<(String, Option<String>)> {
     let prompt = build_prompt(group, files, diff);
     let request = CopilotRequest {
         messages: vec![
             Message {
                 role: "system".to_string(),
-                content: content_string,
+                content: config.system_prompt.clone(),
             },
             Message {
                 role: "user".to_string(),
                 content: prompt,
             },
         ],
-        model: github_copilot_model,
+        model: config.model.clone(),
         temperature: 0.3,
         max_tokens: 200,
     };
 
-    let client = reqwest::blocking::Client::builder()
-        .timeout(API_TIMEOUT)
-        .build()
-        .context("Failed to create HTTP client")?;
-
     let response = client
-        .post(api_url)
-        .header("Authorization", format!("Bearer {}", token))
+        .post(&config.api_url)
+        .header("Authorization", format!("Bearer {}", config.token))
         .header("Content-Type", "application/json")
         .json(&request)
         .send()

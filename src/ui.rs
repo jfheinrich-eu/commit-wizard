@@ -632,6 +632,9 @@ fn draw_commit_message_panel(
                     .borders(Borders::ALL)
                     .border_style(Style::default().fg(border_color)),
             )
+            // We intentionally use `trim: true` here to remove trailing whitespace from commit messages,
+            // as trailing spaces are rarely meaningful in commit messages and can cause formatting issues.
+            // Note: The files panel uses `trim: false` to preserve whitespace, which is important for file diffs.
             .wrap(Wrap { trim: true });
         f.render_widget(paragraph, area);
 
@@ -834,11 +837,13 @@ fn draw_shortcuts_bar(f: &mut ratatui::Frame, ai_enabled: bool, area: ratatui::l
 
 /// Draws a centered status popup overlay.
 fn draw_status_popup(f: &mut ratatui::Frame, app: &AppState, area: ratatui::layout::Rect) {
-    // Calculate popup size (70% width, 10% height)
-    let popup_width = (area.width as f32 * 0.7) as u16;
-    let popup_height = 6; //(area.height as f32 * 0.1) as u16;
+    // Fixed height provides consistent appearance across terminal sizes
+    const STATUS_POPUP_HEIGHT: u16 = 6;
 
-    // Add scrollbar if there is more text than fits
+    // Calculate popup size (70% width, fixed height)
+    let popup_width = (area.width as f32 * 0.7) as u16;
+    let popup_height = STATUS_POPUP_HEIGHT;
+
     let popup_x = (area.width.saturating_sub(popup_width)) / 2;
     let popup_y = (area.height.saturating_sub(popup_height)) / 2;
 
@@ -867,11 +872,20 @@ fn draw_status_popup(f: &mut ratatui::Frame, app: &AppState, area: ratatui::layo
         .title(title)
         .borders(Borders::ALL)
         .border_style(Style::default().fg(border_color));
-    f.render_widget(popup_block, popup_area);
+    f.render_widget(popup_block.clone(), popup_area);
+
+    // Inner area for content (inside borders)
+    let inner_area = popup_block.inner(popup_area);
+
+    // Split inner area into message area and button area
+    let popup_chunks = Layout::default()
+        .direction(Direction::Vertical)
+        .constraints([Constraint::Min(3), Constraint::Length(3)])
+        .split(inner_area);
 
     // Add scrollbar if there is more text than fits
     let total_lines = app.status_message.lines().count();
-    let visible_lines = popup_area.height.saturating_sub(3) as usize;
+    let visible_lines = popup_chunks[0].height as usize;
     if total_lines > visible_lines {
         let scrollbar = Scrollbar::new(ScrollbarOrientation::VerticalRight)
             .begin_symbol(Some("↑"))
@@ -880,7 +894,7 @@ fn draw_status_popup(f: &mut ratatui::Frame, app: &AppState, area: ratatui::layo
             ScrollbarState::new(total_lines.saturating_sub(1)).position(app.popup_scroll_offset);
         f.render_stateful_widget(
             scrollbar,
-            popup_area.inner(ratatui::layout::Margin {
+            popup_area.inner(Margin {
                 horizontal: 0,
                 vertical: 1,
             }),
@@ -888,23 +902,8 @@ fn draw_status_popup(f: &mut ratatui::Frame, app: &AppState, area: ratatui::layo
         );
     }
 
-    // Inner area for content (inside borders)
-    let inner_area = Rect {
-        x: popup_area.x + 1,
-        y: popup_area.y + 1,
-        width: popup_area.width.saturating_sub(2),
-        height: popup_area.height.saturating_sub(2),
-    };
-
-    // Split inner area into message area and button area
-    let popup_chunks = Layout::default()
-        .direction(Direction::Vertical)
-        .constraints([Constraint::Min(3), Constraint::Length(3)])
-        .split(inner_area);
-
     // Status message with scroll offset applied
     let lines: Vec<_> = app.status_message.lines().collect();
-    let visible_lines = popup_chunks[0].height as usize;
     let start_line = app.popup_scroll_offset;
     let end_line = (start_line + visible_lines).min(lines.len());
     let visible_text = lines[start_line..end_line].join("\n");

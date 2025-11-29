@@ -44,6 +44,7 @@ vendored-openssl = ["git2/vendored-openssl"]
 
 [dev-dependencies]
 tempfile = "3"
+mockito = "1.6"
 
 [[bin]]
 name = "commit-wizard"

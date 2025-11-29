@@ -107,7 +107,16 @@ deps-audit:
 # Generate documentation
 docs:
 	@echo "Generating documentation..."
-	cargo doc --no-deps && lynx target/doc/commit_wizard/index.html
+	@cargo doc --no-deps --document-private-items
+	@if command -v lynx >/dev/null 2>&1; then \
+		lynx target/doc/commit_wizard/index.html; \
+	elif [ -n "$$REMOTE_CONTAINERS" ] || [ -n "$$CODESPACES" ]; then \
+		echo "📚 Documentation generated successfully!"; \
+		echo "   View at: file://$$PWD/target/doc/commit_wizard/index.html"; \
+		echo "   (Use Cmd+Click / Ctrl+Click to open in host browser)"; \
+	else \
+		cargo doc --no-deps --document-private-items --open; \
+	fi
 
 # Generate code coverage report (text summary)
 coverage:

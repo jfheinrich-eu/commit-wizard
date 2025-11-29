@@ -390,79 +390,32 @@ fn test_parse_commit_message_body_with_blank_lines() {
     assert!(body_text.contains("Second paragraph"));
 }
 
-#[test]
-fn test_generate_with_github_token_env() {
-    // Set GITHUB_TOKEN and ensure OPENAI_API_KEY is not set
-    std::env::set_var("GITHUB_TOKEN", "test-token-123");
-    std::env::remove_var("OPENAI_API_KEY");
-    std::env::remove_var("GH_TOKEN");
-
-    let files = vec![ChangedFile::new(
-        "src/main.rs".to_string(),
-        Status::INDEX_MODIFIED,
-    )];
-    let group = ChangeGroup::new(
-        CommitType::Feat,
-        None,
-        files.clone(),
-        None,
-        "placeholder".to_string(),
-        vec![],
-    );
-
-    // This will fail because we're not actually calling the API, but it verifies
-    // that the token detection logic works (doesn't error with "No API token found")
-    let result = generate_commit_message(&group, &files, None);
-
-    // Clean up
-    std::env::remove_var("GITHUB_TOKEN");
-
-    // Should fail on API call, not on token detection
-    assert!(result.is_err());
-    let error_msg = result.unwrap_err().to_string();
-    assert!(!error_msg.contains("No API token found"));
-}
+// HTTP mocked tests using mockito
+use mockito::Server;
 
 #[test]
-fn test_generate_with_gh_token_fallback() {
-    // Set GH_TOKEN (fallback) and ensure others are not set
-    std::env::remove_var("GITHUB_TOKEN");
-    std::env::remove_var("OPENAI_API_KEY");
-    std::env::set_var("GH_TOKEN", "fallback-token-456");
+fn test_openai_api_call_success() {
+    let mut server = Server::new();
 
+    let mock_response = r#"{
+        "choices": [{
+            "message": {
+                "role": "assistant",
+                "content": "add user authentication endpoint"
+            }
+        }]
+    }"#;
+
+    let mock = server
+        .mock("POST", "/")
+        .with_status(200)
+        .with_header("content-type", "application/json")
+        .with_body(mock_response)
+        .create();
+
+    let client = reqwest::blocking::Client::new();
     let files = vec![ChangedFile::new(
-        "src/lib.rs".to_string(),
-        Status::INDEX_MODIFIED,
-    )];
-    let group = ChangeGroup::new(
-        CommitType::Fix,
-        None,
-        files.clone(),
-        None,
-        "placeholder".to_string(),
-        vec![],
-    );
-
-    let result = generate_commit_message(&group, &files, None);
-
-    // Clean up
-    std::env::remove_var("GH_TOKEN");
-
-    // Should fail on API call, not on token detection
-    assert!(result.is_err());
-    let error_msg = result.unwrap_err().to_string();
-    assert!(!error_msg.contains("No API token found"));
-}
-
-#[test]
-fn test_generate_with_openai_token() {
-    // Set OPENAI_API_KEY and ensure GITHUB tokens are not set
-    std::env::remove_var("GITHUB_TOKEN");
-    std::env::remove_var("GH_TOKEN");
-    std::env::set_var("OPENAI_API_KEY", "openai-key-789");
-
-    let files = vec![ChangedFile::new(
-        "src/api.rs".to_string(),
+        "src/auth.rs".to_string(),
         Status::INDEX_NEW,
     )];
     let group = ChangeGroup::new(
@@ -474,15 +427,220 @@ fn test_generate_with_openai_token() {
         vec![],
     );
 
-    let result = generate_commit_message(&group, &files, None);
+    let config = commit_wizard::ai::ApiConfig {
+        token: "test-token".to_string(),
+        api_url: server.url(),
+        model: "gpt-4".to_string(),
+        system_prompt: "system prompt".to_string(),
+    };
 
-    // Clean up
-    std::env::remove_var("OPENAI_API_KEY");
+    let result =
+        commit_wizard::ai::openai_api_call_with_client(&client, &group, &files, None, &config);
 
-    // Should fail on API call, not on token detection
+    mock.assert();
+    assert!(result.is_ok());
+    let (desc, body) = result.unwrap();
+    assert_eq!(desc, "add user authentication endpoint");
+    assert_eq!(body, None);
+}
+
+#[test]
+fn test_openai_api_call_with_body() {
+    let mut server = Server::new();
+
+    let mock_response = r#"{
+        "choices": [{
+            "message": {
+                "role": "assistant",
+                "content": "implement OAuth2 flow\n\nAdds refresh token support\nIncludes JWT validation"
+            }
+        }]
+    }"#;
+
+    let mock = server
+        .mock("POST", "/")
+        .with_status(200)
+        .with_header("content-type", "application/json")
+        .with_body(mock_response)
+        .create();
+
+    let client = reqwest::blocking::Client::new();
+    let files = vec![ChangedFile::new(
+        "src/oauth.rs".to_string(),
+        Status::INDEX_NEW,
+    )];
+    let group = ChangeGroup::new(
+        CommitType::Feat,
+        Some("auth".to_string()),
+        files.clone(),
+        None,
+        "placeholder".to_string(),
+        vec![],
+    );
+
+    let config = commit_wizard::ai::ApiConfig {
+        token: "test-token".to_string(),
+        api_url: server.url(),
+        model: "gpt-4".to_string(),
+        system_prompt: "system prompt".to_string(),
+    };
+
+    let result =
+        commit_wizard::ai::openai_api_call_with_client(&client, &group, &files, None, &config);
+
+    mock.assert();
+    assert!(result.is_ok());
+    let (desc, body) = result.unwrap();
+    assert_eq!(desc, "implement OAuth2 flow");
+    assert!(body.is_some());
+    let body_text = body.unwrap();
+    assert!(body_text.contains("refresh token"));
+    assert!(body_text.contains("JWT validation"));
+}
+
+#[test]
+fn test_openai_api_call_error_response() {
+    let mut server = Server::new();
+
+    let mock = server
+        .mock("POST", "/")
+        .with_status(401)
+        .with_header("content-type", "application/json")
+        .with_body(r#"{"error": {"message": "Invalid API key"}}"#)
+        .create();
+
+    let client = reqwest::blocking::Client::new();
+    let files = vec![ChangedFile::new(
+        "src/test.rs".to_string(),
+        Status::INDEX_MODIFIED,
+    )];
+    let group = ChangeGroup::new(
+        CommitType::Fix,
+        None,
+        files.clone(),
+        None,
+        "placeholder".to_string(),
+        vec![],
+    );
+
+    let config = commit_wizard::ai::ApiConfig {
+        token: "invalid-token".to_string(),
+        api_url: server.url(),
+        model: "gpt-4".to_string(),
+        system_prompt: "system prompt".to_string(),
+    };
+
+    let result =
+        commit_wizard::ai::openai_api_call_with_client(&client, &group, &files, None, &config);
+
+    mock.assert();
     assert!(result.is_err());
     let error_msg = result.unwrap_err().to_string();
-    assert!(!error_msg.contains("No API token found"));
+    assert!(error_msg.contains("401"));
+}
+
+#[test]
+fn test_github_models_api_call_success() {
+    let mut server = Server::new();
+
+    let mock_response = r#"{
+        "choices": [{
+            "message": {
+                "role": "assistant",
+                "content": "fix memory leak in cache"
+            }
+        }]
+    }"#;
+
+    let mock = server
+        .mock("POST", "/")
+        .with_status(200)
+        .with_header("content-type", "application/json")
+        .with_body(mock_response)
+        .create();
+
+    let client = reqwest::blocking::Client::new();
+    let files = vec![ChangedFile::new(
+        "src/cache.rs".to_string(),
+        Status::INDEX_MODIFIED,
+    )];
+    let group = ChangeGroup::new(
+        CommitType::Fix,
+        Some("cache".to_string()),
+        files.clone(),
+        None,
+        "placeholder".to_string(),
+        vec![],
+    );
+
+    let config = commit_wizard::ai::ApiConfig {
+        token: "ghp_test123".to_string(),
+        api_url: server.url(),
+        model: "gpt-4".to_string(),
+        system_prompt: "system prompt".to_string(),
+    };
+
+    let result = commit_wizard::ai::github_models_api_call_with_client(
+        &client, &group, &files, None, &config,
+    );
+
+    mock.assert();
+    assert!(result.is_ok());
+    let (desc, body) = result.unwrap();
+    assert_eq!(desc, "fix memory leak in cache");
+    assert_eq!(body, None);
+}
+
+#[test]
+fn test_github_models_api_call_with_diff() {
+    let mut server = Server::new();
+
+    let mock_response = r#"{
+        "choices": [{
+            "message": {
+                "role": "assistant",
+                "content": "optimize database queries"
+            }
+        }]
+    }"#;
+
+    let mock = server
+        .mock("POST", "/")
+        .with_status(200)
+        .with_header("content-type", "application/json")
+        .with_body(mock_response)
+        .create();
+
+    let client = reqwest::blocking::Client::new();
+    let files = vec![ChangedFile::new(
+        "src/db.rs".to_string(),
+        Status::INDEX_MODIFIED,
+    )];
+    let group = ChangeGroup::new(
+        CommitType::Perf,
+        Some("database".to_string()),
+        files.clone(),
+        None,
+        "placeholder".to_string(),
+        vec![],
+    );
+    let diff = Some("+ fn optimized_query() {}\n- fn slow_query() {}");
+
+    let config = commit_wizard::ai::ApiConfig {
+        token: "ghp_test456".to_string(),
+        api_url: server.url(),
+        model: "gpt-4".to_string(),
+        system_prompt: "system prompt".to_string(),
+    };
+
+    let result = commit_wizard::ai::github_models_api_call_with_client(
+        &client, &group, &files, diff, &config,
+    );
+
+    mock.assert();
+    assert!(result.is_ok());
+    let (desc, _) = result.unwrap();
+    assert_eq!(desc, "optimize database queries");
 }
 
 #[test]
