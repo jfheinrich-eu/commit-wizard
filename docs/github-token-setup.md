@@ -171,4 +171,3 @@ For commit-wizard usage, this is more than sufficient for normal development wor
 - [GitHub Models Documentation](https://docs.github.com/en/github-models)
 - [GitHub Personal Access Tokens](https://docs.github.com/en/authentication/keeping-your-account-and-data-secure/creating-a-personal-access-token)
 - [GitHub Token Scopes](https://docs.github.com/en/apps/oauth-apps/building-oauth-apps/scopes-for-oauth-apps)
-

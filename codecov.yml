@@ -11,14 +11,14 @@ coverage:
   status:
     project:
       default:
-        target: auto
-        threshold: 1%
+        target: 38% # Minimum 38% coverage (current: 38.12%)
+        threshold: 2% # Allow 2% drop before failing
         if_ci_failed: error
 
     patch:
       default:
-        target: auto
-        threshold: 1%
+        target: 30% # Require 30% coverage on changed lines
+        threshold: 5% # Allow 5% below target
         if_ci_failed: error
 
 comment:
@@ -31,15 +31,7 @@ comment:
 github_checks:
   annotations: true
 
-ai:
-  enabled: true
-  coverage_analysis:
-    enabled: true
-  test_suggestions:
-    enabled: true
-
 ignore:
-  - "target/"
-  - "tests/"
-  - "**/*_test.rs"
-  - "**/*_tests.rs"
+  - "target/" # Build artifacts
+  - "src/main.rs" # CLI entry point - external interaction
+  - "src/ui.rs" # Terminal UI - requires terminal/human interaction

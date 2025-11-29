@@ -105,30 +105,30 @@ struct Cli {
 - **MD022** (blanks-around-headings): Always add blank lines before AND after headings
   ```markdown
   Some text here
-  
+
   ## Heading
-  
+
   More text here
   ```
 
 - **MD031** (blanks-around-fences): Always add blank lines before AND after code blocks
   ```markdown
   Some text here
-  
+
   ```bash
   command here
   ```
-  
+
   More text here
   ```
 
 - **MD032** (blanks-around-lists): Always add blank lines before AND after lists
   ```markdown
   Some text here
-  
+
   - List item 1
   - List item 2
-  
+
   More text here
   ```
 
@@ -225,6 +225,64 @@ BREAKING CHANGE: CLI interface now requires subcommands
 - Use semantic versioning for releases
 - Document all public items with doc comments
 - Prefer explicit error types over `unwrap()` or `expect()`
+
+### Testing Standards
+
+**Target Code Coverage**: Aim for **85% code coverage** across the codebase, measured with `cargo llvm-cov`.
+
+**Test Quality Principles**:
+
+a. **Robust Functionality Coverage**:
+   - Tests must verify the intended functionality is secure and robust
+   - Cover happy paths, edge cases, and error conditions
+   - Test boundary values and invalid inputs
+   - Verify error messages and error types match expectations
+
+b. **Change Detection**:
+   - Tests MUST fail when source code changes affect behavior
+   - Include assertions for exact text strings where user-facing messages matter
+   - Verify enum values, struct fields, and function signatures
+   - Test both positive cases (what should work) and negative cases (what should fail)
+
+**Test Scope Guidelines**:
+- Test only OUR code, not external dependencies
+- Don't test deep into third-party libraries (git2, ratatui, etc.)
+- Mock or stub external I/O when feasible
+- Focus on public APIs and documented behavior
+- Keep tests fast and deterministic
+
+**Test Organization**:
+- Integration tests in `tests/` directory
+- Unit tests in `#[cfg(test)]` modules within source files
+- Separate test files by module: `types_tests.rs`, `ai_tests.rs`, etc.
+- Use descriptive test names: `test_function_name_scenario`
+
+**Coverage Exclusions**:
+- UI/TUI rendering code (`src/ui.rs` - ratatui widgets, terminal interaction)
+- Main entry points (`src/main.rs` - CLI parsing and orchestration)
+- External process spawning (editor spawning in `edit_text_in_editor`)
+- Network I/O to real APIs (actual API calls in `generate_commit_message`)
+- Git repository operations requiring real git state (functions using `git2::Repository`)
+
+These exclusions are configured in `codecov.yml` to focus coverage metrics on testable business logic.
+
+**Running Coverage**:
+```bash
+# Generate coverage report
+cargo llvm-cov --all-features --workspace --lcov --output-path lcov.info
+
+# View coverage summary
+cargo llvm-cov --all-features --workspace --summary-only
+
+# Generate HTML report
+cargo llvm-cov --all-features --workspace --html
+```
+
+**Test Maintenance**:
+- Update tests when public APIs change
+- Remove obsolete tests for removed features
+- Refactor tests to match code structure changes
+- Keep test data realistic but minimal
 
 ### GitHub Best Practices
 

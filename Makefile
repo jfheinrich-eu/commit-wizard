@@ -1,7 +1,8 @@
 # Makefile for commit-wizard
 # Provides convenient shortcuts for common development tasks
 
-.PHONY: help build test lint clean install dev ci release \
+.PHONY: help build test lint clean install dev ci release docs coverage coverage-html \
+	pre-commit-install pre-commit-run pre-commit-update pre-commit-uninstall deps-machete \
 	alpine-package alpine-install alpine-uninstall alpine-clean alpine-static \
 	alpine-info alpine-test alpine-dist
 
@@ -34,6 +35,21 @@ help:
 	@echo ""
 	@echo "Documentation:"
 	@echo "  make docs           - Generate and open documentation"
+	@echo ""
+	@echo "Code Coverage:"
+	@echo "  make coverage       - Generate coverage report (text summary)"
+	@echo "  make coverage-html  - Generate HTML coverage report"
+	@echo ""
+	@echo "Pre-commit Hooks:"
+	@echo "  make pre-commit-install   - Install pre-commit git hooks"
+	@echo "  make pre-commit-run       - Run pre-commit on all files"
+	@echo "  make pre-commit-update    - Update pre-commit hooks to latest versions"
+	@echo "  make pre-commit-uninstall - Remove pre-commit git hooks"
+	@echo ""
+	@echo "Dependency Management:"
+	@echo "  make deps-check     - Check for outdated dependencies"
+	@echo "  make deps-audit     - Audit dependencies for security issues"
+	@echo "  make deps-machete   - Check for unused dependencies"
 	@echo ""
 	@echo "For Alpine installation guide, see: docs/ALPINE_INSTALL.md"
 
@@ -90,7 +106,87 @@ deps-audit:
 
 # Generate documentation
 docs:
-	cargo doc --no-deps --open
+	@echo "Generating documentation..."
+	@cargo doc --no-deps --document-private-items
+	@if command -v lynx >/dev/null 2>&1; then \
+		lynx target/doc/commit_wizard/index.html; \
+	elif [ -n "$$REMOTE_CONTAINERS" ] || [ -n "$$CODESPACES" ]; then \
+		echo "📚 Documentation generated successfully!"; \
+		echo "   View at: file://$$PWD/target/doc/commit_wizard/index.html"; \
+		echo "   (Use Cmd+Click / Ctrl+Click to open in host browser)"; \
+	else \
+		cargo doc --no-deps --document-private-items --open; \
+	fi
+
+# Generate code coverage report (text summary)
+coverage:
+	@echo "Generating code coverage report..."
+	@cargo llvm-cov --all-features --workspace --lcov --output-path lcov.info
+	@echo ""
+	@echo "=== Coverage Summary ==="
+	@cargo llvm-cov --all-features --workspace --summary-only
+	@echo ""
+	@echo "Detailed report saved to: lcov.info"
+
+# Generate HTML coverage report
+coverage-html:
+	@echo "Generating HTML coverage report..."
+	@cargo llvm-cov --all-features --workspace --html
+	@echo ""
+	@echo "✅ HTML report generated at: target/llvm-cov/html/index.html"
+	@if [ -n "$$BROWSER" ]; then \
+		$$BROWSER target/llvm-cov/html/index.html; \
+	else \
+		echo "Open in browser: file://$(PWD)/target/llvm-cov/html/index.html"; \
+	fi
+
+# Install pre-commit hook
+pre-commit-install:
+	@echo "Installing pre-commit hooks..."
+	@if ! command -v pre-commit >/dev/null 2>&1; then \
+		echo "❌ pre-commit not found. Installing..."; \
+		pip3 install pre-commit; \
+	fi
+	@if ! command -v cargo-machete >/dev/null 2>&1; then \
+		echo "Installing cargo-machete..."; \
+		cargo install cargo-machete; \
+	fi
+	@if ! command -v cargo-audit >/dev/null 2>&1; then \
+		echo "Installing cargo-audit..."; \
+		cargo install cargo-audit; \
+	fi
+	@pre-commit install --install-hooks
+	@pre-commit install --hook-type commit-msg
+	@echo "✅ Pre-commit hooks installed successfully!"
+	@echo ""
+	@echo "Hooks will run automatically on git commit."
+	@echo "To run manually: make pre-commit-run"
+
+# Run pre-commit on all files
+pre-commit-run:
+	@echo "Running pre-commit on all files..."
+	@pre-commit run --all-files
+
+# Update pre-commit hooks
+pre-commit-update:
+	@echo "Updating pre-commit hooks..."
+	@pre-commit autoupdate
+
+# Uninstall pre-commit hooks
+pre-commit-uninstall:
+	@echo "Uninstalling pre-commit hooks..."
+	@pre-commit uninstall
+	@pre-commit uninstall --hook-type commit-msg
+	@echo "✅ Pre-commit hooks uninstalled"
+
+# Check for unused dependencies with cargo-machete
+deps-machete:
+	@echo "Checking for unused dependencies..."
+	@if ! command -v cargo-machete >/dev/null 2>&1; then \
+		echo "Installing cargo-machete..."; \
+		cargo install cargo-machete; \
+	fi
+	@cargo machete
 
 # Alpine Linux package variables
 PACKAGE_NAME = commit-wizard
@@ -112,34 +208,34 @@ alpine-package: release
 	@mkdir -p $(PKG_DIR)/$(MAN_DIR)
 	@mkdir -p $(PKG_DIR)/$(COMPLETION_DIR)
 	@mkdir -p $(DIST_DIR)
-	
+
 	# Copy binary
 	@cp target/release/$(PACKAGE_NAME) $(PKG_DIR)/$(BINARY_DIR)/
 	@strip $(PKG_DIR)/$(BINARY_DIR)/$(PACKAGE_NAME)
 	@chmod 755 $(PKG_DIR)/$(BINARY_DIR)/$(PACKAGE_NAME)
-	
+
 	# Copy documentation
 	@cp README.md $(PKG_DIR)/$(DOC_DIR)/
 	@cp LICENSE $(PKG_DIR)/$(DOC_DIR)/
 	@[ -d docs ] && cp -r docs/* $(PKG_DIR)/$(DOC_DIR)/ || true
-	
+
 	# Generate man page
 	@echo "Generating man page..."
 	@./scripts/generate-man.sh > $(PKG_DIR)/$(MAN_DIR)/$(PACKAGE_NAME).1 || echo "Warning: Could not generate man page"
 	@gzip -f $(PKG_DIR)/$(MAN_DIR)/$(PACKAGE_NAME).1 2>/dev/null || true
-	
+
 	# Generate bash completion
 	@echo "Generating bash completion..."
 	@target/release/$(PACKAGE_NAME) --help > /dev/null 2>&1 || true
-	
+
 	# Create package info
 	@echo "Creating package metadata..."
 	@./scripts/create-apk-info.sh $(VERSION) $(ARCH) > $(PKG_DIR)/.PKGINFO
-	
+
 	# Create tarball
 	@echo "Creating package archive..."
 	@cd $(PKG_DIR) && tar czf ../$(DIST_DIR)/$(PACKAGE_NAME)-$(VERSION)-$(ARCH).tar.gz .
-	
+
 	@echo "✅ Package created: $(DIST_DIR)/$(PACKAGE_NAME)-$(VERSION)-$(ARCH).tar.gz"
 	@echo "   Install with: sudo make alpine-install"
 	@echo "   Or manually: sudo tar xzf $(DIST_DIR)/$(PACKAGE_NAME)-$(VERSION)-$(ARCH).tar.gz -C /"

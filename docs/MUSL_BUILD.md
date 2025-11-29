@@ -260,12 +260,12 @@ build-alpine:
 
 ## Benefits of Static musl Binaries
 
-✅ **No Dependencies** - Single file, no system libraries required  
-✅ **Portable** - Works on any Linux distribution  
-✅ **Small Base Images** - Use Alpine (5MB) instead of Debian (124MB)  
-✅ **Reproducible** - Same binary works everywhere  
-✅ **Security** - Easier to audit, no shared library vulnerabilities  
-✅ **Docker-Friendly** - Perfect for multi-stage builds  
+✅ **No Dependencies** - Single file, no system libraries required
+✅ **Portable** - Works on any Linux distribution
+✅ **Small Base Images** - Use Alpine (5MB) instead of Debian (124MB)
+✅ **Reproducible** - Same binary works everywhere
+✅ **Security** - Easier to audit, no shared library vulnerabilities
+✅ **Docker-Friendly** - Perfect for multi-stage builds
 
 ## Docker Multi-Stage Build Example
 
@@ -291,4 +291,3 @@ Final image size: ~15MB (Alpine + binary + git)
 - [Alpine Installation Guide](ALPINE_INSTALL.md)
 - [Rust musl documentation](https://doc.rust-lang.org/edition-guide/rust-2018/platform-and-target-support/musl-support-for-fully-static-binaries.html)
 - [musl libc](https://musl.libc.org/)
-

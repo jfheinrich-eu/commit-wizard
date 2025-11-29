@@ -14,18 +14,18 @@ A CLI tool to help create better commit messages.
 
 - [Features](#features)
 - [Installation](#installation)
-  - [From Source](#from-source)
+- [From Source](#from-source)
 - [Usage](#usage)
-  - [Basic Usage](#basic-usage)
-  - [AI-Powered Mode](#ai-powered-mode)
-  - [Keyboard Controls](#keyboard-controls)
-  - [Advanced Options](#advanced-options)
+- [Basic Usage](#basic-usage)
+- [AI-Powered Mode](#ai-powered-mode)
+- [Keyboard Controls](#keyboard-controls)
+- [Advanced Options](#advanced-options)
 - [GitHub Token Setup](docs/github-token-setup.md)
 - [Development](#development)
-  - [Prerequisites](#prerequisites)
-  - [Dev Container (Recommended)](#dev-container-recommended)
-    - [Quick Start](#quick-start)
-  - [Building](#building)
+- [Prerequisites](#prerequisites)
+- [Dev Container (Recommended)](#dev-container-recommended)
+- [Quick Start](#quick-start)
+- [Building](#building)
   - [Running](#running)
   - [Testing](#testing)
   - [Linting](#linting)
@@ -42,7 +42,8 @@ A CLI tool to help create better commit messages.
 - ✅ **Conventional Commits**: Automatically follows the Conventional Commits specification
 - ✅ **Smart Grouping**: Intelligently groups files by commit type and scope
 - ✅ **AI-Powered**: Generate commit messages using GitHub Copilot (optional)
-- ✅ **Editor Integration**: Edit commit messages in your favorite editor
+- ✅ **Integrated Editor**: Built-in vim-style editor with keyboard shortcuts help
+- ✅ **Diff Viewer**: View file changes with syntax highlighting
 - ✅ **Ticket Detection**: Automatically extracts ticket numbers from branch names
 
 # Installation
@@ -136,13 +137,30 @@ In the TUI, press `a` to generate a commit message for the selected group using 
 
 ## Keyboard Controls
 
+### Main Interface
+
 - `↑`/`↓` or `k`/`j` - Navigate between commit groups
-- `e` - Edit commit message in external editor
+- `Tab` / `Shift+Tab` - Switch between panels (Groups, Message, Files)
+- `e` - Edit commit message in integrated editor
+- `d` - View diff for selected file
 - `a` - Generate commit message with AI (requires `--ai` flag)
 - `c` - Commit selected group
 - `C` - Commit all groups
 - `Ctrl+L` - Clear status message
 - `q` or `Esc` - Quit
+
+### Editor Mode
+
+- `?` - Toggle help popup (shows all vim commands)
+- `Ctrl+S` - Save and close editor
+- `Ctrl+C` - Cancel without saving
+- Vim-style navigation: `h`/`j`/`k`/`l`, `w`/`b`, `gg`/`G`, `0`/`$`
+- Vim-style editing: `i`/`a`/`o`, `x`/`dd`, `yy`/`p`, `u`/`Ctrl+R`
+
+### Diff Viewer
+
+- `↑`/`↓` or `k`/`j` - Scroll through diff
+- `Esc` - Close diff viewer
 
 ## Advanced Options
 
@@ -212,7 +230,30 @@ cargo clippy
 cargo fmt
 ```
 
-# Contributing
+## Pre-commit Hooks
+
+This project uses [pre-commit](https://pre-commit.com/) hooks to ensure code quality:
+
+```bash
+# Install hooks (one-time setup)
+make pre-commit-install
+
+# Run manually on all files
+make pre-commit-run
+```
+
+**What it checks:**
+
+- 🦀 Rust formatting (rustfmt) and linting (clippy)
+- 📦 Unused dependencies (cargo-machete)
+- 🔒 Security vulnerabilities (cargo-audit, gitleaks)
+- 📝 Markdown linting
+- ✅ Conventional commit messages
+- 🐚 Shell script validation
+
+See [docs/PRE_COMMIT.md](docs/PRE_COMMIT.md) for detailed documentation.
+
+## Contributing
 
 Please read [BRANCH_PROTECTION.md](.github/BRANCH_PROTECTION.md) for details on our branch protection rules and the process for submitting pull requests.
 

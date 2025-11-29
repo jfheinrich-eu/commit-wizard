@@ -330,4 +330,3 @@ commit-wizard --verbose
 ## License
 
 MIT License - See `/usr/local/share/doc/commit-wizard/LICENSE`
-

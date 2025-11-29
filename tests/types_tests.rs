@@ -211,7 +211,7 @@ fn test_app_state_creation() {
 
     assert_eq!(app.groups.len(), 2);
     assert_eq!(app.selected_index, 0);
-    assert!(!app.status_message.is_empty());
+    assert!(app.status_message.is_empty());
 }
 
 #[test]
@@ -312,12 +312,461 @@ fn test_app_state_selected_group() {
 fn test_app_state_status_management() {
     let mut app = AppState::new(vec![]);
 
+    // Test set_status activates popup and resets scroll
     app.set_status("Test message");
     assert_eq!(app.status_message, "Test message");
+    assert!(app.popup_active);
+    assert_eq!(app.popup_scroll_offset, 0);
 
+    // Test set_status with String
+    app.popup_scroll_offset = 5; // Simulate scrolling
     app.set_status("Another message".to_string());
     assert_eq!(app.status_message, "Another message");
+    assert!(app.popup_active);
+    assert_eq!(app.popup_scroll_offset, 0); // Should reset
 
+    // Test clear_status deactivates popup and clears all
     app.clear_status();
     assert!(app.status_message.is_empty());
+    assert!(!app.popup_active);
+    assert_eq!(app.popup_scroll_offset, 0);
+}
+
+#[test]
+fn test_app_state_popup_scrolling() {
+    let mut app = AppState::new(vec![]);
+
+    // Set multi-line status message
+    app.set_status("Line 1\nLine 2\nLine 3\nLine 4\nLine 5");
+    assert_eq!(app.popup_scroll_offset, 0);
+    assert!(app.popup_active);
+
+    // Test scroll down
+    app.scroll_popup_down();
+    assert_eq!(app.popup_scroll_offset, 1);
+
+    app.scroll_popup_down();
+    assert_eq!(app.popup_scroll_offset, 2);
+
+    // Test scroll up
+    app.scroll_popup_up();
+    assert_eq!(app.popup_scroll_offset, 1);
+
+    app.scroll_popup_up();
+    assert_eq!(app.popup_scroll_offset, 0);
+
+    // Test scroll up at boundary (should not underflow)
+    app.scroll_popup_up();
+    assert_eq!(app.popup_scroll_offset, 0);
+
+    // Test scroll down to max
+    for _ in 0..10 {
+        app.scroll_popup_down();
+    }
+    // Max offset is lines.count() - 1 = 4
+    assert_eq!(app.popup_scroll_offset, 4);
+
+    // Test scrolling with empty message
+    app.clear_status();
+    app.scroll_popup_down(); // Should not panic
+    assert_eq!(app.popup_scroll_offset, 0);
+}
+
+#[test]
+fn test_app_state_active_panel() {
+    use commit_wizard::types::ActivePanel;
+
+    let mut app = AppState::new(vec![]);
+
+    // Default panel should be Groups
+    assert_eq!(app.active_panel, ActivePanel::Groups);
+
+    // Test activate_next_panel (clockwise)
+    app.activate_next_panel();
+    assert_eq!(app.active_panel, ActivePanel::CommitMessage);
+
+    app.activate_next_panel();
+    assert_eq!(app.active_panel, ActivePanel::Files);
+
+    app.activate_next_panel();
+    assert_eq!(app.active_panel, ActivePanel::Groups); // Wraps around
+
+    // Test activate_previous_panel (counter-clockwise)
+    app.activate_previous_panel();
+    assert_eq!(app.active_panel, ActivePanel::Files);
+
+    app.activate_previous_panel();
+    assert_eq!(app.active_panel, ActivePanel::CommitMessage);
+
+    app.activate_previous_panel();
+    assert_eq!(app.active_panel, ActivePanel::Groups);
+}
+
+#[test]
+fn test_active_panel_navigation() {
+    use commit_wizard::types::ActivePanel;
+
+    // Test next() method
+    assert_eq!(ActivePanel::Groups.next(), ActivePanel::CommitMessage);
+    assert_eq!(ActivePanel::CommitMessage.next(), ActivePanel::Files);
+    assert_eq!(ActivePanel::Files.next(), ActivePanel::Groups);
+
+    // Test previous() method
+    assert_eq!(ActivePanel::Groups.previous(), ActivePanel::Files);
+    assert_eq!(ActivePanel::Files.previous(), ActivePanel::CommitMessage);
+    assert_eq!(ActivePanel::CommitMessage.previous(), ActivePanel::Groups);
+}
+
+#[test]
+fn test_active_panel_derives() {
+    use commit_wizard::types::ActivePanel;
+
+    // Test Debug
+    let panel = ActivePanel::Groups;
+    assert_eq!(format!("{:?}", panel), "Groups");
+
+    // Test Clone and Copy
+    let panel1 = ActivePanel::CommitMessage;
+    let panel2 = panel1;
+    assert_eq!(panel1, panel2);
+
+    // Test PartialEq and Eq
+    assert_eq!(ActivePanel::Files, ActivePanel::Files);
+    assert_ne!(ActivePanel::Groups, ActivePanel::Files);
+}
+
+#[test]
+fn test_app_state_diff_viewer() {
+    let mut app = AppState::new(vec![]);
+
+    assert!(!app.show_diff_viewer);
+    assert!(app.diff_content.is_empty());
+    assert!(app.diff_file_path.is_empty());
+
+    // Show diff
+    app.show_diff(
+        "src/main.rs".to_string(),
+        "+ new code\n- old code".to_string(),
+    );
+    assert!(app.show_diff_viewer);
+    assert_eq!(app.diff_file_path, "src/main.rs");
+    assert_eq!(app.diff_content, "+ new code\n- old code");
+    assert_eq!(app.diff_scroll_offset, 0);
+
+    // Scroll diff down
+    app.scroll_diff_down();
+    assert_eq!(app.diff_scroll_offset, 1);
+
+    app.scroll_diff_down();
+    assert_eq!(app.diff_scroll_offset, 1); // Max offset for 2-line content
+
+    // Scroll diff up
+    app.scroll_diff_up();
+    assert_eq!(app.diff_scroll_offset, 0);
+
+    app.scroll_diff_up(); // Should not go negative
+    assert_eq!(app.diff_scroll_offset, 0);
+
+    // Close diff
+    app.close_diff();
+    assert!(!app.show_diff_viewer);
+    assert!(app.diff_content.is_empty());
+    assert!(app.diff_file_path.is_empty());
+    assert_eq!(app.diff_scroll_offset, 0);
+}
+
+#[test]
+fn test_app_state_diff_viewer_empty_content() {
+    let mut app = AppState::new(vec![]);
+
+    app.show_diff("test.rs".to_string(), "".to_string());
+    app.scroll_diff_down(); // Should not panic on empty content
+    assert_eq!(app.diff_scroll_offset, 0);
+
+    app.scroll_diff_up(); // Should not panic
+    assert_eq!(app.diff_scroll_offset, 0);
+}
+
+#[test]
+fn test_app_state_editor_help() {
+    let mut app = AppState::new(vec![]);
+
+    assert!(!app.show_editor_help);
+
+    app.toggle_editor_help();
+    assert!(app.show_editor_help);
+
+    app.toggle_editor_help();
+    assert!(!app.show_editor_help);
+
+    app.toggle_editor_help();
+    assert!(app.show_editor_help);
+
+    app.close_editor_help();
+    assert!(!app.show_editor_help);
+}
+
+#[test]
+fn test_app_state_commit_message_scroll() {
+    let groups = vec![ChangeGroup::new(
+        CommitType::Feat,
+        None,
+        vec![],
+        None,
+        "short description".to_string(),
+        vec![
+            "body line 1".to_string(),
+            "body line 2".to_string(),
+            "body line 3".to_string(),
+        ],
+    )];
+    let mut app = AppState::new(groups);
+
+    assert_eq!(app.commit_message_scroll_offset, 0);
+
+    // Scroll down
+    app.scroll_commit_message_down();
+    assert_eq!(app.commit_message_scroll_offset, 1);
+
+    app.scroll_commit_message_down();
+    assert_eq!(app.commit_message_scroll_offset, 2);
+
+    // Scroll up
+    app.scroll_commit_message_up();
+    assert_eq!(app.commit_message_scroll_offset, 1);
+
+    app.scroll_commit_message_up();
+    assert_eq!(app.commit_message_scroll_offset, 0);
+
+    app.scroll_commit_message_up(); // Should not go negative
+    assert_eq!(app.commit_message_scroll_offset, 0);
+}
+
+#[test]
+fn test_app_state_commit_message_scroll_resets_on_group_change() {
+    let groups = vec![
+        ChangeGroup::new(
+            CommitType::Feat,
+            None,
+            vec![],
+            None,
+            "first".to_string(),
+            vec!["body1".to_string()],
+        ),
+        ChangeGroup::new(
+            CommitType::Fix,
+            None,
+            vec![],
+            None,
+            "second".to_string(),
+            vec!["body2".to_string()],
+        ),
+    ];
+    let mut app = AppState::new(groups);
+
+    // Scroll first group
+    app.scroll_commit_message_down();
+    assert_eq!(app.commit_message_scroll_offset, 1);
+
+    // Change group - scroll should reset
+    app.select_next();
+    assert_eq!(app.commit_message_scroll_offset, 0);
+}
+
+#[test]
+fn test_app_state_file_selection() {
+    let groups = vec![ChangeGroup::new(
+        CommitType::Feat,
+        None,
+        vec![
+            ChangedFile::new("file1.rs".to_string(), Status::INDEX_NEW),
+            ChangedFile::new("file2.rs".to_string(), Status::INDEX_MODIFIED),
+            ChangedFile::new("file3.rs".to_string(), Status::INDEX_DELETED),
+        ],
+        None,
+        "test".to_string(),
+        vec![],
+    )];
+    let mut app = AppState::new(groups);
+
+    assert_eq!(app.selected_file_index, 0);
+    assert_eq!(app.selected_file().unwrap().path, "file1.rs");
+
+    // Select next file
+    app.select_next_file();
+    assert_eq!(app.selected_file_index, 1);
+    assert_eq!(app.selected_file().unwrap().path, "file2.rs");
+
+    app.select_next_file();
+    assert_eq!(app.selected_file_index, 2);
+    assert_eq!(app.selected_file().unwrap().path, "file3.rs");
+
+    // Wrap around
+    app.select_next_file();
+    assert_eq!(app.selected_file_index, 0);
+    assert_eq!(app.selected_file().unwrap().path, "file1.rs");
+
+    // Select previous file
+    app.select_previous_file(); // Should wrap to end
+    assert_eq!(app.selected_file_index, 2);
+    assert_eq!(app.selected_file().unwrap().path, "file3.rs");
+
+    app.select_previous_file();
+    assert_eq!(app.selected_file_index, 1);
+}
+
+#[test]
+fn test_app_state_file_selection_empty_files() {
+    let groups = vec![ChangeGroup::new(
+        CommitType::Feat,
+        None,
+        vec![], // No files
+        None,
+        "test".to_string(),
+        vec![],
+    )];
+    let mut app = AppState::new(groups);
+
+    app.select_next_file(); // Should not panic
+    assert_eq!(app.selected_file_index, 0);
+    assert!(app.selected_file().is_none());
+
+    app.select_previous_file(); // Should not panic
+    assert_eq!(app.selected_file_index, 0);
+}
+
+#[test]
+fn test_app_state_file_selection_resets_on_group_change() {
+    let groups = vec![
+        ChangeGroup::new(
+            CommitType::Feat,
+            None,
+            vec![
+                ChangedFile::new("file1.rs".to_string(), Status::INDEX_NEW),
+                ChangedFile::new("file2.rs".to_string(), Status::INDEX_MODIFIED),
+            ],
+            None,
+            "first".to_string(),
+            vec![],
+        ),
+        ChangeGroup::new(
+            CommitType::Fix,
+            None,
+            vec![ChangedFile::new("other.rs".to_string(), Status::INDEX_NEW)],
+            None,
+            "second".to_string(),
+            vec![],
+        ),
+    ];
+    let mut app = AppState::new(groups);
+
+    // Select second file in first group
+    app.select_next_file();
+    assert_eq!(app.selected_file_index, 1);
+
+    // Change group - file selection should reset
+    app.select_next();
+    assert_eq!(app.selected_file_index, 0);
+    assert_eq!(app.files_scroll_offset, 0);
+}
+
+#[test]
+fn test_app_state_selected_file_no_group() {
+    let app = AppState::new(vec![]);
+    assert!(app.selected_file().is_none());
+}
+
+#[test]
+fn test_change_group_committed_state() {
+    let mut group = ChangeGroup::new(
+        CommitType::Feat,
+        None,
+        vec![],
+        None,
+        "test".to_string(),
+        vec![],
+    );
+
+    assert!(!group.is_committed());
+
+    group.mark_as_committed();
+    assert!(group.is_committed());
+}
+
+#[test]
+fn test_change_group_header_empty_description() {
+    let group = ChangeGroup::new(CommitType::Fix, None, vec![], None, "".to_string(), vec![]);
+
+    let header = group.header();
+    assert_eq!(header, "fix: ");
+}
+
+#[test]
+fn test_change_group_header_max_length_exact() {
+    // Test exact MAX_HEADER_LENGTH (72 chars)
+    let desc = "x".repeat(72 - "feat: ".len());
+    let group = ChangeGroup::new(CommitType::Feat, None, vec![], None, desc.clone(), vec![]);
+
+    let header = group.header();
+    assert_eq!(header.len(), 72);
+    assert!(!header.ends_with("..."));
+}
+
+#[test]
+fn test_change_group_set_from_commit_text_empty() {
+    let mut group = ChangeGroup::new(
+        CommitType::Feat,
+        None,
+        vec![],
+        None,
+        "original".to_string(),
+        vec![],
+    );
+
+    group.set_from_commit_text("");
+    // Empty text doesn't have a first line, so description remains unchanged
+    assert_eq!(group.description, "original");
+    assert_eq!(group.body_lines.len(), 0);
+}
+
+#[test]
+fn test_change_group_set_from_commit_text_only_description() {
+    let mut group = ChangeGroup::new(
+        CommitType::Fix,
+        None,
+        vec![],
+        None,
+        "old".to_string(),
+        vec![],
+    );
+
+    group.set_from_commit_text("fix: new description");
+    assert_eq!(group.description, "new description");
+    assert_eq!(group.body_lines.len(), 0);
+}
+
+#[test]
+fn test_commit_type_all() {
+    let all_types = CommitType::all();
+    assert_eq!(all_types.len(), 10);
+    assert_eq!(all_types[0], CommitType::Feat);
+    assert_eq!(all_types[1], CommitType::Fix);
+    assert_eq!(all_types[9], CommitType::Build);
+}
+
+#[test]
+fn test_changed_file_renamed_status() {
+    let renamed = ChangedFile::new("test.rs".to_string(), Status::INDEX_RENAMED);
+    assert!(!renamed.is_new());
+    assert!(!renamed.is_modified());
+    assert!(!renamed.is_deleted());
+    // Renamed is a separate status
+}
+
+#[test]
+fn test_changed_file_multiple_status_flags() {
+    // Test file with multiple status flags
+    let status = Status::INDEX_MODIFIED | Status::WT_MODIFIED;
+    let file = ChangedFile::new("test.rs".to_string(), status);
+    assert!(file.is_modified()); // Should still detect modified
 }

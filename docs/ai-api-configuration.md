@@ -19,7 +19,7 @@ commit-wizard unterstützt jetzt automatisch:
 export GITHUB_TOKEN="ghp_xxxxxxxxxxxx"
 ```
 
-**Scope:** `read:user` (reicht aus!)  
+**Scope:** `read:user` (reicht aus!)
 **Endpoint:** `https://models.github.com/chat/completions`
 
 ### Option 2: OpenAI API (Fallback)
@@ -28,8 +28,8 @@ export GITHUB_TOKEN="ghp_xxxxxxxxxxxx"
 export OPENAI_API_KEY="sk-xxxxxxxxxxxx"
 ```
 
-**Kostet:** Geld pro Request  
-**Endpoint:** `https://api.openai.com/v1/chat/completions`  
+**Kostet:** Geld pro Request
+**Endpoint:** `https://api.openai.com/v1/chat/completions`
 **API Key:** https://platform.openai.com/api-keys
 
 ## Automatische Auswahl
@@ -237,4 +237,3 @@ commit-wizard --ai
 *GitHub Models möglicherweise Beta/Limited Access
 
 Für Production: **OpenAI API empfohlen** (zuverlässig, global, sehr günstig)
-

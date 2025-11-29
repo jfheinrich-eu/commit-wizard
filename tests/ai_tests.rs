@@ -189,3 +189,490 @@ fn test_ai_integration_with_mock() {
     // - Manual testing with real API token
     // - Error handling tests (like test_generate_requires_api_token)
 }
+
+#[test]
+fn test_parse_commit_message_empty_response() {
+    let response = "";
+    let result = parse_commit_message(response);
+    // parse_commit_message doesn't error on empty, it returns empty string
+    assert!(result.is_ok());
+    let (desc, body) = result.unwrap();
+    assert_eq!(desc, "");
+    assert_eq!(body, None);
+}
+
+#[test]
+fn test_parse_commit_message_whitespace_only() {
+    let response = "   \n\n   ";
+    let result = parse_commit_message(response);
+    // Whitespace gets trimmed, result is empty string
+    assert!(result.is_ok());
+    let (desc, _) = result.unwrap();
+    assert_eq!(desc, "");
+}
+
+#[test]
+fn test_parse_commit_message_trims_whitespace() {
+    let response = "  add feature  \n\n  body text  ";
+    let (desc, body) = parse_commit_message(response).unwrap();
+    assert_eq!(desc, "add feature");
+    assert_eq!(body, Some("body text".to_string()));
+}
+
+#[test]
+fn test_parse_commit_message_preserves_type_prefix() {
+    // Current implementation does NOT strip type prefix
+    // (This is handled elsewhere in the codebase)
+    let response = "feat: add new feature";
+    let (desc, body) = parse_commit_message(response).unwrap();
+    assert_eq!(desc, "feat: add new feature");
+    assert_eq!(body, None);
+
+    let response = "fix(api): resolve bug";
+    let (desc, body) = parse_commit_message(response).unwrap();
+    assert_eq!(desc, "fix(api): resolve bug");
+    assert_eq!(body, None);
+}
+
+#[test]
+fn test_parse_commit_message_multiple_paragraphs() {
+    let response = "implement feature\n\nFirst paragraph\n\nSecond paragraph";
+    let (desc, body) = parse_commit_message(response).unwrap();
+    assert_eq!(desc, "implement feature");
+    let body_text = body.unwrap();
+    assert!(body_text.contains("First paragraph"));
+    assert!(body_text.contains("Second paragraph"));
+}
+
+#[test]
+fn test_build_prompt_formatting() {
+    let files = vec![ChangedFile::new(
+        "src/test.rs".to_string(),
+        Status::INDEX_MODIFIED,
+    )];
+    let group = ChangeGroup::new(
+        CommitType::Test,
+        Some("testing".to_string()),
+        files.clone(),
+        None,
+        "placeholder".to_string(),
+        vec![],
+    );
+
+    let prompt = build_prompt(&group, &files, None);
+
+    // Verify key sections are present (using exact strings from implementation)
+    assert!(prompt.contains("Generate a conventional commit message"));
+    assert!(prompt.contains("Type: test"));
+    assert!(prompt.contains("Scope: testing"));
+    assert!(prompt.contains("Changed files:"));
+    assert!(prompt.contains("src/test.rs"));
+    assert!(prompt.contains("ONLY the commit description"));
+}
+
+#[test]
+fn test_build_prompt_with_ticket() {
+    let files = vec![ChangedFile::new(
+        "src/feature.rs".to_string(),
+        Status::INDEX_NEW,
+    )];
+    let group = ChangeGroup::new(
+        CommitType::Feat,
+        Some("feature".to_string()),
+        files.clone(),
+        Some("JIRA-123".to_string()),
+        "placeholder".to_string(),
+        vec![],
+    );
+
+    let prompt = build_prompt(&group, &files, None);
+
+    assert!(prompt.contains("Ticket: JIRA-123"));
+}
+
+#[test]
+fn test_build_prompt_file_status_indicators() {
+    let files = vec![
+        ChangedFile::new("new_file.rs".to_string(), Status::INDEX_NEW),
+        ChangedFile::new("modified.rs".to_string(), Status::INDEX_MODIFIED),
+        ChangedFile::new("deleted.rs".to_string(), Status::INDEX_DELETED),
+    ];
+    let group = ChangeGroup::new(
+        CommitType::Refactor,
+        None,
+        files.clone(),
+        None,
+        "placeholder".to_string(),
+        vec![],
+    );
+
+    let prompt = build_prompt(&group, &files, None);
+
+    // Verify file list format (exact format from build_prompt)
+    assert!(prompt.contains("new_file.rs"));
+    assert!(prompt.contains("modified.rs"));
+    assert!(prompt.contains("deleted.rs"));
+}
+
+#[test]
+fn test_build_prompt_truncates_large_diff() {
+    let files = vec![ChangedFile::new(
+        "large_file.rs".to_string(),
+        Status::INDEX_MODIFIED,
+    )];
+    let group = ChangeGroup::new(
+        CommitType::Refactor,
+        None,
+        files.clone(),
+        None,
+        "placeholder".to_string(),
+        vec![],
+    );
+
+    // Create a diff larger than 1000 characters
+    let large_diff = "a".repeat(1500);
+    let prompt = build_prompt(&group, &files, Some(&large_diff));
+
+    // Verify truncation message is present
+    assert!(prompt.contains("(truncated)"));
+    // Prompt shouldn't contain the full 1500 characters
+    assert!(prompt.len() < large_diff.len() + 500);
+}
+
+#[test]
+fn test_build_prompt_no_ticket() {
+    let files = vec![ChangedFile::new(
+        "src/test.rs".to_string(),
+        Status::INDEX_MODIFIED,
+    )];
+    let group = ChangeGroup::new(
+        CommitType::Fix,
+        Some("core".to_string()),
+        files.clone(),
+        None, // No ticket
+        "placeholder".to_string(),
+        vec![],
+    );
+
+    let prompt = build_prompt(&group, &files, None);
+
+    // Should not contain "Ticket:" line
+    assert!(!prompt.contains("Ticket:"));
+    assert!(prompt.contains("Type: fix"));
+    assert!(prompt.contains("Scope: core"));
+}
+
+#[test]
+fn test_parse_commit_message_strips_backticks() {
+    let response = "`add new feature`";
+    let (desc, body) = parse_commit_message(response).unwrap();
+    assert_eq!(desc, "add new feature");
+    assert_eq!(body, None);
+}
+
+#[test]
+fn test_parse_commit_message_mixed_quotes_backticks() {
+    let response = "```\"add feature\"```";
+    let (desc, body) = parse_commit_message(response).unwrap();
+    assert_eq!(desc, "\"add feature\"");
+    assert_eq!(body, None);
+}
+
+#[test]
+fn test_parse_commit_message_body_with_blank_lines() {
+    let response = "add feature\n\n\
+                   First paragraph\n\n\n\
+                   Second paragraph after multiple blanks";
+    let (desc, body) = parse_commit_message(response).unwrap();
+    assert_eq!(desc, "add feature");
+    let body_text = body.unwrap();
+    assert!(body_text.contains("First paragraph"));
+    assert!(body_text.contains("Second paragraph"));
+}
+
+// HTTP mocked tests using mockito
+use mockito::Server;
+
+#[test]
+fn test_openai_api_call_success() {
+    let mut server = Server::new();
+
+    let mock_response = r#"{
+        "choices": [{
+            "message": {
+                "role": "assistant",
+                "content": "add user authentication endpoint"
+            }
+        }]
+    }"#;
+
+    let mock = server
+        .mock("POST", "/")
+        .with_status(200)
+        .with_header("content-type", "application/json")
+        .with_body(mock_response)
+        .create();
+
+    let client = reqwest::blocking::Client::new();
+    let files = vec![ChangedFile::new(
+        "src/auth.rs".to_string(),
+        Status::INDEX_NEW,
+    )];
+    let group = ChangeGroup::new(
+        CommitType::Feat,
+        Some("api".to_string()),
+        files.clone(),
+        None,
+        "placeholder".to_string(),
+        vec![],
+    );
+
+    let config = commit_wizard::ai::ApiConfig {
+        token: "test-token".to_string(),
+        api_url: server.url(),
+        model: "gpt-4".to_string(),
+        system_prompt: "system prompt".to_string(),
+    };
+
+    let result =
+        commit_wizard::ai::openai_api_call_with_client(&client, &group, &files, None, &config);
+
+    mock.assert();
+    assert!(result.is_ok());
+    let (desc, body) = result.unwrap();
+    assert_eq!(desc, "add user authentication endpoint");
+    assert_eq!(body, None);
+}
+
+#[test]
+fn test_openai_api_call_with_body() {
+    let mut server = Server::new();
+
+    let mock_response = r#"{
+        "choices": [{
+            "message": {
+                "role": "assistant",
+                "content": "implement OAuth2 flow\n\nAdds refresh token support\nIncludes JWT validation"
+            }
+        }]
+    }"#;
+
+    let mock = server
+        .mock("POST", "/")
+        .with_status(200)
+        .with_header("content-type", "application/json")
+        .with_body(mock_response)
+        .create();
+
+    let client = reqwest::blocking::Client::new();
+    let files = vec![ChangedFile::new(
+        "src/oauth.rs".to_string(),
+        Status::INDEX_NEW,
+    )];
+    let group = ChangeGroup::new(
+        CommitType::Feat,
+        Some("auth".to_string()),
+        files.clone(),
+        None,
+        "placeholder".to_string(),
+        vec![],
+    );
+
+    let config = commit_wizard::ai::ApiConfig {
+        token: "test-token".to_string(),
+        api_url: server.url(),
+        model: "gpt-4".to_string(),
+        system_prompt: "system prompt".to_string(),
+    };
+
+    let result =
+        commit_wizard::ai::openai_api_call_with_client(&client, &group, &files, None, &config);
+
+    mock.assert();
+    assert!(result.is_ok());
+    let (desc, body) = result.unwrap();
+    assert_eq!(desc, "implement OAuth2 flow");
+    assert!(body.is_some());
+    let body_text = body.unwrap();
+    assert!(body_text.contains("refresh token"));
+    assert!(body_text.contains("JWT validation"));
+}
+
+#[test]
+fn test_openai_api_call_error_response() {
+    let mut server = Server::new();
+
+    let mock = server
+        .mock("POST", "/")
+        .with_status(401)
+        .with_header("content-type", "application/json")
+        .with_body(r#"{"error": {"message": "Invalid API key"}}"#)
+        .create();
+
+    let client = reqwest::blocking::Client::new();
+    let files = vec![ChangedFile::new(
+        "src/test.rs".to_string(),
+        Status::INDEX_MODIFIED,
+    )];
+    let group = ChangeGroup::new(
+        CommitType::Fix,
+        None,
+        files.clone(),
+        None,
+        "placeholder".to_string(),
+        vec![],
+    );
+
+    let config = commit_wizard::ai::ApiConfig {
+        token: "invalid-token".to_string(),
+        api_url: server.url(),
+        model: "gpt-4".to_string(),
+        system_prompt: "system prompt".to_string(),
+    };
+
+    let result =
+        commit_wizard::ai::openai_api_call_with_client(&client, &group, &files, None, &config);
+
+    mock.assert();
+    assert!(result.is_err());
+    let error_msg = result.unwrap_err().to_string();
+    assert!(error_msg.contains("401"));
+}
+
+#[test]
+fn test_github_models_api_call_success() {
+    let mut server = Server::new();
+
+    let mock_response = r#"{
+        "choices": [{
+            "message": {
+                "role": "assistant",
+                "content": "fix memory leak in cache"
+            }
+        }]
+    }"#;
+
+    let mock = server
+        .mock("POST", "/")
+        .with_status(200)
+        .with_header("content-type", "application/json")
+        .with_body(mock_response)
+        .create();
+
+    let client = reqwest::blocking::Client::new();
+    let files = vec![ChangedFile::new(
+        "src/cache.rs".to_string(),
+        Status::INDEX_MODIFIED,
+    )];
+    let group = ChangeGroup::new(
+        CommitType::Fix,
+        Some("cache".to_string()),
+        files.clone(),
+        None,
+        "placeholder".to_string(),
+        vec![],
+    );
+
+    let config = commit_wizard::ai::ApiConfig {
+        token: "ghp_test123".to_string(),
+        api_url: server.url(),
+        model: "gpt-4".to_string(),
+        system_prompt: "system prompt".to_string(),
+    };
+
+    let result = commit_wizard::ai::github_models_api_call_with_client(
+        &client, &group, &files, None, &config,
+    );
+
+    mock.assert();
+    assert!(result.is_ok());
+    let (desc, body) = result.unwrap();
+    assert_eq!(desc, "fix memory leak in cache");
+    assert_eq!(body, None);
+}
+
+#[test]
+fn test_github_models_api_call_with_diff() {
+    let mut server = Server::new();
+
+    let mock_response = r#"{
+        "choices": [{
+            "message": {
+                "role": "assistant",
+                "content": "optimize database queries"
+            }
+        }]
+    }"#;
+
+    let mock = server
+        .mock("POST", "/")
+        .with_status(200)
+        .with_header("content-type", "application/json")
+        .with_body(mock_response)
+        .create();
+
+    let client = reqwest::blocking::Client::new();
+    let files = vec![ChangedFile::new(
+        "src/db.rs".to_string(),
+        Status::INDEX_MODIFIED,
+    )];
+    let group = ChangeGroup::new(
+        CommitType::Perf,
+        Some("database".to_string()),
+        files.clone(),
+        None,
+        "placeholder".to_string(),
+        vec![],
+    );
+    let diff = Some("+ fn optimized_query() {}\n- fn slow_query() {}");
+
+    let config = commit_wizard::ai::ApiConfig {
+        token: "ghp_test456".to_string(),
+        api_url: server.url(),
+        model: "gpt-4".to_string(),
+        system_prompt: "system prompt".to_string(),
+    };
+
+    let result = commit_wizard::ai::github_models_api_call_with_client(
+        &client, &group, &files, diff, &config,
+    );
+
+    mock.assert();
+    assert!(result.is_ok());
+    let (desc, _) = result.unwrap();
+    assert_eq!(desc, "optimize database queries");
+}
+
+#[test]
+fn test_generate_empty_token_treated_as_missing() {
+    // Empty tokens should be treated as missing
+    std::env::set_var("GITHUB_TOKEN", "");
+    std::env::set_var("GH_TOKEN", "");
+    std::env::set_var("OPENAI_API_KEY", "");
+
+    let files = vec![ChangedFile::new(
+        "test.rs".to_string(),
+        Status::INDEX_MODIFIED,
+    )];
+    let group = ChangeGroup::new(
+        CommitType::Test,
+        None,
+        files.clone(),
+        None,
+        "placeholder".to_string(),
+        vec![],
+    );
+
+    let result = generate_commit_message(&group, &files, None);
+
+    // Clean up
+    std::env::remove_var("GITHUB_TOKEN");
+    std::env::remove_var("GH_TOKEN");
+    std::env::remove_var("OPENAI_API_KEY");
+
+    assert!(result.is_err());
+    assert!(result
+        .unwrap_err()
+        .to_string()
+        .contains("No API token found"));
+}
