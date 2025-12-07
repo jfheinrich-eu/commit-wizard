@@ -5,9 +5,11 @@
 
 // Public modules
 pub mod ai;
+pub mod copilot;
 pub mod editor;
 pub mod git;
 pub mod inference;
+pub mod logging;
 pub mod types;
 pub mod ui;
 

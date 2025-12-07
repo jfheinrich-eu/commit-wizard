@@ -10,7 +10,7 @@ use tempfile::TempDir;
 
 // Import git functions from the library
 use commit_wizard::git::{
-    collect_staged_files, commit_group, extract_ticket_from_branch, get_current_branch,
+    collect_changed_files, commit_group, extract_ticket_from_branch, get_current_branch,
     get_file_diff,
 };
 use commit_wizard::types::ChangeGroup;
@@ -68,7 +68,7 @@ fn test_extract_ticket_multiple_matches() {
 
 // Note: Path validation tests are kept internal to the module
 // as `is_valid_path` is private. We test it indirectly through
-// public APIs in collect_staged_files and commit_group.
+// public APIs in collect_changed_files and commit_group.
 
 #[cfg(test)]
 mod path_validation_indirect {
@@ -134,7 +134,7 @@ mod path_validation_indirect {
 }
 
 // ============================================================================
-// Tests for collect_staged_files()
+// Tests for collect_changed_files()
 // ============================================================================
 
 /// Helper function to create a test repository with initial commit
@@ -164,17 +164,17 @@ fn create_test_repo() -> TempDir {
 }
 
 #[test]
-fn test_collect_staged_files_empty_repo() {
+fn test_collect_changed_files_empty_repo() {
     let tmp = create_test_repo();
     let repo = Repository::open(tmp.path()).unwrap();
 
     // No staged changes yet
-    let files = collect_staged_files(&repo).unwrap();
+    let files = collect_changed_files(&repo, false).unwrap();
     assert_eq!(files.len(), 0, "Empty repo should have no staged files");
 }
 
 #[test]
-fn test_collect_staged_files_with_new_file() {
+fn test_collect_changed_files_with_new_file() {
     let tmp = create_test_repo();
     let repo = Repository::open(tmp.path()).unwrap();
 
@@ -184,13 +184,13 @@ fn test_collect_staged_files_with_new_file() {
     index.add_path(Path::new("test.txt")).unwrap();
     index.write().unwrap();
 
-    let files = collect_staged_files(&repo).unwrap();
+    let files = collect_changed_files(&repo, false).unwrap();
     assert_eq!(files.len(), 1, "Should have exactly one staged file");
     assert_eq!(files[0].path, "test.txt");
 }
 
 #[test]
-fn test_collect_staged_files_with_modified_file() {
+fn test_collect_changed_files_with_modified_file() {
     let tmp = create_test_repo();
     let repo = Repository::open(tmp.path()).unwrap();
 
@@ -200,13 +200,13 @@ fn test_collect_staged_files_with_modified_file() {
     index.add_path(Path::new("README.md")).unwrap();
     index.write().unwrap();
 
-    let files = collect_staged_files(&repo).unwrap();
+    let files = collect_changed_files(&repo, false).unwrap();
     assert_eq!(files.len(), 1, "Should detect modified file");
     assert_eq!(files[0].path, "README.md");
 }
 
 #[test]
-fn test_collect_staged_files_multiple_files() {
+fn test_collect_changed_files_multiple_files() {
     let tmp = create_test_repo();
     let repo = Repository::open(tmp.path()).unwrap();
 
@@ -222,7 +222,7 @@ fn test_collect_staged_files_multiple_files() {
     index.add_path(Path::new("src/main.rs")).unwrap();
     index.write().unwrap();
 
-    let files = collect_staged_files(&repo).unwrap();
+    let files = collect_changed_files(&repo, false).unwrap();
     assert_eq!(files.len(), 3, "Should have three staged files");
 
     let paths: Vec<_> = files.iter().map(|f| f.path.as_str()).collect();
@@ -232,22 +232,32 @@ fn test_collect_staged_files_multiple_files() {
 }
 
 #[test]
-fn test_collect_staged_files_ignores_unstaged() {
+fn test_collect_changed_files_includes_both_staged_and_unstaged() {
     let tmp = create_test_repo();
     let repo = Repository::open(tmp.path()).unwrap();
 
-    // Create staged file
+    // Create and stage first file
     fs::write(tmp.path().join("staged.txt"), "staged").unwrap();
     let mut index = repo.index().unwrap();
     index.add_path(Path::new("staged.txt")).unwrap();
     index.write().unwrap();
 
-    // Create unstaged file
-    fs::write(tmp.path().join("unstaged.txt"), "unstaged").unwrap();
+    // Modify README.md (which is already tracked) but don't stage it
+    fs::write(tmp.path().join("README.md"), "# Modified unstaged").unwrap();
 
-    let files = collect_staged_files(&repo).unwrap();
-    assert_eq!(files.len(), 1, "Should only include staged files");
-    assert_eq!(files[0].path, "staged.txt");
+    let files = collect_changed_files(&repo, false).unwrap();
+    assert_eq!(
+        files.len(),
+        2,
+        "Should include both staged and unstaged files"
+    );
+
+    let paths: Vec<_> = files.iter().map(|f| f.path.as_str()).collect();
+    assert!(paths.contains(&"staged.txt"), "Should include staged file");
+    assert!(
+        paths.contains(&"README.md"),
+        "Should include unstaged modified file"
+    );
 }
 
 // ============================================================================
@@ -347,7 +357,7 @@ fn test_commit_group_success() {
     index.write().unwrap();
 
     // Create change group
-    let files = collect_staged_files(&repo).unwrap();
+    let files = collect_changed_files(&repo, false).unwrap();
     let group = ChangeGroup::new(
         CommitType::Feat,
         None,
@@ -381,7 +391,7 @@ fn test_commit_group_with_body() {
     index.write().unwrap();
 
     // Create change group with body
-    let files = collect_staged_files(&repo).unwrap();
+    let files = collect_changed_files(&repo, false).unwrap();
     let group = ChangeGroup::new(
         CommitType::Refactor,
         None,
@@ -424,7 +434,7 @@ fn test_commit_group_minimal_message() {
     index.write().unwrap();
 
     // Create group with minimal description
-    let files = collect_staged_files(&repo).unwrap();
+    let files = collect_changed_files(&repo, false).unwrap();
     let group = ChangeGroup::new(
         CommitType::Chore,
         None,
@@ -463,7 +473,7 @@ fn test_commit_group_with_scope_and_ticket() {
     index.write().unwrap();
 
     // Create change group with scope and ticket
-    let files = collect_staged_files(&repo).unwrap();
+    let files = collect_changed_files(&repo, false).unwrap();
     let group = ChangeGroup::new(
         CommitType::Fix,
         Some("api".to_string()),

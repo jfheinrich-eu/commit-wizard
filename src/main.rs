@@ -26,6 +26,7 @@
 //! ```
 
 use std::env;
+use std::io::{self, Write};
 use std::path::PathBuf;
 
 use anyhow::{bail, Context, Result};
@@ -33,8 +34,12 @@ use clap::Parser;
 use git2::Repository;
 
 // Use the library modules
-use commit_wizard::git::{collect_staged_files, extract_ticket_from_branch, get_current_branch};
+use commit_wizard::copilot::{build_groups_with_ai, is_ai_available};
+use commit_wizard::git::{
+    collect_changed_files, extract_ticket_from_branch, get_current_branch, get_file_diff,
+};
 use commit_wizard::inference::build_groups;
+use commit_wizard::logging;
 use commit_wizard::types::AppState;
 use commit_wizard::ui::run_tui;
 
@@ -58,15 +63,23 @@ struct Cli {
     #[arg(short, long, value_name = "PATH")]
     repo: Option<PathBuf>,
 
-    /// Use AI (GitHub Copilot) to generate commit messages
-    #[arg(short, long, alias = "copilot")]
-    ai: bool,
+    /// Disable AI and use heuristic grouping (AI is enabled by default if token is available)
+    #[arg(long)]
+    no_ai: bool,
+
+    /// Enable logging to file
+    #[arg(long)]
+    log: bool,
+
+    /// Write log to current directory instead of /var/log/
+    #[arg(long)]
+    log_local: bool,
 
     /// Override existing environment variables with values from .env file
     #[arg(long)]
     env_override: bool,
 
-    /// Verbose output for debugging
+    /// Verbose output for debugging (also enables DEBUG log level)
     #[arg(short, long)]
     verbose: bool,
 }
@@ -83,6 +96,15 @@ fn main() -> Result<()> {
 
     // Load .env file with optional override behavior
     load_env_file(cli.env_override);
+
+    // Initialize logging
+    let log_path = logging::init_logging(cli.log, cli.log_local, cli.verbose)?;
+    if let Some(path) = &log_path {
+        if cli.verbose {
+            eprintln!("📝 Logging to: {}", path.display());
+        }
+        log::info!("Commit Wizard v{}", env!("CARGO_PKG_VERSION"));
+    }
 
     // Configure logging if verbose
     if cli.verbose {
@@ -121,7 +143,7 @@ fn load_env_file(override_existing: bool) {
                 if let Some((key, value)) = line.split_once('=') {
                     let key = key.trim();
                     let value = value.trim().trim_matches('"').trim_matches('\'');
-                    env::set_var(key, value);
+                    unsafe { env::set_var(key, value) };
                 }
             }
         } else if let Ok(env_file) = env::var("COMMIT_WIZARD_ENV_FILE") {
@@ -135,7 +157,7 @@ fn load_env_file(override_existing: bool) {
                     if let Some((key, value)) = line.split_once('=') {
                         let key = key.trim();
                         let value = value.trim().trim_matches('"').trim_matches('\'');
-                        env::set_var(key, value);
+                        unsafe { env::set_var(key, value) };
                     }
                 }
             }
@@ -147,6 +169,23 @@ fn load_env_file(override_existing: bool) {
                 _ = dotenv::from_filename(&env_file);
             }
         }
+    }
+}
+
+/// Displays a progress spinner with a message
+fn show_progress(message: &str, step: usize, total: usize) {
+    if atty::is(atty::Stream::Stderr) {
+        let spinners = ["⠋", "⠙", "⠹", "⠸", "⠼", "⠴", "⠦", "⠧", "⠇", "⠏"];
+        eprint!("\r\x1B[2K[{}/{}] {} {}", step, total, spinners[0], message);
+        io::stderr().flush().unwrap();
+    }
+}
+
+/// Clears the progress line
+fn clear_progress() {
+    if atty::is(atty::Stream::Stderr) {
+        eprint!("\r\x1B[2K");
+        io::stderr().flush().unwrap();
     }
 }
 
@@ -163,55 +202,134 @@ fn run_application(cli: Cli) -> Result<()> {
 
     // Open repository
     let repo = Repository::open(&repo_path).with_context(|| {
-        format!(
+        let msg = format!(
             "Not a git repository: {}\n\
              Hint: Run this command from inside a git repository or use --repo <path>",
             repo_path.display()
-        )
+        );
+        log::error!("Failed to open repository: {}", repo_path.display());
+        msg
     })?;
+
+    log::info!("Opened repository: {}", repo_path.display());
 
     // Get branch and extract ticket
     let branch = get_current_branch(&repo)?;
+    log::info!("Current branch: {}", branch);
+
     if cli.verbose {
         eprintln!("🌿 Current branch: {}", branch);
     }
 
     let ticket = extract_ticket_from_branch(&branch);
-    if cli.verbose {
-        if let Some(ref t) = ticket {
+    if let Some(ref t) = ticket {
+        log::info!("Detected ticket: {}", t);
+        if cli.verbose {
             eprintln!("🎫 Detected ticket: {}", t);
-        } else {
+        }
+    } else {
+        log::debug!("No ticket detected in branch name");
+        if cli.verbose {
             eprintln!("🎫 No ticket detected in branch name");
         }
     }
 
-    // Collect staged files
-    let staged_files = collect_staged_files(&repo)?;
-    if staged_files.is_empty() {
+    // Step 1: Collect all changed files (staged and unstaged)
+    show_progress("Collecting changed files...", 1, 3);
+    let changed_files = collect_changed_files(&repo, true)?;
+    log::info!("Collected {} changed files", changed_files.len());
+    clear_progress();
+
+    if changed_files.is_empty() {
+        log::warn!("No changes found");
         bail!(
-            "No staged changes found.\n\
-             Hint: Stage files with 'git add <files>' before running this tool."
+            "No changes found in repository.\n\
+             Hint: Modify some files or create new ones to get started."
         );
     }
 
     if cli.verbose {
-        eprintln!("📋 Found {} staged file(s)", staged_files.len());
+        eprintln!("📋 Found {} changed file(s)", changed_files.len());
     }
 
-    // Build commit groups
-    let groups = build_groups(staged_files, ticket);
+    // Step 2: Determine if AI should be used
+    show_progress("Checking AI availability...", 2, 3);
+    let use_ai = !cli.no_ai && is_ai_available();
+    clear_progress();
+
+    log::info!(
+        "AI mode: enabled={}, available={}, no_ai_flag={}",
+        use_ai,
+        is_ai_available(),
+        cli.no_ai
+    );
     if cli.verbose {
-        eprintln!("📦 Created {} commit group(s)", groups.len());
+        if use_ai {
+            eprintln!("🤖 AI mode enabled - using GitHub Copilot for grouping and messages");
+        } else if cli.no_ai {
+            eprintln!("🔧 AI mode disabled by --no-ai flag - using heuristic grouping");
+        } else {
+            eprintln!("🔧 No API token found - falling back to heuristic grouping");
+        }
     }
 
-    // Check for AI mode
-    if cli.ai && cli.verbose {
-        eprintln!("🤖 AI mode enabled - will use GitHub Copilot for message generation");
+    // Step 3: Build commit groups (AI-first approach)
+    show_progress("Creating commit groups...", 3, 3);
+    let groups = if use_ai {
+        // Collect diffs for AI context
+        let mut diffs = std::collections::HashMap::new();
+        for file in &changed_files {
+            if let Ok(diff) = get_file_diff(&repo, &file.path) {
+                diffs.insert(file.path.clone(), diff);
+            }
+        }
+
+        match build_groups_with_ai(changed_files.clone(), ticket.clone(), diffs) {
+            Ok(ai_groups) => {
+                log::info!("AI grouping successful: {} groups created", ai_groups.len());
+                logging::log_grouping_result(changed_files.len(), ai_groups.len(), true);
+                clear_progress();
+                if cli.verbose {
+                    eprintln!("✨ AI created {} commit group(s)", ai_groups.len());
+                }
+                ai_groups
+            }
+            Err(e) => {
+                logging::log_error("AI grouping failed", &e);
+                log::warn!("Falling back to heuristic grouping");
+                clear_progress();
+                if cli.verbose {
+                    eprintln!("⚠️  AI grouping failed: {}", e);
+                    eprintln!("🔄 Falling back to heuristic grouping");
+                }
+                let heuristic_groups = build_groups(changed_files, ticket);
+                logging::log_grouping_result(
+                    heuristic_groups.iter().map(|g| g.files.len()).sum(),
+                    heuristic_groups.len(),
+                    false,
+                );
+                heuristic_groups
+            }
+        }
+    } else {
+        let heuristic_groups = build_groups(changed_files, ticket);
+        logging::log_grouping_result(
+            heuristic_groups.iter().map(|g| g.files.len()).sum(),
+            heuristic_groups.len(),
+            false,
+        );
+        clear_progress();
+        heuristic_groups
+    };
+
+    log::info!("Final result: {} commit groups", groups.len());
+    if cli.verbose {
+        eprintln!("📦 Final: {} commit group(s)", groups.len());
     }
 
-    // Run TUI
+    // Run TUI (AI is now always used for editing if available)
     let app = AppState::new(groups);
-    run_tui(app, &repo_path, cli.ai)?;
+    run_tui(app, &repo_path)?;
 
     Ok(())
 }
@@ -221,23 +339,20 @@ fn test_github_token() -> Result<()> {
     println!("=== AI API Token Test ===\n");
 
     // Check which tokens are available
-    let github_token = env::var("GITHUB_TOKEN")
+    let github_token = env::var("COPILOT_GITHUB_TOKEN")
+        .or_else(|_| env::var("GITHUB_TOKEN"))
         .or_else(|_| env::var("GH_TOKEN"))
         .ok()
         .filter(|t| !t.is_empty());
 
-    let openai_token = env::var("OPENAI_API_KEY").ok().filter(|t| !t.is_empty());
-
-    if github_token.is_none() && openai_token.is_none() {
-        eprintln!("❌ No API tokens found in environment\n");
+    if github_token.is_none() {
+        eprintln!("❌ No Github Copilot CLI tokens found in environment\n");
         eprintln!("Options:");
-        eprintln!("  For GitHub Models API (free):");
-        eprintln!("    export GITHUB_TOKEN='ghp_xxxxxxxxxxxx'");
-        eprintln!("  For OpenAI API (paid):");
-        eprintln!("    export OPENAI_API_KEY='sk-xxxxxxxxxxxx'");
+        eprintln!("  For GitHub Copilot CLI API (free/paid):");
+        eprintln!("    export COPILOT_GITHUB_TOKEN='ghp_xxxxxxxxxxxx'");
         eprintln!("  Or create .env file with tokens");
         eprintln!("  Run with: commit-wizard --env-override test-token\n");
-        bail!("No API tokens found");
+        bail!("No Github Copilot CLI tokens found");
     }
 
     let mut all_passed = true;
@@ -248,17 +363,6 @@ fn test_github_token() -> Result<()> {
         println!("✓ GITHUB_TOKEN is set");
 
         if !test_github_models_api(&token)? {
-            all_passed = false;
-        }
-        println!();
-    }
-
-    // Test OpenAI token if available
-    if let Some(token) = openai_token {
-        println!("=== Testing OpenAI API ===\n");
-        println!("✓ OPENAI_API_KEY is set");
-
-        if !test_openai_api(&token)? {
             all_passed = false;
         }
         println!();
@@ -399,90 +503,6 @@ fn test_github_models_api(token: &str) -> Result<bool> {
                 "   This is expected if models.github.com is not accessible in your environment"
             );
             println!("   Consider using OpenAI API as fallback (see docs/ai-api-configuration.md)");
-            Ok(false)
-        }
-    }
-}
-
-/// Tests OpenAI API with the provided token.
-/// Returns true if successful, false if failed.
-fn test_openai_api(token: &str) -> Result<bool> {
-    use reqwest::blocking::Client;
-    use serde_json::json;
-    use std::time::Duration;
-
-    // Check token format
-    if token.starts_with("sk-") {
-        println!("✓ Token format looks valid");
-    } else {
-        println!("⚠️  Token format may be incorrect");
-        println!("   Expected: sk-...");
-    }
-    println!();
-
-    // Test OpenAI API
-    println!("Testing OpenAI API endpoint...");
-    let client = Client::builder().timeout(Duration::from_secs(10)).build()?;
-
-    let response = client
-        .post("https://api.openai.com/v1/chat/completions")
-        .header("Authorization", format!("Bearer {}", token))
-        .header("Content-Type", "application/json")
-        .json(&json!({
-            "model": "gpt-4o-mini",
-            "messages": [{"role": "user", "content": "Say hello"}],
-            "max_tokens": 10
-        }))
-        .send();
-
-    match response {
-        Ok(resp) if resp.status().is_success() => {
-            println!("✅ SUCCESS! OpenAI API is working!");
-            if let Ok(body) = resp.json::<serde_json::Value>() {
-                println!("\nResponse preview:");
-                println!("{}", serde_json::to_string_pretty(&body)?);
-            }
-            Ok(true)
-        }
-        Ok(resp) => {
-            let status = resp.status();
-            let body = resp.text().unwrap_or_default();
-
-            println!("❌ OpenAI API test failed (HTTP {})", status);
-
-            match status.as_u16() {
-                401 => {
-                    println!("\nAuthentication failed:");
-                    println!("  - API key is invalid or revoked");
-                    println!("\nTroubleshooting:");
-                    println!("  1. Create a new API key at: https://platform.openai.com/api-keys");
-                    println!("  2. Make sure your account has credits");
-                    println!("  3. Check if the key is active");
-                }
-                403 => {
-                    println!("\nForbidden:");
-                    println!("  - API key may not have permission");
-                    println!("  - Account may be restricted");
-                }
-                429 => {
-                    println!("\nRate Limited:");
-                    println!("  - Too many requests");
-                    println!("  - Check your account limits");
-                }
-                _ => {
-                    println!("\nUnexpected error");
-                }
-            }
-
-            if !body.is_empty() {
-                println!("\nResponse body:");
-                println!("{}", body);
-            }
-
-            Ok(false)
-        }
-        Err(e) => {
-            println!("❌ Failed to connect to OpenAI API: {}", e);
             Ok(false)
         }
     }

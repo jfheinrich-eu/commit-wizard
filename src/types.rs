@@ -325,6 +325,12 @@ pub struct AppState {
     pub selected_file_index: usize,
     /// Scroll offset for files panel
     pub files_scroll_offset: usize,
+    /// Git commit output to display in popup
+    pub commit_output: String,
+    /// Scroll offset for commit output popup
+    pub commit_output_scroll: usize,
+    /// Whether the commit output popup is shown
+    pub show_commit_output: bool,
 }
 
 impl AppState {
@@ -346,6 +352,9 @@ impl AppState {
             commit_message_scroll_offset: 0,
             selected_file_index: 0,
             files_scroll_offset: 0,
+            commit_output: String::new(),
+            commit_output_scroll: 0,
+            show_commit_output: false,
         }
     }
 

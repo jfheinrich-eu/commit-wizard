@@ -19,6 +19,8 @@ ignored = ["crossterm", "async-openai", "thiserror", "tui-framework-experiment"]
 anyhow = "1"
 clap = { version = "4.5.53", features = ["derive"] }
 git2 = "^0.20"
+log = { version = "0.4.29", features = ["std"] }
+chrono = "0.4"
 regex = "1"
 reqwest = { version = "0.12", features = [
     "json",
@@ -37,6 +39,7 @@ dotenv = "0.15.0"
 async-openai = "0.30.1"
 tui-framework-experiment = "0.4.0"
 edtui = "0.9.9"
+atty = "0.2"
 
 [features]
 default = []
