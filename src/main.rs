@@ -28,6 +28,7 @@
 use std::env;
 use std::io::{self, Write};
 use std::path::PathBuf;
+use std::sync::Arc;
 
 use anyhow::{bail, Context, Result};
 use clap::Parser;
@@ -173,20 +174,53 @@ fn load_env_file(override_existing: bool) {
     }
 }
 
-/// Displays a progress spinner with a message
-fn show_progress(message: &str, step: usize, total: usize) {
-    if atty::is(atty::Stream::Stderr) {
-        let spinners = ["⠋", "⠙", "⠹", "⠸", "⠼", "⠴", "⠦", "⠧", "⠇", "⠏"];
-        eprint!("\r\x1B[2K[{}/{}] {} {}", step, total, spinners[0], message);
-        io::stderr().flush().unwrap();
-    }
+/// Progress indicator that runs in background and animates
+struct ProgressSpinner {
+    running: Arc<std::sync::atomic::AtomicBool>,
+    handle: Option<std::thread::JoinHandle<()>>,
 }
 
-/// Clears the progress line
-fn clear_progress() {
-    if atty::is(atty::Stream::Stderr) {
-        eprint!("\r\x1B[2K");
-        io::stderr().flush().unwrap();
+impl ProgressSpinner {
+    fn new(message: impl Into<String>, step: usize, total: usize) -> Self {
+        let message = message.into();
+        let running = Arc::new(std::sync::atomic::AtomicBool::new(true));
+
+        let msg_clone = message.clone();
+        let running_clone = running.clone();
+
+        let handle = if atty::is(atty::Stream::Stderr) {
+            Some(std::thread::spawn(move || {
+                let spinners = ["⠋", "⠙", "⠹", "⠸", "⠼", "⠴", "⠦", "⠧", "⠇", "⠏"];
+                let mut idx = 0;
+
+                while running_clone.load(std::sync::atomic::Ordering::Relaxed) {
+                    eprint!(
+                        "\r\x1B[2K[{}/{}] {} {}",
+                        step, total, spinners[idx], msg_clone
+                    );
+                    io::stderr().flush().unwrap();
+
+                    idx = (idx + 1) % spinners.len();
+                    std::thread::sleep(std::time::Duration::from_millis(100));
+                }
+
+                // Clear line when done
+                eprint!("\r\x1B[2K");
+                io::stderr().flush().unwrap();
+            }))
+        } else {
+            None
+        };
+
+        Self { running, handle }
+    }
+
+    fn stop(self) {
+        self.running
+            .store(false, std::sync::atomic::Ordering::Relaxed);
+        if let Some(handle) = self.handle {
+            let _ = handle.join();
+        }
     }
 }
 
@@ -316,10 +350,10 @@ fn run_application(cli: Cli) -> Result<()> {
     }
 
     // Step 1: Collect changed files (staged and unstaged, excluding untracked)
-    show_progress("Collecting changed files...", 1, 4);
+    let spinner = ProgressSpinner::new("Collecting changed files...", 1, 4);
     let mut changed_files = collect_changed_files(&repo, false)?;
     log::info!("Collected {} changed files (tracked)", changed_files.len());
-    clear_progress();
+    spinner.stop();
 
     // Step 1a: Check for untracked files and prompt user
     let untracked_files = collect_untracked_files(&repo)?;
@@ -350,9 +384,9 @@ fn run_application(cli: Cli) -> Result<()> {
     }
 
     // Step 2: Determine if AI should be used
-    show_progress("Checking AI availability...", 2, 4);
+    let spinner = ProgressSpinner::new("Checking AI availability...", 2, 4);
     let use_ai = !cli.no_ai && is_ai_available();
-    clear_progress();
+    spinner.stop();
 
     log::info!(
         "AI mode: enabled={}, available={}, no_ai_flag={}",
@@ -371,7 +405,7 @@ fn run_application(cli: Cli) -> Result<()> {
     }
 
     // Step 3: Build commit groups (AI-first approach)
-    show_progress("Creating commit groups...", 3, 4);
+    let spinner = ProgressSpinner::new("Creating commit groups...", 3, 4);
     let groups = if use_ai {
         // Collect diffs for AI context
         let mut diffs = std::collections::HashMap::new();
@@ -385,7 +419,7 @@ fn run_application(cli: Cli) -> Result<()> {
             Ok(ai_groups) => {
                 log::info!("AI grouping successful: {} groups created", ai_groups.len());
                 logging::log_grouping_result(changed_files.len(), ai_groups.len(), true);
-                clear_progress();
+                spinner.stop();
                 if cli.verbose {
                     eprintln!("✨ AI created {} commit group(s)", ai_groups.len());
                 }
@@ -394,7 +428,7 @@ fn run_application(cli: Cli) -> Result<()> {
             Err(e) => {
                 logging::log_error("AI grouping failed", &e);
                 log::warn!("Falling back to heuristic grouping");
-                clear_progress();
+                spinner.stop();
                 if cli.verbose {
                     eprintln!("⚠️  AI grouping failed: {}", e);
                     eprintln!("🔄 Falling back to heuristic grouping");
@@ -415,7 +449,7 @@ fn run_application(cli: Cli) -> Result<()> {
             heuristic_groups.len(),
             false,
         );
-        clear_progress();
+        spinner.stop();
         heuristic_groups
     };
 
