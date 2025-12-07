@@ -251,7 +251,9 @@ impl ChangeGroup {
             msg.push_str("\n\n");
             for line in &self.body_lines {
                 msg.push_str("- ");
-                msg.push_str(line);
+                // Defensive: strip '- ' prefix if present (shouldn't happen, but be safe)
+                let clean_line = line.strip_prefix("- ").unwrap_or(line);
+                msg.push_str(clean_line);
                 msg.push('\n');
             }
         }

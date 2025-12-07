@@ -4,8 +4,8 @@
 //! of conventional commit messages. It uses the GitHub Copilot CLI to analyze
 //! file changes and produce high-quality commit messages.
 
-use anyhow::{Context, Result};
-use std::collections::HashMap;
+use anyhow::{bail, Context, Result};
+use std::collections::{HashMap, HashSet};
 
 use std::process::{Command, Stdio};
 
@@ -218,6 +218,9 @@ fn build_grouping_prompt(
     prompt.push_str("    \"description\": \"add user endpoint\",\n");
     prompt.push_str("    \"files\": [\"src/api/users.rs\"],\n");
     prompt.push_str("    \"body_lines\": [\"implement GET /users\", \"add user model\"]\n");
+    prompt.push_str(
+        "    # NOTE: body_lines should NOT start with '- ', it will be added automatically\n",
+    );
     prompt.push_str("  }\n");
     prompt.push_str("]\n");
     prompt.push_str(&format!("{}\n", END_MARKER));
@@ -246,7 +249,9 @@ fn build_commit_message_prompt(
     prompt.push_str("- Start with a lowercase verb\n");
     prompt.push_str("- No period at the end of description\n");
     prompt.push_str("- Keep subject line under 72 characters\n");
-    prompt.push_str("- If providing a body, use bullet points starting with '-'\n");
+    prompt
+        .push_str("- If providing a body, provide plain text lines WITHOUT bullet point prefix\n");
+    prompt.push_str("- The tool will automatically add '- ' prefix to each body line\n");
     prompt.push_str("- Mention breaking changes if applicable\n\n");
 
     prompt.push_str(&format!("Type: {}\n", group.commit_type.as_str()));
@@ -427,7 +432,12 @@ fn parse_groups_from_response(
                     .as_array()
                     .unwrap_or(&vec![])
                     .iter()
-                    .filter_map(|v| v.as_str().map(|s| s.to_string()))
+                    .filter_map(|v| {
+                        v.as_str().map(|s| {
+                            // Remove '- ' prefix if present (defensive programming)
+                            s.strip_prefix("- ").unwrap_or(s).to_string()
+                        })
+                    })
                     .collect();
 
                 // Filter files that match this group
@@ -453,6 +463,8 @@ fn parse_groups_from_response(
                 // Fallback to single group if parsing failed
                 fallback_single_group(files, ticket, diffs)
             } else {
+                // Validate no duplicate files across groups
+                validate_no_duplicate_files(&groups)?;
                 Ok(groups)
             }
         }
@@ -557,6 +569,55 @@ fn parse_commit_message(response: &str) -> Result<(String, Option<String>)> {
     };
 
     Ok((description, body))
+}
+
+/// Validates that no file appears in multiple commit groups.
+///
+/// This function ensures data integrity by checking that each file path
+/// appears in at most one group. If duplicates are found, it returns an error.
+///
+/// # Arguments
+///
+/// * `groups` - The commit groups to validate
+///
+/// # Returns
+///
+/// * `Ok(())` if no duplicates found
+/// * `Err` if any file appears in multiple groups
+///
+/// # Examples
+///
+/// ```no_run
+/// use commit_wizard::copilot::validate_no_duplicate_files;
+/// use commit_wizard::types::ChangeGroup;
+///
+/// let groups = vec![/* ... */];
+/// validate_no_duplicate_files(&groups)?;
+/// # Ok::<(), anyhow::Error>(())
+/// ```
+pub fn validate_no_duplicate_files(groups: &[ChangeGroup]) -> Result<()> {
+    let mut seen_files: HashSet<&str> = HashSet::new();
+    let mut duplicates: Vec<String> = Vec::new();
+
+    for (group_idx, group) in groups.iter().enumerate() {
+        for file in &group.files {
+            if !seen_files.insert(file.path.as_str()) {
+                duplicates.push(format!(
+                    "File '{}' appears in multiple groups (at least in group {})",
+                    file.path, group_idx
+                ));
+            }
+        }
+    }
+
+    if !duplicates.is_empty() {
+        bail!(
+            "Duplicate files detected in commit groups:\n  - {}",
+            duplicates.join("\n  - ")
+        );
+    }
+
+    Ok(())
 }
 
 /// Checks if AI is available (Copilot CLI is installed).
