@@ -89,49 +89,50 @@ commit-wizard
 
 ## AI-Powered Mode
 
-Generate commit messages using AI (GitHub Models or OpenAI):
+Generate commit messages and group files intelligently using GitHub Copilot CLI:
 
 ```bash
-# Option 1: GitHub Models API (free, if available in your region)
-# Create a Personal Access Token: https://github.com/settings/tokens/new
-# Required scope: "read:user"
-export GITHUB_TOKEN="ghp_xxxxxxxxxxxxxxxxxxxx"
+# Prerequisites: GitHub CLI and Copilot CLI must be installed and authenticated
+# 1. Install GitHub CLI (if not already installed)
+#    https://cli.github.com/
 
-# Option 2: OpenAI API (paid, ~$0.0001 per message, always available)
-# Get API key: https://platform.openai.com/api-keys
-export OPENAI_API_KEY="sk-xxxxxxxxxxxxxxxxxxxx"
+# 2. Authenticate with GitHub
+gh auth login
 
-# Option 3: Both (automatic fallback if GitHub Models unavailable)
-export GITHUB_TOKEN="ghp_xxxxxxxxxxxxxxxxxxxx"
-export OPENAI_API_KEY="sk-xxxxxxxxxxxxxxxxxxxx"
+# 3. Install Copilot CLI extension
+gh extension install github/gh-copilot
 
-# Test your token(s)
-commit-wizard test-token
+# 4. Authenticate Copilot
+#    Run 'copilot' and follow the prompts, or use:
+copilot auth
 
-# Run with AI enabled
-commit-wizard --ai
+# Run with AI enabled (default)
+commit-wizard
+
+# Or explicitly disable AI and use heuristic grouping
+commit-wizard --no-ai
 ```
 
-**Note:** GitHub Models API may not be available in all regions/environments. OpenAI is recommended for production use. See [AI API Configuration](docs/ai-api-configuration.md) for details.
+**Note:** AI features are enabled by default. The tool will automatically fall back to heuristic grouping if Copilot CLI is not available or not authenticated.
 
-### Testing Your Token
+### Testing Your Setup
 
-Before using AI features, verify your token works:
+Before using AI features, verify your Copilot authentication:
 
 ```bash
-# Built-in token validator
-commit-wizard test-token
+# Quick test - will prompt for authentication if needed
+copilot -p "Hello, world"
 
-# Or run the bash script
-./scripts/test-github-token.sh
+# Or start the tool with verbose output to see AI availability
+commit-wizard --verbose
 ```
 
-The test will check:
+The tool will automatically check:
 
-- Token is set and valid format
-- GitHub API authentication works
-- Models API is accessible
-- Full request/response cycle
+- GitHub CLI installation
+- Copilot CLI availability
+- Authentication status
+- Interactive login if needed
 
 In the TUI, press `a` to generate a commit message for the selected group using AI.
 
@@ -143,7 +144,7 @@ In the TUI, press `a` to generate a commit message for the selected group using 
 - `Tab` / `Shift+Tab` - Switch between panels (Groups, Message, Files)
 - `e` - Edit commit message in integrated editor
 - `d` - View diff for selected file
-- `a` - Generate commit message with AI (requires `--ai` flag)
+- `a` - Regenerate commit message with AI (AI is enabled by default)
 - `c` - Commit selected group
 - `C` - Commit all groups
 - `Ctrl+L` - Clear status message
@@ -171,8 +172,11 @@ commit-wizard --repo /path/to/repo
 # Enable verbose output
 commit-wizard --verbose
 
+# Disable AI and use heuristic grouping only
+commit-wizard --no-ai
+
 # Combine options
-commit-wizard --ai --verbose --repo /path/to/repo
+commit-wizard --verbose --repo /path/to/repo
 ```
 
 # Development

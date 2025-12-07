@@ -1,54 +1,85 @@
-# AI API Token Configuration
+# AI Configuration (LEGACY DOCUMENTATION)
 
-## Zusammenfassung
+> **⚠️ NOTICE:** This documentation is **OUTDATED** and kept for historical reference only.
+>
+> **Current Version:** commit-wizard now uses **GitHub Copilot CLI** for AI features.
+> No API tokens or environment variables are required.
+>
+> See the main [README.md](../README.md) for current setup instructions.
 
-**Dein GitHub Token mit `read:user` Scope ist ausreichend!**
+---
 
-Das Problem ist **NICHT** der Scope, sondern:
-- `models.github.com` ist in einigen Umgebungen (z.B. Codespaces) nicht erreichbar
-- DNS-Auflösung schlägt fehl
-- Regional/Network-Einschränkungen
+## Historical Context (Pre-Copilot CLI Integration)
 
-## Lösung: Mehrere API-Optionen
+This document describes the old approach using direct API calls to GitHub Models and OpenAI.
+This implementation was replaced in December 2025 due to:
 
-commit-wizard unterstützt jetzt automatisch:
+- HTTP API access blocked by GitHub in certain environments
+- Complex token management
+- Regional availability issues
+- Need for multiple API key configurations
 
-### Option 1: GitHub Models API (wenn verfügbar)
+### Old Architecture (Deprecated)
+
+Previously, commit-wizard supported:
+
+1. **GitHub Models API** (required `GITHUB_TOKEN` with `read:user` scope)
+2. **OpenAI API** (required `OPENAI_API_KEY`)
+3. Automatic fallback between providers
+
+### Why This Changed
+
+The HTTP API approach had several issues:
+
+- `models.github.com` was not accessible in some environments (Codespaces, corporate networks)
+- DNS resolution failures
+- Regional restrictions
+- Complex authentication flow
+- API rate limits
+
+### Current Solution
+
+**GitHub Copilot CLI** provides:
+
+- ✅ Built-in authentication via `gh auth` and `copilot auth`
+- ✅ Works in all environments where GitHub CLI works
+- ✅ No environment variables needed
+- ✅ Interactive authentication flow
+- ✅ Automatic token refresh
+- ✅ Better error handling
+
+---
+
+## Legacy Documentation Below (For Reference Only)
+
+<details>
+<summary>Click to expand old documentation</summary>
+
+### Old Option 1: GitHub Models API
 
 ```bash
 export GITHUB_TOKEN="ghp_xxxxxxxxxxxx"
 ```
 
-**Scope:** `read:user` (reicht aus!)
+**Scope:** `read:user`
 **Endpoint:** `https://models.github.com/chat/completions`
 
-### Option 2: OpenAI API (Fallback)
+### Old Option 2: OpenAI API
 
 ```bash
 export OPENAI_API_KEY="sk-xxxxxxxxxxxx"
 ```
 
-**Kostet:** Geld pro Request
 **Endpoint:** `https://api.openai.com/v1/chat/completions`
 **API Key:** https://platform.openai.com/api-keys
 
-## Automatische Auswahl
+### Old Automatic Selection Logic
 
-commit-wizard wählt automatisch:
-1. Wenn `GITHUB_TOKEN` gesetzt → GitHub Models API
-2. Wenn `OPENAI_API_KEY` gesetzt → OpenAI API
-3. Sonst → Fehlermeldung mit Hinweis
+1. If `GITHUB_TOKEN` set → GitHub Models API
+2. If `OPENAI_API_KEY` set → OpenAI API
+3. Otherwise → Error message
 
-## Warum funktioniert GitHub Models nicht?
-
-### DNS-Problem prüfen
-
-```bash
-# Test DNS-Auflösung
-getent hosts models.github.com
-
-# Wenn das fehlschlägt → models.github.com nicht erreichbar
-```
+</details>
 
 ### Mögliche Ursachen
 
