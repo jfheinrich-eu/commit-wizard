@@ -67,8 +67,19 @@ pub fn collect_changed_files(
     for entry in statuses.iter() {
         let status = entry.status();
 
-        // Process both staged and unstaged changes
-        if !status.intersects(
+        // Process both staged and unstaged changes, including untracked if requested
+        let relevant_flags = if include_untracked {
+            Status::INDEX_NEW
+                | Status::INDEX_MODIFIED
+                | Status::INDEX_DELETED
+                | Status::INDEX_RENAMED
+                | Status::INDEX_TYPECHANGE
+                | Status::WT_NEW
+                | Status::WT_MODIFIED
+                | Status::WT_DELETED
+                | Status::WT_RENAMED
+                | Status::WT_TYPECHANGE
+        } else {
             Status::INDEX_NEW
                 | Status::INDEX_MODIFIED
                 | Status::INDEX_DELETED
@@ -77,8 +88,10 @@ pub fn collect_changed_files(
                 | Status::WT_MODIFIED
                 | Status::WT_DELETED
                 | Status::WT_RENAMED
-                | Status::WT_TYPECHANGE,
-        ) {
+                | Status::WT_TYPECHANGE
+        };
+
+        if !status.intersects(relevant_flags) {
             continue;
         }
 
@@ -105,6 +118,48 @@ pub fn collect_changed_files(
 
         if let Some(path) = path {
             let path_str = path.to_string_lossy().to_string();
+
+            // Validate path (security: prevent directory traversal)
+            if is_valid_path(&path_str) {
+                result.push(ChangedFile::new(path_str, status));
+            }
+        }
+    }
+
+    Ok(result)
+}
+
+/// Collects only untracked files that are not ignored by gitignore.
+///
+/// # Arguments
+///
+/// * `repo` - A reference to the git repository
+///
+/// # Returns
+///
+/// A vector of [`ChangedFile`] representing untracked files.
+pub fn collect_untracked_files(repo: &Repository) -> Result<Vec<ChangedFile>> {
+    let mut opts = StatusOptions::new();
+    opts.include_untracked(true)
+        .include_ignored(false)
+        .recurse_untracked_dirs(true);
+
+    let statuses = repo
+        .statuses(Some(&mut opts))
+        .context("Failed to get git status")?;
+
+    let mut result = Vec::new();
+
+    for entry in statuses.iter() {
+        let status = entry.status();
+
+        // Only collect untracked files (WT_NEW)
+        if !status.contains(Status::WT_NEW) {
+            continue;
+        }
+
+        if let Some(path) = entry.path() {
+            let path_str = path.to_string();
 
             // Validate path (security: prevent directory traversal)
             if is_valid_path(&path_str) {

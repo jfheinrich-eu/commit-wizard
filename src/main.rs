@@ -36,7 +36,8 @@ use git2::Repository;
 // Use the library modules
 use commit_wizard::copilot::{build_groups_with_ai, is_ai_available};
 use commit_wizard::git::{
-    collect_changed_files, extract_ticket_from_branch, get_current_branch, get_file_diff,
+    collect_changed_files, collect_untracked_files, extract_ticket_from_branch, get_current_branch,
+    get_file_diff,
 };
 use commit_wizard::inference::build_groups;
 use commit_wizard::logging;
@@ -189,6 +190,86 @@ fn clear_progress() {
     }
 }
 
+/// Prompts user to select which untracked files to include.
+///
+/// Returns the list of selected untracked files.
+fn prompt_untracked_files_selection(
+    untracked: Vec<commit_wizard::types::ChangedFile>,
+) -> Result<Vec<commit_wizard::types::ChangedFile>> {
+    use std::io::{stdin, stdout};
+
+    if untracked.is_empty() {
+        return Ok(vec![]);
+    }
+
+    println!(
+        "\n📝 Found {} untracked file(s) not in .gitignore:",
+        untracked.len()
+    );
+    for (idx, file) in untracked.iter().enumerate() {
+        println!("  {}. {}", idx + 1, file.path);
+    }
+
+    println!("\nOptions:");
+    println!("  [a] Include all untracked files (default)");
+    println!("  [n] Include none");
+    println!("  [s] Select specific files");
+    print!("\nYour choice [a/n/s]: ");
+    stdout().flush()?;
+
+    let mut input = String::new();
+    stdin().read_line(&mut input)?;
+    let choice = input.trim().to_lowercase();
+
+    match choice.as_str() {
+        "" | "a" | "all" => {
+            println!("✓ Including all {} untracked files", untracked.len());
+            Ok(untracked)
+        }
+        "n" | "none" => {
+            println!("✓ Excluding all untracked files");
+            Ok(vec![])
+        }
+        "s" | "select" => {
+            println!("\nEnter file numbers to include (comma-separated, e.g., 1,3,5):");
+            print!("> ");
+            stdout().flush()?;
+
+            let mut selection = String::new();
+            stdin().read_line(&mut selection)?;
+
+            let selected_indices: Vec<usize> = selection
+                .trim()
+                .split(',')
+                .filter_map(|s| s.trim().parse::<usize>().ok())
+                .filter(|&idx| idx > 0 && idx <= untracked.len())
+                .map(|idx| idx - 1) // Convert to 0-based index
+                .collect();
+
+            if selected_indices.is_empty() {
+                println!("⚠ No valid selections, including all files");
+                Ok(untracked)
+            } else {
+                let selected: Vec<_> = selected_indices
+                    .into_iter()
+                    .map(|idx| untracked[idx].clone())
+                    .collect();
+
+                println!("✓ Including {} selected file(s)", selected.len());
+                for file in &selected {
+                    println!("  • {}", file.path);
+                }
+
+                Ok(selected)
+            }
+        }
+        _ => {
+            println!("⚠ Invalid choice, defaulting to include all");
+            Ok(untracked)
+        }
+    }
+}
+
 /// Runs the main application logic.
 fn run_application(cli: Cli) -> Result<()> {
     // Determine repository path
@@ -234,11 +315,27 @@ fn run_application(cli: Cli) -> Result<()> {
         }
     }
 
-    // Step 1: Collect all changed files (staged and unstaged)
-    show_progress("Collecting changed files...", 1, 3);
-    let changed_files = collect_changed_files(&repo, true)?;
-    log::info!("Collected {} changed files", changed_files.len());
+    // Step 1: Collect changed files (staged and unstaged, excluding untracked)
+    show_progress("Collecting changed files...", 1, 4);
+    let mut changed_files = collect_changed_files(&repo, false)?;
+    log::info!("Collected {} changed files (tracked)", changed_files.len());
     clear_progress();
+
+    // Step 1a: Check for untracked files and prompt user
+    let untracked_files = collect_untracked_files(&repo)?;
+    if !untracked_files.is_empty() {
+        log::info!("Found {} untracked files", untracked_files.len());
+
+        // Interactive selection for untracked files
+        let selected_untracked = prompt_untracked_files_selection(untracked_files)?;
+
+        if !selected_untracked.is_empty() {
+            log::info!("User selected {} untracked files", selected_untracked.len());
+            changed_files.extend(selected_untracked);
+        } else {
+            log::info!("User excluded all untracked files");
+        }
+    }
 
     if changed_files.is_empty() {
         log::warn!("No changes found");
@@ -253,7 +350,7 @@ fn run_application(cli: Cli) -> Result<()> {
     }
 
     // Step 2: Determine if AI should be used
-    show_progress("Checking AI availability...", 2, 3);
+    show_progress("Checking AI availability...", 2, 4);
     let use_ai = !cli.no_ai && is_ai_available();
     clear_progress();
 
@@ -274,7 +371,7 @@ fn run_application(cli: Cli) -> Result<()> {
     }
 
     // Step 3: Build commit groups (AI-first approach)
-    show_progress("Creating commit groups...", 3, 3);
+    show_progress("Creating commit groups...", 3, 4);
     let groups = if use_ai {
         // Collect diffs for AI context
         let mut diffs = std::collections::HashMap::new();
