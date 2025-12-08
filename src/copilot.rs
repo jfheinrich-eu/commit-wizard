@@ -154,7 +154,8 @@ pub fn generate_commit_message_with_ai(
 }
 
 /// Builds the prompt for AI-based file grouping.
-fn build_grouping_prompt(
+#[doc(hidden)] // Internal use and testing only
+pub fn build_grouping_prompt(
     files: &[ChangedFile],
     ticket: Option<&str>,
     diffs: &HashMap<String, String>,
@@ -229,7 +230,8 @@ fn build_grouping_prompt(
 }
 
 /// Builds the prompt for commit message generation.
-fn build_commit_message_prompt(
+#[doc(hidden)] // Internal use and testing only
+pub fn build_commit_message_prompt(
     group: &ChangeGroup,
     files: &[ChangedFile],
     diff: Option<&str>,
@@ -361,7 +363,8 @@ fn call_copilot_cli(prompt: &str) -> Result<String> {
 /// # Returns
 ///
 /// The extracted text between markers, trimmed and cleaned.
-fn extract_response_between_markers(output: &str) -> Result<String> {
+#[doc(hidden)] // Internal use and testing only
+pub fn extract_response_between_markers(output: &str) -> Result<String> {
     let mut in_block = false;
     let mut result = String::new();
 
@@ -520,7 +523,8 @@ fn fallback_single_group(
 }
 
 /// Parses a commit type string into CommitType enum.
-fn parse_commit_type(type_str: &str) -> CommitType {
+#[doc(hidden)] // Internal use and testing only
+pub fn parse_commit_type(type_str: &str) -> CommitType {
     match type_str {
         "feat" => CommitType::Feat,
         "fix" => CommitType::Fix,
@@ -537,7 +541,8 @@ fn parse_commit_type(type_str: &str) -> CommitType {
 }
 
 /// Parses AI response into commit message components.
-fn parse_commit_message(response: &str) -> Result<(String, Option<String>)> {
+#[doc(hidden)] // Internal use and testing only
+pub fn parse_commit_message(response: &str) -> Result<(String, Option<String>)> {
     let trimmed = response.trim();
 
     // Remove markdown code blocks if present
