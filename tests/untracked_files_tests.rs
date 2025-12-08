@@ -10,8 +10,13 @@ fn setup_test_repo() -> (TempDir, Repository) {
     let temp_dir = TempDir::new().unwrap();
     let repo = Repository::init(temp_dir.path()).unwrap();
 
-    // Create initial commit
     {
+        // Set user.name and user.email (fix for CI/tests)
+        let mut cfg = repo.config().unwrap();
+        cfg.set_str("user.name", "Test User").unwrap();
+        cfg.set_str("user.email", "test@example.com").unwrap();
+
+        // Create initial commit
         let sig = repo.signature().unwrap();
         let tree_id = {
             let mut index = repo.index().unwrap();
