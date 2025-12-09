@@ -437,13 +437,13 @@ fn test_github_token() -> Result<()> {
         .filter(|t| !t.is_empty());
 
     if github_token.is_none() {
-        eprintln!("❌ No Github Copilot CLI tokens found in environment\n");
+        eprintln!("❌ No GitHub Copilot CLI tokens found in environment\n");
         eprintln!("Options:");
         eprintln!("  For GitHub Copilot CLI API (free/paid):");
         eprintln!("    export COPILOT_GITHUB_TOKEN='ghp_xxxxxxxxxxxx'");
         eprintln!("  Or create .env file with tokens");
         eprintln!("  Run with: commit-wizard --env-override test-token\n");
-        bail!("No Github Copilot CLI tokens found");
+        bail!("No GitHub Copilot CLI tokens found");
     }
 
     let mut all_passed = true;
