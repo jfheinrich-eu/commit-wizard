@@ -134,8 +134,6 @@ The tool will automatically check:
 - Authentication status
 - Interactive login if needed
 
-In the TUI, press `a` to generate a commit message for the selected group using AI.
-
 ## Keyboard Controls
 
 ### Main Interface
@@ -144,7 +142,6 @@ In the TUI, press `a` to generate a commit message for the selected group using 
 - `Tab` / `Shift+Tab` - Switch between panels (Groups, Message, Files)
 - `e` - Edit commit message in integrated editor
 - `d` - View diff for selected file
-- `a` - Regenerate commit message with AI (AI is enabled by default)
 - `c` - Commit selected group
 - `C` - Commit all groups
 - `Ctrl+L` - Clear status message

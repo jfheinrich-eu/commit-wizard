@@ -1,8 +1,10 @@
 //! Logging configuration for commit-wizard.
 //!
 //! This module provides structured logging with file output support.
-//! Logs are written to `/var/log/commit-wizard.log` by default, or to
-//! `./commit-wizard.log` in the current directory if specified.
+//! Logs are written to `~/.local/share/commit-wizard/commit-wizard.log` by default (XDG-compliant).
+//! If the data directory is not writable (e.g., on macOS, Windows, or without proper permissions),
+//! the tool will automatically fall back to writing logs to `./commit-wizard.log` in the current directory.
+//! Users can also explicitly request local logging with the `--log-local` flag.
 
 use std::fs::{File, OpenOptions};
 use std::io::Write;
@@ -11,11 +13,27 @@ use std::sync::Mutex;
 
 use log::{error, info, set_boxed_logger, set_max_level, warn, LevelFilter, Log, Metadata, Record};
 
-/// Default log file path
-const DEFAULT_LOG_PATH: &str = "/var/log/commit-wizard.log";
-
 /// Local log file name
 const LOCAL_LOG_FILE: &str = "commit-wizard.log";
+
+/// Returns the default log file path in the user's data directory (XDG-compliant).
+fn default_log_path() -> PathBuf {
+    if let Some(mut dir) = dirs::data_dir() {
+        dir.push("commit-wizard");
+        let _ = std::fs::create_dir_all(&dir); // Ensure directory exists
+        dir.push("commit-wizard.log");
+        dir
+    } else {
+        // Fallback to home directory if data_dir is not available
+        let mut home = dirs::home_dir().unwrap_or_else(|| PathBuf::from("."));
+        home.push(".local");
+        home.push("share");
+        home.push("commit-wizard");
+        let _ = std::fs::create_dir_all(&home);
+        home.push("commit-wizard.log");
+        home
+    }
+}
 
 /// Custom logger that writes to a file
 struct FileLogger {
@@ -89,7 +107,7 @@ pub fn init_logging(
     let log_path = if use_local_path {
         PathBuf::from(LOCAL_LOG_FILE)
     } else {
-        PathBuf::from(DEFAULT_LOG_PATH)
+        default_log_path()
     };
 
     let level = if verbose {
@@ -113,14 +131,14 @@ pub fn init_logging(
         Err(e) => {
             // If default path fails, try local path as fallback
             if !use_local_path {
-                eprintln!("⚠️  Failed to write to {}: {}", DEFAULT_LOG_PATH, e);
+                eprintln!("⚠️  Failed to write to {}: {}", log_path.display(), e);
                 eprintln!("   Trying local directory instead...");
 
                 let local_path = PathBuf::from(LOCAL_LOG_FILE);
                 let logger = FileLogger::new(&local_path, level).map_err(|e2| {
                     anyhow::anyhow!(
                         "Failed to initialize logging (tried both {} and {}): {} / {}",
-                        DEFAULT_LOG_PATH,
+                        log_path.display(),
                         LOCAL_LOG_FILE,
                         e,
                         e2

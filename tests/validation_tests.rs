@@ -192,12 +192,13 @@ fn test_validate_single_file_duplicated() {
 #[test]
 fn test_validate_large_number_of_groups() {
     // Stress test with many groups and files
+    let paths: Vec<String> = (0..100).map(|i| format!("src/module_{}.rs", i)).collect();
     let mut groups = vec![];
-    for i in 0..100 {
+    for path in &paths {
         groups.push(test_group(
             CommitType::Feat,
             Some("module"),
-            vec![format!("src/module_{}.rs", i).as_str()],
+            vec![path.as_str()],
         ));
     }
 

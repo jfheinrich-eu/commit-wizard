@@ -42,7 +42,9 @@ fn is_copilot_cli_available() -> bool {
         .unwrap_or(false);
 
     if !version_check {
-        warn!("GitHub Copilot CLI not found. Install it with: npm install -g @github/copilot");
+        warn!(
+            "GitHub Copilot CLI not found. Install it with: gh extension install github/gh-copilot"
+        );
         return false;
     }
 
@@ -295,6 +297,9 @@ pub fn build_commit_message_prompt(
 /// Executes `copilot -p <prompt>` as a subprocess and extracts the response
 /// between START_MARKER and END_MARKER.
 ///
+/// For very large prompts (>100KB), consider using stdin instead of command-line
+/// arguments to avoid shell argument length limits.
+///
 /// # Arguments
 ///
 /// * `prompt` - The prompt to send to Copilot CLI
@@ -308,6 +313,15 @@ fn call_copilot_cli(prompt: &str) -> Result<String> {
         prompt.len()
     );
     crate::logging::log_api_request("Copilot CLI", "copilot", prompt.len());
+
+    // Warn if prompt is very large (might hit shell argument limits)
+    const MAX_SAFE_PROMPT_SIZE: usize = 100_000; // 100KB
+    if prompt.len() > MAX_SAFE_PROMPT_SIZE {
+        warn!(
+            "Large prompt size ({} bytes) may hit shell argument limits. Consider refactoring.",
+            prompt.len()
+        );
+    }
 
     // Execute copilot CLI
     let output = Command::new("copilot")
@@ -482,7 +496,7 @@ fn parse_groups_from_response(
 fn fallback_single_group(
     files: Vec<ChangedFile>,
     ticket: Option<String>,
-    diffs: &HashMap<String, String>,
+    _diffs: &HashMap<String, String>,
 ) -> Result<Vec<ChangeGroup>> {
     // Determine primary commit type from files
     let commit_type =
@@ -492,8 +506,8 @@ fn fallback_single_group(
     let scope = crate::inference::infer_scope(files.first().map(|f| f.path.as_str()).unwrap_or(""));
 
     // Try to generate a good description with AI
-    let description = if let Some(first_file) = files.first() {
-        let _diff = diffs.get(&first_file.path); // Reserved for future use
+    let description = if let Some(_first_file) = files.first() {
+        // Note: We could pass diffs.get(&_first_file.path) to the prompt for more context
         let prompt =
                 format!(
             "Generate a short commit description (max 50 chars) for:\nType: {}\nFiles: {}\n\nRespond with:\n{}\n<your description here>\n{}\n",

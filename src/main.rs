@@ -26,7 +26,7 @@
 //! ```
 
 use std::env;
-use std::io::{self, Write};
+use std::io::{self, IsTerminal, Write};
 use std::path::PathBuf;
 use std::sync::Arc;
 
@@ -77,10 +77,6 @@ struct Cli {
     #[arg(long)]
     log_local: bool,
 
-    /// Override existing environment variables with values from .env file
-    #[arg(long)]
-    env_override: bool,
-
     /// Verbose output for debugging (also enables DEBUG log level)
     #[arg(short, long)]
     verbose: bool,
@@ -96,8 +92,8 @@ enum Commands {
 fn main() -> Result<()> {
     let cli = Cli::parse();
 
-    // Load .env file with optional override behavior
-    load_env_file(cli.env_override);
+    // Load .env file (preserves existing environment variables)
+    load_env_file();
 
     // Initialize logging
     let log_path = logging::init_logging(cli.log, cli.log_local, cli.verbose)?;
@@ -125,51 +121,13 @@ fn main() -> Result<()> {
 
 /// Loads environment variables from .env file.
 ///
-/// # Arguments
-///
-/// * `override_existing` - If true, .env values override existing environment variables
-#[allow(clippy::lines_filter_map_ok)]
-fn load_env_file(override_existing: bool) {
-    use std::fs::File;
-    use std::io::{BufRead, BufReader};
-
-    if override_existing {
-        // Manually load and override environment variables
-        if let Ok(file) = File::open(".env") {
-            let reader = BufReader::new(file);
-            for line in reader.lines().filter_map(Result::ok) {
-                let line = line.trim();
-                if line.is_empty() || line.starts_with('#') {
-                    continue;
-                }
-                if let Some((key, value)) = line.split_once('=') {
-                    let key = key.trim();
-                    let value = value.trim().trim_matches('"').trim_matches('\'');
-                    unsafe { env::set_var(key, value) };
-                }
-            }
-        } else if let Ok(env_file) = env::var("COMMIT_WIZARD_ENV_FILE") {
-            if let Ok(file) = File::open(&env_file) {
-                let reader = BufReader::new(file);
-                for line in reader.lines().filter_map(Result::ok) {
-                    let line = line.trim();
-                    if line.is_empty() || line.starts_with('#') {
-                        continue;
-                    }
-                    if let Some((key, value)) = line.split_once('=') {
-                        let key = key.trim();
-                        let value = value.trim().trim_matches('"').trim_matches('\'');
-                        unsafe { env::set_var(key, value) };
-                    }
-                }
-            }
-        }
-    } else {
-        // Use standard dotenv (preserves existing env vars)
-        if dotenv::dotenv().is_err() {
-            if let Ok(env_file) = env::var("COMMIT_WIZARD_ENV_FILE") {
-                _ = dotenv::from_filename(&env_file);
-            }
+/// Uses standard dotenv behavior which preserves existing environment variables.
+/// This is thread-safe and avoids data races that would occur with env::set_var.
+fn load_env_file() {
+    // Use standard dotenv (preserves existing env vars)
+    if dotenv::dotenv().is_err() {
+        if let Ok(env_file) = env::var("COMMIT_WIZARD_ENV_FILE") {
+            _ = dotenv::from_filename(&env_file);
         }
     }
 }
@@ -188,7 +146,7 @@ impl ProgressSpinner {
         let msg_clone = message.clone();
         let running_clone = running.clone();
 
-        let handle = if atty::is(atty::Stream::Stderr) {
+        let handle = if std::io::stderr().is_terminal() {
             Some(std::thread::spawn(move || {
                 let spinners = ["⠋", "⠙", "⠹", "⠸", "⠼", "⠴", "⠦", "⠧", "⠇", "⠏"];
                 let mut idx = 0;
@@ -219,7 +177,9 @@ impl ProgressSpinner {
         self.running
             .store(false, std::sync::atomic::Ordering::Relaxed);
         if let Some(handle) = self.handle {
-            let _ = handle.join();
+            if let Err(e) = handle.join() {
+                eprintln!("Warning: spinner thread panicked: {:?}", e);
+            }
         }
     }
 }
@@ -400,7 +360,7 @@ fn run_application(cli: Cli) -> Result<()> {
         } else if cli.no_ai {
             eprintln!("🔧 AI mode disabled by --no-ai flag - using heuristic grouping");
         } else {
-            eprintln!("🔧 No API token found - falling back to heuristic grouping");
+            eprintln!("🔧 GitHub Copilot CLI not available - falling back to heuristic grouping");
         }
     }
 

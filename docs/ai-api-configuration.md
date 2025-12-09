@@ -81,93 +81,93 @@ export OPENAI_API_KEY="sk-xxxxxxxxxxxx"
 
 </details>
 
-### Mögliche Ursachen
+### Possible Causes
 
-1. **Codespaces/Container**: models.github.com möglicherweise blockiert
-2. **Regionale Einschränkungen**: Nicht in allen Ländern verfügbar
-3. **Beta-Feature**: Noch nicht öffentlich verfügbar
-4. **Firewall/Proxy**: Netzwerk-Einschränkungen
+1. **Codespaces/Container**: models.github.com may be blocked
+2. **Regional Restrictions**: Not available in all countries
+3. **Beta Feature**: Not yet publicly available
+4. **Firewall/Proxy**: Network restrictions
 
-## Empfohlene Konfiguration
+## Recommended Configuration
 
-### Für Entwicklung (lokal)
+### For Local Development
 
 ```bash
-# .env Datei
+# .env file
 GITHUB_TOKEN=ghp_xxxxxxxxxxxx
 ```
 
-### Für Codespaces/CI
+### For Codespaces/CI
 
 ```bash
-# .env Datei
+# .env file
 OPENAI_API_KEY=sk-xxxxxxxxxxxx
 ```
 
-### Für beide Umgebungen
+### For Both Environments
 
 ```bash
-# .env Datei
+# .env file
 GITHUB_TOKEN=ghp_xxxxxxxxxxxx
 OPENAI_API_KEY=sk-xxxxxxxxxxxx
 ```
 
-commit-wizard versucht automatisch GitHub Models API first, fällt auf OpenAI zurück wenn nötig.
+commit-wizard automatically tries GitHub Models API first, falls back to OpenAI if needed.
 
-## Token-Test aktualisieren
+## Token Test Updates
 
-Der `test-token` Command wurde erweitert:
+The `test-token` command has been extended:
 
 ```bash
-# Test beide Token-Optionen
+# Test both token options
 commit-wizard test-token
 
-# Zeigt:
-# ✓ GITHUB_TOKEN gefunden → Teste GitHub Models API
-# ✗ GitHub Models nicht erreichbar → Fallback auf OpenAI
-# ✓ OPENAI_API_KEY gefunden → Teste OpenAI API
-# ✅ OpenAI API funktioniert!
+# Shows:
+# ✓ GITHUB_TOKEN found → Test GitHub Models API
+# ✗ GitHub Models not reachable → Fallback to OpenAI
+# ✓ OPENAI_API_KEY found → Test OpenAI API
+# ✅ OpenAI API works!
 ```
 
-## OpenAI API Key erstellen
+## Creating OpenAI API Key
 
-1. Gehe zu https://platform.openai.com/
+1. Go to https://platform.openai.com/
 2. Sign in / Sign up
-3. Gehe zu API Keys: https://platform.openai.com/api-keys
+3. Go to API Keys: https://platform.openai.com/api-keys
 4. "Create new secret key"
-5. Kopiere den Key (beginnt mit `sk-`)
-6. Setze: `export OPENAI_API_KEY="sk-..."`
+5. Copy the key (starts with `sk-`)
+6. Set: `export OPENAI_API_KEY="sk-..."`
 
-**Wichtig:** OpenAI API kostet Geld! Aber:
-- Sehr günstig für commit messages (~$0.0001 pro Message)
-- ~~Erste $5 free credit für neue Accounts~~ (Free Trial wurde 2023 eingestellt)
-- Du musst **Billing aktivieren** und eine Zahlungsmethode hinterlegen
-- Setze usage limits in OpenAI Dashboard um Kosten zu kontrollieren
+**Important:** OpenAI API costs money! But:
+- Very cheap for commit messages (~$0.0001 per message)
+- ~~First $5 free credit for new accounts~~ (Free Trial ended in 2023)
+- You must **activate Billing** and add a payment method
+- Set usage limits in OpenAI Dashboard to control costs
 
 ### OpenAI Free Plan / Credits Problem
 
-**Symptom:** API funktioniert im Test, aber keine Usage sichtbar im Portal
+**Symptom:** API works in test, but no usage visible in portal
 
-**Mögliche Ursachen:**
+**Possible Causes:**
 
-1. **Keine Free Trial mehr**: OpenAI hat Free Trial Ende 2023 eingestellt
-   - Neue Accounts brauchen Zahlungsmethode
-   - Alte Free Trial Credits sind abgelaufen
+1. **No Free Trial anymore**: OpenAI ended Free Trial at end of 2023
+   - New accounts need payment method
+   - Old Free Trial credits have expired
 
-2. **Veralteter API Key**: Key funktioniert noch, aber Account inaktiv
-   - Prüfe: [OpenAI Billing Settings](https://platform.openai.com/settings/organization/billing)
-   - Aktiviere Billing mit Kreditkarte/PayPal
+2. **Outdated API Key**: Key still works, but account inactive
+   - Check: [OpenAI Billing Settings](https://platform.openai.com/settings/organization/billing)
+   - Activate Billing with credit card/PayPal
 
-3. **Usage Reporting Delay**: Usage kann 5-10 Minuten verzögert angezeigt werden
-   - Warte kurz und refreshe die Usage-Seite
+3. **Usage Reporting Delay**: Usage can be displayed with 5-10 minutes delay
+   - Wait briefly and refresh the Usage page
 
-4. **Test-Caching**: Sehr kleine Requests werden manchmal gecacht
-   - Mache einen größeren Test-Request (siehe unten)
+4. **Test Caching**: Very small requests are sometimes cached
+   - Make a larger test request (see below)
 
-**So prüfst du ob Credits verfügbar sind:**
+**How to check if credits are available:**
 
 ```bash
-# Manueller Test mit größerem Request
+# Manual test with larger request
 curl -s https://api.openai.com/v1/chat/completions \
   -H "Authorization: Bearer $OPENAI_API_KEY" \
   -H "Content-Type: application/json" \
@@ -178,47 +178,47 @@ curl -s https://api.openai.com/v1/chat/completions \
   }' | jq -r 'if .error then "ERROR: \(.error.message)" else "SUCCESS - \(.usage.total_tokens) tokens used" end'
 ```
 
-**Wenn "ERROR: You exceeded your current quota":**
+**If "ERROR: You exceeded your current quota":**
 
-- Gehe zu [OpenAI Billing Settings](https://platform.openai.com/settings/organization/billing)
-- Füge Zahlungsmethode hinzu
-- Lade Credits auf (Minimum $5)
+- Go to [OpenAI Billing Settings](https://platform.openai.com/settings/organization/billing)
+- Add payment method
+- Load credits (Minimum $5)
 
-**Kosten für typische Nutzung:**
+**Costs for typical usage:**
 
-- gpt-4o-mini: ~$0.00015 pro 1000 tokens
-- Durchschnittliche Commit Message: ~200 tokens
-- **Kosten pro Commit:** ~$0.00003 (3 Hundertstel Cent!)
-- 1000 Commits ≈ $0.30 (30 Cent)
+- gpt-4o-mini: ~$0.00015 per 1000 tokens
+- Average Commit Message: ~200 tokens
+- **Cost per Commit:** ~$0.00003 (3 hundredths of a cent!)
+- 1000 Commits ≈ $0.30
 
-## Zusammenfassung der Scope-Frage
+## Scope Question Summary
 
-**Für GitHub Models API:**
+**For GitHub Models API:**
 
-- ✅ `read:user` Scope reicht aus
-- ❌ Problem ist NICHT der Scope
-- ❌ Problem ist Netzwerk/DNS/Availability
+- ✅ `read:user` scope is sufficient
+- ❌ Problem is NOT the scope
+- ❌ Problem is Network/DNS/Availability
 
-**Keine zusätzlichen Scopes nötig!**
+**No additional scopes required!**
 
-Die ursprüngliche Annahme, dass Models API spezielle Scopes braucht, war falsch.
+The original assumption that Models API needs special scopes was incorrect.
 
-## Fehlerdiagnose
+## Error Diagnosis
 
 ### "No API token found"
 
 ```bash
-# Prüfe was gesetzt ist
+# Check what is set
 env | grep -E "(GITHUB_TOKEN|OPENAI_API_KEY)"
 
-# Setze mindestens einen
+# Set at least one
 export OPENAI_API_KEY="sk-..."
 ```
 
 ### "Failed to connect to GitHub Models API"
 
 ```bash
-# Das ist OK! Verwende OpenAI als Fallback
+# That's OK! Use OpenAI as fallback
 export OPENAI_API_KEY="sk-..."
 commit-wizard --ai
 ```
@@ -227,44 +227,44 @@ commit-wizard --ai
 
 **GitHub Token:**
 
-- Token abgelaufen → Neu erstellen
-- Token revoked → Neu erstellen
+- Token expired → Create new one
+- Token revoked → Create new one
 
 **OpenAI Key:**
 
-- Key ungültig → Neu erstellen
-- Account gesperrt → OpenAI Support
+- Key invalid → Create new one
+- Account blocked → OpenAI Support
 
 ### "AI API returned error 429"
 
-- Rate limit überschritten
-- Warte 1 Minute und versuche erneut
-- Bei OpenAI: Prüfe Billing/Limits
+- Rate limit exceeded
+- Wait 1 minute and try again
+- For OpenAI: Check Billing/Limits
 
-## Verwendung
+## Usage
 
 ```bash
-# Mit GitHub Models (wenn verfügbar)
+# With GitHub Models (if available)
 export GITHUB_TOKEN="ghp_..."
 commit-wizard --ai
 
-# Mit OpenAI (immer funktioniert)
+# With OpenAI (always works)
 export OPENAI_API_KEY="sk-..."
 commit-wizard --ai
 
-# Mit beiden (automatischer Fallback)
+# With both (automatic fallback)
 export GITHUB_TOKEN="ghp_..."
 export OPENAI_API_KEY="sk-..."
 commit-wizard --ai
 ```
 
-## Kosten-Vergleich
+## Cost Comparison
 
-| API | Kosten | Verfügbarkeit | Speed |
+| API | Cost | Availability | Speed |
 |-----|--------|---------------|-------|
-| GitHub Models | Kostenlos* | Eingeschränkt | Schnell |
-| OpenAI | ~$0.0001/msg | Global | Sehr schnell |
+| GitHub Models | Free* | Limited | Fast |
+| OpenAI | ~$0.0001/msg | Global | Very fast |
 
-*GitHub Models möglicherweise Beta/Limited Access
+*GitHub Models may be Beta/Limited Access
 
-Für Production: **OpenAI API empfohlen** (zuverlässig, global, sehr günstig)
+For Production: **OpenAI API recommended** (reliable, global, very cheap)

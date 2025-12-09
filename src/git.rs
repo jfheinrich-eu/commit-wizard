@@ -295,10 +295,17 @@ pub fn extract_ticket_from_branch(branch: &str) -> Option<String> {
 
 /// Commits a single change group to the repository.
 ///
-/// This function:
+/// This function performs the following steps:
 /// 1. Validates all file paths for security
 /// 2. Stages the files in the group with `git add`
 /// 3. Commits only those specific files with the group's message
+///
+/// # Behavior
+///
+/// This function will stage ALL files in the group, including files that were
+/// previously unstaged. This is a behavior change from earlier versions that
+/// relied on files already being staged. Users should be aware that running
+/// this function will automatically stage any unstaged files in the group.
 ///
 /// # Arguments
 ///
@@ -344,6 +351,9 @@ pub fn commit_group(repo_path: &Path, group: &ChangeGroup) -> Result<String> {
         error!("git add failed: {}", stderr);
         bail!("Failed to stage files: {}", stderr);
     }
+
+    // Note: We stage files here to ensure all group files are committed,
+    // even if they were previously unstaged. This is intentional behavior.
 
     // Create commit message
     let msg = group.full_message();
