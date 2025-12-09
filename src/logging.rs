@@ -11,7 +11,7 @@ use std::io::Write;
 use std::path::{Path, PathBuf};
 use std::sync::Mutex;
 
-use log::{error, info, set_boxed_logger, set_max_level, warn, LevelFilter, Log, Metadata, Record};
+use log::{error, info, set_logger, set_max_level, warn, LevelFilter, Log, Metadata, Record};
 
 /// Local log file name
 const LOCAL_LOG_FILE: &str = "commit-wizard.log";
@@ -119,7 +119,7 @@ pub fn init_logging(
     // Try to create the logger
     match FileLogger::new(&log_path, level) {
         Ok(logger) => {
-            set_boxed_logger(Box::new(logger))
+            set_logger(Box::leak(Box::new(logger)))
                 .map_err(|e| anyhow::anyhow!("Failed to set logger: {}", e))?;
             set_max_level(level);
 
@@ -145,7 +145,7 @@ pub fn init_logging(
                     )
                 })?;
 
-                set_boxed_logger(Box::new(logger))
+                set_logger(Box::leak(Box::new(logger)))
                     .map_err(|e| anyhow::anyhow!("Failed to set logger: {}", e))?;
                 set_max_level(level);
 
