@@ -496,7 +496,7 @@ fn parse_groups_from_response(
 fn fallback_single_group(
     files: Vec<ChangedFile>,
     ticket: Option<String>,
-    _diffs: &HashMap<String, String>,
+    diffs: &HashMap<String, String>,
 ) -> Result<Vec<ChangeGroup>> {
     // Determine primary commit type from files
     let commit_type =
@@ -506,23 +506,37 @@ fn fallback_single_group(
     let scope = crate::inference::infer_scope(files.first().map(|f| f.path.as_str()).unwrap_or(""));
 
     // Try to generate a good description with AI
-    let description = if let Some(_first_file) = files.first() {
-        // Note: We could pass diffs.get(&_first_file.path) to the prompt for more context
-        let prompt =
+    let description =
+        if let Some(first_file) = files.first() {
+            let mut prompt =
                 format!(
-            "Generate a short commit description (max 50 chars) for:\nType: {}\nFiles: {}\n\nRespond with:\n{}\n<your description here>\n{}\n",
+            "Generate a short commit description (max 50 chars) for:\nType: {}\nFiles: {}\n",
             commit_type.as_str(),
-            files.iter().map(|f| f.path.as_str()).collect::<Vec<_>>().join(", "),
-            START_MARKER,
-            END_MARKER
+            files.iter().map(|f| f.path.as_str()).collect::<Vec<_>>().join(", ")
         );
-        call_copilot_cli(&prompt)
-            .ok()
-            .and_then(|s| s.lines().next().map(|l| l.to_string()))
-            .unwrap_or_else(|| crate::inference::infer_description(&files, commit_type, &scope))
-    } else {
-        "update files".to_string()
-    };
+
+            // Add diff context if available
+            if let Some(diff) = diffs.get(&first_file.path) {
+                prompt.push_str("\nDIFF PREVIEW:\n");
+                let truncated = if diff.len() > MAX_DIFF_SIZE {
+                    format!("{}... (truncated)", &diff[..MAX_DIFF_SIZE])
+                } else {
+                    diff.clone()
+                };
+                prompt.push_str(&truncated);
+            }
+
+            prompt.push_str(&format!(
+                "\n\nRespond with:\n{}\n<your description here>\n{}\n",
+                START_MARKER, END_MARKER
+            ));
+            call_copilot_cli(&prompt)
+                .ok()
+                .and_then(|s| s.lines().next().map(|l| l.to_string()))
+                .unwrap_or_else(|| crate::inference::infer_description(&files, commit_type, &scope))
+        } else {
+            "update files".to_string()
+        };
 
     let body_lines = crate::inference::infer_body_lines(&files);
 
