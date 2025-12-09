@@ -260,7 +260,7 @@ fn handle_key_event<B: ratatui::backend::Backend + std::io::Write>(
         KeyCode::Char('c') => {
             handle_commit_action(app, repo_path)?;
         }
-        KeyCode::Char('C') if key.modifiers.is_empty() => {
+        KeyCode::Char('C') if key.modifiers.contains(KeyModifiers::SHIFT) => {
             handle_commit_all_action(app, repo_path)?;
         }
         KeyCode::Char('l') if key.modifiers.contains(KeyModifiers::CONTROL) => {
