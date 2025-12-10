@@ -91,9 +91,6 @@ enum Commands {
 fn main() -> Result<()> {
     let cli = Cli::parse();
 
-    // Load .env file (preserves existing environment variables)
-    load_env_file();
-
     // Initialize logging
     let log_path = logging::init_logging(cli.log, cli.log_local, cli.verbose)?;
     if let Some(path) = &log_path {
@@ -115,19 +112,6 @@ fn main() -> Result<()> {
     }
 
     run_application(cli)
-}
-
-/// Loads environment variables from .env file.
-///
-/// Uses standard dotenv behavior which preserves existing environment variables.
-/// This is thread-safe and avoids data races that would occur with env::set_var.
-fn load_env_file() {
-    // Use standard dotenv (preserves existing env vars)
-    if dotenv::dotenv().is_err() {
-        if let Ok(env_file) = env::var("COMMIT_WIZARD_ENV_FILE") {
-            _ = dotenv::from_filename(&env_file);
-        }
-    }
 }
 
 /// Progress indicator that runs in background and animates
