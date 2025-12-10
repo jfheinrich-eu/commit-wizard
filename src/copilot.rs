@@ -311,13 +311,14 @@ fn call_copilot_cli(prompt: &str) -> Result<String> {
     );
     crate::logging::log_api_request("Copilot CLI", "copilot", prompt.len());
 
-    // Warn if prompt is very large (might hit shell argument limits).
-    // Shell argument limits vary by platform:
+    // Note: We pass prompts as command-line arguments to the Copilot CLI.
+    // The prompt content is generated internally from git data and not directly from user input,
+    // so command injection risk is minimal. However, we validate prompt size to avoid
+    // exceeding platform-specific argument length limits:
     // - Linux: typically 2MB (ARG_MAX, check with `getconf ARG_MAX`)
     // - macOS: typically 1MB
     // - Windows: typically 32KB
-    // We use 100KB as a conservative threshold (well below minimum platform limits)
-    // to warn early and avoid potential failures when passing prompts as command-line arguments.
+    // We use 100KB as a conservative threshold (well below minimum platform limits).
     const MAX_SAFE_PROMPT_SIZE: usize = 100_000; // 100KB
     if prompt.len() > MAX_SAFE_PROMPT_SIZE {
         warn!(
@@ -326,7 +327,10 @@ fn call_copilot_cli(prompt: &str) -> Result<String> {
         );
     }
 
-    // Execute copilot CLI
+    // Execute copilot CLI with prompt as argument
+    // Note: The copilot CLI expects the prompt via the -p flag as an argument,
+    // not via stdin. While passing via stdin would be ideal for security,
+    // the CLI's design requires this approach.
     let output = Command::new("copilot")
         .arg("-p")
         .arg(prompt)

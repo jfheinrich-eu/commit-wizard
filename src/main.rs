@@ -259,13 +259,12 @@ fn run_application(cli: Cli) -> Result<()> {
 
     // Open repository
     let repo = Repository::open(&repo_path).with_context(|| {
-        let msg = format!(
+        log::error!("Failed to open repository: {}", repo_path.display());
+        format!(
             "Not a git repository: {}\n\
              Hint: Run this command from inside a git repository or use --repo <path>",
             repo_path.display()
-        );
-        log::error!("Failed to open repository: {}", repo_path.display());
-        msg
+        )
     })?;
 
     log::info!("Opened repository: {}", repo_path.display());

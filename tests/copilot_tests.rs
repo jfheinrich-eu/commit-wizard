@@ -3,6 +3,14 @@
 //! This test suite focuses on testable pure functions in copilot.rs that don't
 //! require external CLI calls or I/O operations. Functions like `call_copilot_cli()`
 //! and `is_copilot_cli_available()` are excluded as they require real external processes.
+//!
+//! Note: End-to-end integration tests for actual Copilot CLI interaction are not included
+//! in the automated test suite because they require:
+//! - GitHub Copilot CLI to be installed (`npm install -g @github/copilot`)
+//! - Valid GitHub authentication with Copilot subscription
+//! - Network connectivity to GitHub's Copilot service
+//!
+//! Manual testing should be performed to verify CLI integration before releases.
 
 use commit_wizard::copilot::{
     build_commit_message_prompt, build_grouping_prompt, extract_response_between_markers,
