@@ -295,8 +295,6 @@ pub fn extract_ticket_from_branch(branch: &str) -> Option<String> {
 
 /// Commits a single change group to the repository.
 ///
-/// Commits a single change group to the repository.
-///
 /// This function performs the following steps:
 /// 1. Validates all file paths for security
 /// 2. Stages the files in the group with `git add`

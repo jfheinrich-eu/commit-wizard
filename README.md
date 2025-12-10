@@ -20,7 +20,6 @@ A CLI tool to help create better commit messages.
 - [AI-Powered Mode](#ai-powered-mode)
 - [Keyboard Controls](#keyboard-controls)
 - [Advanced Options](#advanced-options)
-- [GitHub Token Setup](docs/github-token-setup.md)
 - [Development](#development)
 - [Prerequisites](#prerequisites)
 - [Dev Container (Recommended)](#dev-container-recommended)

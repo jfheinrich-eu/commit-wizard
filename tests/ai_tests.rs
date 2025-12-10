@@ -1,3 +1,8 @@
+// Legacy tests for deprecated HTTP API module
+// These tests are kept for backwards compatibility but the functionality
+// is no longer actively used. Current implementation uses Copilot CLI.
+#![allow(deprecated)]
+
 use commit_wizard::ai::{build_prompt, generate_commit_message, parse_commit_message};
 use commit_wizard::types::{ChangeGroup, ChangedFile, CommitType};
 use git2::Status;

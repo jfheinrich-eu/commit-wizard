@@ -84,8 +84,7 @@ struct Cli {
 
 #[derive(clap::Subcommand, Debug)]
 enum Commands {
-    /// Test GitHub token for Models API access
-    TestToken,
+    // No commands currently defined
 }
 
 /// Application entry point.
@@ -110,10 +109,9 @@ fn main() -> Result<()> {
     }
 
     // Handle subcommands
-    if let Some(command) = &cli.command {
-        return match command {
-            Commands::TestToken => test_github_token(),
-        };
+    if let Some(_command) = &cli.command {
+        // No commands currently defined
+        bail!("No subcommands are currently available");
     }
 
     run_application(cli)
@@ -423,178 +421,4 @@ fn run_application(cli: Cli) -> Result<()> {
     run_tui(app, &repo_path)?;
 
     Ok(())
-}
-
-/// Tests GitHub token for Models API access and OpenAI token if available.
-fn test_github_token() -> Result<()> {
-    println!("=== AI API Token Test ===\n");
-
-    // Check which tokens are available
-    let github_token = env::var("COPILOT_GITHUB_TOKEN")
-        .or_else(|_| env::var("GITHUB_TOKEN"))
-        .or_else(|_| env::var("GH_TOKEN"))
-        .ok()
-        .filter(|t| !t.is_empty());
-
-    if github_token.is_none() {
-        eprintln!("❌ No GitHub Copilot CLI tokens found in environment\n");
-        eprintln!("Options:");
-        eprintln!("  For GitHub Copilot CLI API (free/paid):");
-        eprintln!("    export COPILOT_GITHUB_TOKEN='ghp_xxxxxxxxxxxx'");
-        eprintln!("  Or create .env file with tokens");
-        eprintln!("  Run with: commit-wizard --env-override test-token\n");
-        bail!("No GitHub Copilot CLI tokens found");
-    }
-
-    let mut all_passed = true;
-
-    // Test GitHub token if available
-    if let Some(token) = github_token {
-        println!("=== Testing GitHub Models API ===\n");
-        println!("✓ GITHUB_TOKEN is set");
-
-        if !test_github_models_api(&token)? {
-            all_passed = false;
-        }
-        println!();
-    }
-
-    // Final summary
-    println!("=== Summary ===");
-    if all_passed {
-        println!("✅ All tests passed! Your token(s) are ready to use.\n");
-        println!("You can now run:");
-        println!("  commit-wizard --ai");
-    } else {
-        println!("⚠️  Some tests failed. Check the messages above.");
-        println!("\nSee docs/ai-api-configuration.md for troubleshooting.");
-    }
-    println!();
-
-    Ok(())
-}
-
-/// Tests GitHub Models API with the provided token.
-/// Returns true if successful, false if failed.
-fn test_github_models_api(token: &str) -> Result<bool> {
-    use reqwest::blocking::Client;
-    use serde_json::json;
-    use std::time::Duration;
-
-    // Check token format
-    if token.starts_with("ghp_") || token.starts_with("github_pat_") {
-        println!("✓ Token format looks valid");
-    } else {
-        println!("⚠️  Token format may be incorrect");
-        println!("   Expected: ghp_... (classic) or github_pat_... (fine-grained)");
-    }
-    println!();
-
-    // Test GitHub API access
-    println!("Testing GitHub API access...");
-    let client = Client::builder().timeout(Duration::from_secs(10)).build()?;
-
-    let user_response = client
-        .get("https://api.github.com/user")
-        .header("Authorization", format!("Bearer {}", token))
-        .header("User-Agent", "commit-wizard")
-        .send();
-
-    match user_response {
-        Ok(resp) if resp.status().is_success() => {
-            if let Ok(user) = resp.json::<serde_json::Value>() {
-                if let Some(login) = user["login"].as_str() {
-                    println!("✓ Token is valid for user: {}", login);
-                }
-            }
-        }
-        Ok(resp) => {
-            println!("❌ Token validation failed (HTTP {})", resp.status());
-            println!("   Token may be expired or revoked");
-            return Ok(false);
-        }
-        Err(e) => {
-            println!("❌ Failed to connect to GitHub API: {}", e);
-            return Ok(false);
-        }
-    }
-    println!();
-
-    // Test GitHub Models API
-    println!("Testing GitHub Models API endpoint...");
-    let models_response = client
-        .post("https://models.github.com/chat/completions")
-        .header("Authorization", format!("Bearer {}", token))
-        .header("Content-Type", "application/json")
-        .json(&json!({
-            "model": "gpt-4o-mini",
-            "messages": [{"role": "user", "content": "Say hello"}],
-            "max_tokens": 10
-        }))
-        .send();
-
-    match models_response {
-        Ok(resp) if resp.status().is_success() => {
-            println!("✅ SUCCESS! GitHub Models API is working!");
-            if let Ok(body) = resp.json::<serde_json::Value>() {
-                println!("\nResponse preview:");
-                println!("{}", serde_json::to_string_pretty(&body)?);
-            }
-            Ok(true)
-        }
-        Ok(resp) => {
-            let status = resp.status();
-            let body = resp.text().unwrap_or_default();
-
-            println!("❌ GitHub Models API test failed (HTTP {})", status);
-
-            match status.as_u16() {
-                401 => {
-                    println!("\nAuthentication failed:");
-                    println!("  - Token is invalid or doesn't have access to Models API");
-                    println!("\nTroubleshooting:");
-                    println!("  1. Create a new token at: https://github.com/settings/tokens/new");
-                    println!("  2. Select 'read:user' scope");
-                    println!("  3. Make sure you're logged into GitHub.com");
-                }
-                403 => {
-                    println!("\nForbidden:");
-                    println!("  - Token may not have access to GitHub Models");
-                    println!("\nPossible reasons:");
-                    println!("  - GitHub Models not available in your region");
-                    println!("  - Account not eligible for Models API");
-                    println!("  - Rate limit exceeded");
-                }
-                404 => {
-                    println!("\nNot Found:");
-                    println!("  - GitHub Models API endpoint not accessible");
-                    println!("\nCheck:");
-                    println!("  - API endpoint: https://models.github.com/chat/completions");
-                    println!("  - GitHub Models availability");
-                }
-                429 => {
-                    println!("\nRate Limited:");
-                    println!("  - Too many requests, wait a moment and try again");
-                }
-                _ => {
-                    println!("\nUnexpected error");
-                }
-            }
-
-            if !body.is_empty() {
-                println!("\nResponse body:");
-                println!("{}", body);
-            }
-
-            Ok(false)
-        }
-        Err(e) => {
-            println!("❌ Failed to connect to GitHub Models API: {}", e);
-            println!(
-                "   This is expected if models.github.com is not accessible in your environment"
-            );
-            println!("   Consider using OpenAI API as fallback (see docs/ai-api-configuration.md)");
-            Ok(false)
-        }
-    }
 }

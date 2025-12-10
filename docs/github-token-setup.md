@@ -1,6 +1,13 @@
 # GitHub Token Setup for AI Features
 
-This guide explains how to create and configure a GitHub token for the AI-powered commit message generation feature.
+> **⚠️ DEPRECATED**: This document describes the old HTTP API approach.
+>
+> **Current version uses GitHub Copilot CLI** which has its own authentication via `gh auth` and `copilot auth`.
+> No tokens or environment variables are required. See the main [README.md](../README.md) for current setup instructions.
+
+---
+
+This guide explains how to create and configure a GitHub token for the AI-powered commit message generation feature (LEGACY approach).
 
 ## What You Need
 

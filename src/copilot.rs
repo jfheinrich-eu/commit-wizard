@@ -156,7 +156,6 @@ pub fn generate_commit_message_with_ai(
 }
 
 /// Builds the prompt for AI-based file grouping.
-#[doc(hidden)] // Internal use and testing only
 pub fn build_grouping_prompt(
     files: &[ChangedFile],
     ticket: Option<&str>,
@@ -314,7 +313,13 @@ fn call_copilot_cli(prompt: &str) -> Result<String> {
     );
     crate::logging::log_api_request("Copilot CLI", "copilot", prompt.len());
 
-    // Warn if prompt is very large (might hit shell argument limits)
+    // Warn if prompt is very large (might hit shell argument limits).
+    // Shell argument limits vary by platform:
+    // - Linux: typically 2MB (ARG_MAX, check with `getconf ARG_MAX`)
+    // - macOS: typically 1MB
+    // - Windows: typically 32KB
+    // We use 100KB as a conservative threshold (well below minimum platform limits)
+    // to warn early and avoid potential failures when passing prompts as command-line arguments.
     const MAX_SAFE_PROMPT_SIZE: usize = 100_000; // 100KB
     if prompt.len() > MAX_SAFE_PROMPT_SIZE {
         warn!(

@@ -87,7 +87,7 @@ impl Log for FileLogger {
 /// # Arguments
 ///
 /// * `enabled` - Whether logging is enabled (controlled by --log flag)
-/// * `use_local_path` - If true, writes to ./commit-wizard.log, otherwise /var/log/commit-wizard.log
+/// * `use_local_path` - If true, writes to ./commit-wizard.log; if false, writes to the XDG data directory (typically ~/.local/share/commit-wizard/commit-wizard.log)
 /// * `verbose` - If true, sets log level to DEBUG, otherwise INFO
 ///
 /// # Returns
