@@ -92,18 +92,23 @@ Generate commit messages and group files intelligently using GitHub Copilot CLI:
 
 ```bash
 # Prerequisites: GitHub CLI and Copilot CLI must be installed and authenticated
-# 1. Install GitHub CLI (if not already installed)
-#    https://cli.github.com/
+# 1. Install GitHub Copilot CLI
+#    Choose one of the following methods:
 
-# 2. Authenticate with GitHub
-gh auth login
+# Option A: Install with npm (recommended)
+npm install -g @github/copilot
 
-# 3. Install Copilot CLI extension
-gh extension install github/gh-copilot
+# Option B: Install with Homebrew (macOS/Linux)
+brew install copilot-cli
 
-# 4. Authenticate Copilot
-#    Run 'copilot' and follow the prompts, or use:
-copilot auth
+# Option C: Install with WinGet (Windows)
+winget install GitHub.Copilot
+
+# 2. Authenticate Copilot CLI
+#    Launch 'copilot' and follow the prompts:
+copilot
+#    Then in the interactive session, type:
+#    /login
 
 # Run with AI enabled (default)
 commit-wizard

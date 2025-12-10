@@ -42,9 +42,7 @@ fn is_copilot_cli_available() -> bool {
         .unwrap_or(false);
 
     if !version_check {
-        warn!(
-            "GitHub Copilot CLI not found. Install it with: gh extension install github/gh-copilot"
-        );
+        warn!("GitHub Copilot CLI not found. Install it with: npm install -g @github/copilot");
         return false;
     }
 

@@ -6,7 +6,7 @@
 > To test your Copilot setup:
 > ```bash
 > copilot --version              # Check if Copilot CLI is installed
-> gh auth status                 # Check GitHub CLI authentication
+> copilot -p "Hello, world"      # Test authentication (will prompt /login if needed)
 > ```
 > See the main [README.md](../README.md) for current setup instructions.
 

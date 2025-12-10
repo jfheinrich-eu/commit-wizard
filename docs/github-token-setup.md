@@ -2,7 +2,8 @@
 
 > **⚠️ DEPRECATED**: This document describes the old HTTP API approach.
 >
-> **Current version uses GitHub Copilot CLI** which has its own authentication via `gh auth` and `copilot auth`.
+> **Current version uses GitHub Copilot CLI** which handles authentication automatically.
+> Simply run `copilot` and use the `/login` slash command to authenticate.
 > No tokens or environment variables are required. See the main [README.md](../README.md) for current setup instructions.
 
 ---

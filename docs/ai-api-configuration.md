@@ -41,8 +41,8 @@ The HTTP API approach had several issues:
 
 **GitHub Copilot CLI** provides:
 
-- ✅ Built-in authentication via `gh auth` and `copilot auth`
-- ✅ Works in all environments where GitHub CLI works
+- ✅ Built-in authentication via `/login` slash command in interactive session
+- ✅ Works in all environments (no proxy/DNS issues)
 - ✅ No environment variables needed
 - ✅ Interactive authentication flow
 - ✅ Automatic token refresh
