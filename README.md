@@ -87,7 +87,7 @@ sudo tar xzf commit-wizard-0.1.0-x86_64.tar.gz -C /
 
 ## Basic Usage
 
-You didn't need to stage your changes to run the wizard:
+You don't need to stage your changes to run the wizard:
 
 ```bash
 commit-wizard
