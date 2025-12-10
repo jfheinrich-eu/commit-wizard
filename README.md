@@ -14,24 +14,32 @@ A CLI tool to help create better commit messages.
 
 - [Features](#features)
 - [Installation](#installation)
-- [From Source](#from-source)
+  - [Alpine Linux](#alpine-linux)
+  - [From Source](#from-source)
+  - [Pre-built Binaries](#pre-built-binaries)
 - [Usage](#usage)
-- [Basic Usage](#basic-usage)
-- [AI-Powered Mode](#ai-powered-mode)
-- [Keyboard Controls](#keyboard-controls)
-- [Advanced Options](#advanced-options)
+  - [Basic Usage](#basic-usage)
+  - [AI-Powered Mode](#ai-powered-mode)
+    - [Testing Your Setup](#testing-your-setup)
+  - [Keyboard Controls](#keyboard-controls)
+    - [Main Interface](#main-interface)
+    - [Editor Mode](#editor-mode)
+    - [Diff Viewer](#diff-viewer)
+  - [Advanced Options](#advanced-options)
 - [Development](#development)
-- [Prerequisites](#prerequisites)
-- [Dev Container (Recommended)](#dev-container-recommended)
-- [Quick Start](#quick-start)
-- [Building](#building)
+  - [Prerequisites](#prerequisites)
+  - [Dev Container (Recommended)](#dev-container-recommended)
+    - [Quick Start](#quick-start)
+  - [Building](#building)
   - [Running](#running)
   - [Testing](#testing)
   - [Linting](#linting)
   - [Formatting](#formatting)
-- [Contributing](#contributing)
+  - [Pre-commit Hooks](#pre-commit-hooks)
+  - [Contributing](#contributing)
   - [CI/CD Workflows](#cicd-workflows)
 - [License](#license)
+- [Credits](#credits)
 
 ---
 
@@ -79,10 +87,9 @@ sudo tar xzf commit-wizard-0.1.0-x86_64.tar.gz -C /
 
 ## Basic Usage
 
-Stage your changes and run the wizard:
+You didn't need to stage your changes to run the wizard:
 
 ```bash
-git add .
 commit-wizard
 ```
 
@@ -277,3 +284,8 @@ All changes must:
 # License
 
 This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
+
+# Credits
+
+- [@jfheinrich](mailto:joerg@jfheinrich.eu): Initiator and code owner
+- With assistance of GitHub Copilot
