@@ -331,11 +331,18 @@ fn call_copilot_cli(prompt: &str) -> Result<String> {
     // Note: The copilot CLI expects the prompt via the -p flag as an argument,
     // not via stdin. While passing via stdin would be ideal for security,
     // the CLI's design requires this approach.
-    let output = Command::new("copilot")
+    let child = Command::new("copilot")
         .arg("-p")
         .arg(prompt)
-        .output()
-        .context("Failed to execute GitHub Copilot CLI")?;
+        .stdin(Stdio::null())
+        .stdout(Stdio::piped())
+        .stderr(Stdio::piped())
+        .spawn()
+        .context("Failed to spawn GitHub Copilot CLI")?;
+
+    let output = child
+        .wait_with_output()
+        .context("Failed to wait for GitHub Copilot CLI")?;
 
     // Check exit status
     if !output.status.success() {
