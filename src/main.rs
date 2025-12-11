@@ -114,7 +114,6 @@ fn main() -> Result<()> {
     run_application(cli)
 }
 
-
 /// Prompts user to select which untracked files to include.
 ///
 /// Returns the list of selected untracked files.
