@@ -14,6 +14,7 @@ pub mod editor;
 pub mod git;
 pub mod inference;
 pub mod logging;
+pub mod progress;
 pub mod types;
 pub mod ui;
 
