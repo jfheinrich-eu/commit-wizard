@@ -5,7 +5,7 @@
 
 use std::io::{self, IsTerminal, Write};
 use std::sync::atomic::{AtomicBool, Ordering};
-use std::sync::Arc;
+use std::sync::{Arc, Mutex};
 use std::thread;
 use std::time::Duration;
 
@@ -26,7 +26,7 @@ use std::time::Duration;
 /// ```
 pub struct ProgressSpinner {
     running: Arc<AtomicBool>,
-    handle: Option<thread::JoinHandle<()>>,
+    handle: Arc<Mutex<Option<thread::JoinHandle<()>>>>,
 }
 
 impl Drop for ProgressSpinner {
@@ -35,12 +35,7 @@ impl Drop for ProgressSpinner {
     /// This prevents the background thread from continuing to run if the
     /// spinner goes out of scope without an explicit `stop()` call.
     fn drop(&mut self) {
-        self.running.store(false, Ordering::Relaxed);
-        if let Some(handle) = self.handle.take() {
-            if let Err(e) = handle.join() {
-                eprintln!("Warning: spinner thread panicked: {:?}", e);
-            }
-        }
+        self.stop();
     }
 }
 
@@ -88,20 +83,28 @@ impl ProgressSpinner {
             None
         };
 
-        Self { running, handle }
+        Self {
+            running,
+            handle: Arc::new(Mutex::new(handle)),
+        }
     }
 
     /// Stops the spinner animation and waits for the thread to finish.
     ///
-    /// This method consumes the spinner and ensures the animation thread
-    /// is properly terminated. If the thread panicked, a warning is printed
-    /// to stderr but the method does not panic.
-    pub fn stop(mut self) {
-        self.running.store(false, Ordering::Relaxed);
-        if let Some(handle) = self.handle.take() {
-            if let Err(e) = handle.join() {
-                eprintln!("Warning: spinner thread panicked: {:?}", e);
+    /// This method is idempotent and can be called multiple times safely.
+    /// Subsequent calls after the first will have no effect. If the thread
+    /// panicked, a warning is printed to stderr but the method does not panic.
+    pub fn stop(&self) {
+        // Atomically set running to false and check if we were the one to do it
+        if self.running.swap(false, Ordering::Relaxed) {
+            // We were running, so we need to clean up
+            let mut handle_guard = self.handle.lock().unwrap();
+            if let Some(handle) = handle_guard.take() {
+                if let Err(e) = handle.join() {
+                    eprintln!("Warning: spinner thread panicked: {:?}", e);
+                }
             }
         }
+        // If running was already false, another thread already stopped us - do nothing
     }
 }
