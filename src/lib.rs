@@ -4,10 +4,17 @@
 //! It can be used as a library in other Rust projects or as a binary CLI tool.
 
 // Public modules
+#[deprecated(
+    since = "0.2.0",
+    note = "Legacy HTTP API module - use `copilot` module with GitHub Copilot CLI instead"
+)]
 pub mod ai;
+pub mod copilot;
 pub mod editor;
 pub mod git;
 pub mod inference;
+pub mod logging;
+pub mod progress;
 pub mod types;
 pub mod ui;
 

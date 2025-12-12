@@ -4,11 +4,28 @@
 .PHONY: help build test lint clean install dev ci release docs coverage coverage-html \
 	pre-commit-install pre-commit-run pre-commit-update pre-commit-uninstall deps-machete \
 	alpine-package alpine-install alpine-uninstall alpine-clean alpine-static \
-	alpine-info alpine-test alpine-dist
+	alpine-info alpine-test alpine-dist \
+	check-requirements install-requirements install-cargo-tools install-copilot
 
 # Default target - show help
 help:
 	@echo "Available targets:"
+	@echo ""
+	@echo "Requirements:"
+	@echo "  - Rust and Cargo (https://www.rust-lang.org/tools/install)"
+	@echo "  - Git (https://git-scm.com/downloads)"
+	@echo "  - For Alpine package: tar, gzip"
+	@echo "  - For code coverage: cargo-llvm-cov (install with 'cargo install cargo-llvm-cov')"
+	@echo "  - For pre-commit hooks: pre-commit (install with 'pip3 install pre-commit')"
+	@echo "  - For dependency checks: cargo-outdated, cargo-audit, cargo-machete"
+	@echo "  - For GitHub Copilot CLI integration: (https://github.com/github/copilot-cli , install with 'npm install -g @github/copilot')"
+	@echo "  - For auto-rebuild: cargo-watch (install with 'cargo install cargo-watch')"
+	@echo ""
+	@echo "Requirements Management:"
+	@echo "  make check-requirements    - Check which requirements are installed"
+	@echo "  make install-requirements  - Install all missing optional requirements"
+	@echo "  make install-cargo-tools   - Install cargo tools (llvm-cov, outdated, audit, machete, watch)"
+	@echo "  make install-copilot       - Install GitHub Copilot CLI via npm"
 	@echo ""
 	@echo "Development:"
 	@echo "  make build          - Build debug version"
@@ -343,3 +360,138 @@ alpine-dist: alpine-package
 	@echo "  - $(DIST_DIR)/$(PACKAGE_NAME)-$(VERSION)-$(ARCH).tar.gz"
 	@echo "  - $(DIST_DIR)/$(PACKAGE_NAME)-$(VERSION)-$(ARCH).tar.gz.sha256"
 	@echo "  - $(DIST_DIR)/$(PACKAGE_NAME)-$(VERSION)-$(ARCH).tar.gz.sha512"
+
+# ============================================================================
+# Requirements Management
+# ============================================================================
+
+# Check which requirements are installed
+check-requirements:
+	@echo "=== Checking Requirements ==="
+	@echo ""
+	@echo "Core Requirements (required):"
+	@printf "  %-20s " "Rust/Cargo:"; command -v cargo >/dev/null 2>&1 && echo "✅ $$(cargo --version)" || echo "❌ NOT FOUND - Install from https://www.rust-lang.org/tools/install"
+	@printf "  %-20s " "Git:"; command -v git >/dev/null 2>&1 && echo "✅ $$(git --version)" || echo "❌ NOT FOUND - Install from https://git-scm.com/downloads"
+	@echo ""
+	@echo "Alpine Package Tools (optional):"
+	@printf "  %-20s " "tar:"; command -v tar >/dev/null 2>&1 && echo "✅ $$(tar --version | head -1)" || echo "❌ NOT FOUND"
+	@printf "  %-20s " "gzip:"; command -v gzip >/dev/null 2>&1 && echo "✅ $$(gzip --version | head -1)" || echo "❌ NOT FOUND"
+	@echo ""
+	@echo "Cargo Tools (optional):"
+	@printf "  %-20s " "cargo-llvm-cov:"; cargo llvm-cov --version 2>/dev/null | head -1 && echo "" || echo "❌ NOT FOUND - Run 'make install-cargo-tools'"
+	@printf "  %-20s " "cargo-outdated:"; cargo outdated --version 2>/dev/null | head -1 && echo "" || echo "❌ NOT FOUND - Run 'make install-cargo-tools'"
+	@printf "  %-20s " "cargo-audit:"; cargo audit --version 2>/dev/null | head -1 && echo "" || echo "❌ NOT FOUND - Run 'make install-cargo-tools'"
+	@printf "  %-20s " "cargo-machete:"; cargo machete --version 2>/dev/null | head -1 && echo "" || echo "❌ NOT FOUND - Run 'make install-cargo-tools'"
+	@printf "  %-20s " "cargo-watch:"; /usr/local/cargo/bin/cargo-watch --version 2>/dev/null | head -1 && echo "" || (command -v cargo-watch >/dev/null 2>&1 && echo "✅ $$(command cargo-watch --version 2>&1 | grep -o 'cargo-watch [0-9.]*')" || echo "❌ NOT FOUND - Run 'make install-cargo-tools'")
+	@echo ""
+	@echo "Other Tools (optional):"
+	@printf "  %-20s " "pre-commit:"; command -v pre-commit >/dev/null 2>&1 && echo "✅ $$(pre-commit --version)" || echo "❌ NOT FOUND - Install with 'pip3 install pre-commit'"
+	@printf "  %-20s " "GitHub Copilot CLI:"; command -v copilot >/dev/null 2>&1 && echo "✅ $$(copilot --version 2>&1 | head -1)" || echo "❌ NOT FOUND - Run 'make install-copilot'"
+	@echo ""
+	@echo "To install missing requirements, run:"
+	@echo "  make install-requirements    - Install all optional tools"
+	@echo "  make install-cargo-tools     - Install only cargo tools"
+	@echo "  make install-copilot         - Install only GitHub Copilot CLI"
+
+# Install all missing optional requirements
+install-requirements: install-cargo-tools install-copilot
+	@echo ""
+	@echo "=== Installing Pre-commit ==="
+	@if command -v pre-commit >/dev/null 2>&1; then \
+		echo "✅ pre-commit already installed: $$(pre-commit --version)"; \
+	elif command -v pip3 >/dev/null 2>&1; then \
+		echo "Installing pre-commit with pip3..."; \
+		pip3 install --user pre-commit && \
+		echo "✅ pre-commit installed successfully" || \
+		echo "❌ Failed to install pre-commit"; \
+	else \
+		echo "❌ pip3 not found - please install Python 3 and pip3 first"; \
+		echo "   Visit: https://www.python.org/downloads/"; \
+	fi
+	@echo ""
+	@echo "=== Installation Summary ==="
+	@make check-requirements
+
+# Install cargo tools (llvm-cov, outdated, audit, machete, watch)
+install-cargo-tools:
+	@echo "=== Installing Cargo Tools ==="
+	@echo ""
+	@echo "Checking cargo-llvm-cov..."
+	@if cargo llvm-cov --version >/dev/null 2>&1; then \
+		echo "✅ cargo-llvm-cov already installed: $$(cargo llvm-cov --version)"; \
+	else \
+		echo "Installing cargo-llvm-cov..."; \
+		cargo install cargo-llvm-cov && \
+		echo "✅ cargo-llvm-cov installed successfully" || \
+		echo "❌ Failed to install cargo-llvm-cov"; \
+	fi
+	@echo ""
+	@echo "Checking cargo-outdated..."
+	@if cargo outdated --version >/dev/null 2>&1; then \
+		echo "✅ cargo-outdated already installed: $$(cargo outdated --version)"; \
+	else \
+		echo "Installing cargo-outdated..."; \
+		cargo install cargo-outdated && \
+		echo "✅ cargo-outdated installed successfully" || \
+		echo "❌ Failed to install cargo-outdated"; \
+	fi
+	@echo ""
+	@echo "Checking cargo-audit..."
+	@if cargo audit --version >/dev/null 2>&1; then \
+		echo "✅ cargo-audit already installed: $$(cargo audit --version)"; \
+	else \
+		echo "Installing cargo-audit..."; \
+		cargo install cargo-audit && \
+		echo "✅ cargo-audit installed successfully" || \
+		echo "❌ Failed to install cargo-audit"; \
+	fi
+	@echo ""
+	@echo "Checking cargo-machete..."
+	@if cargo machete --version >/dev/null 2>&1; then \
+		echo "✅ cargo-machete already installed: $$(cargo machete --version)"; \
+	else \
+		echo "Installing cargo-machete..."; \
+		cargo install cargo-machete && \
+		echo "✅ cargo-machete installed successfully" || \
+		echo "❌ Failed to install cargo-machete"; \
+	fi
+	@echo ""
+	@echo "Checking cargo-watch..."
+	@if /usr/local/cargo/bin/cargo-watch --version >/dev/null 2>&1; then \
+		echo "✅ cargo-watch already installed: $$(/usr/local/cargo/bin/cargo-watch --version)"; \
+	elif command -v cargo-watch >/dev/null 2>&1; then \
+		echo "✅ cargo-watch already installed: $$(command cargo-watch --version 2>&1 | grep -o 'cargo-watch [0-9.]*')"; \
+	else \
+		echo "Installing cargo-watch..."; \
+		cargo install cargo-watch && \
+		echo "✅ cargo-watch installed successfully" || \
+		echo "❌ Failed to install cargo-watch"; \
+	fi
+	@echo ""
+	@echo "✅ Cargo tools installation complete!"
+
+# Install GitHub Copilot CLI via npm
+install-copilot:
+	@echo "=== Installing GitHub Copilot CLI ==="
+	@echo ""
+	@if command -v copilot >/dev/null 2>&1; then \
+		echo "✅ GitHub Copilot CLI already installed: $$(copilot --version 2>&1 | head -1)"; \
+	elif command -v npm >/dev/null 2>&1; then \
+		echo "Installing GitHub Copilot CLI with npm..."; \
+		echo "Running: npm install -g @github/copilot"; \
+		npm install -g @github/copilot && \
+		echo "✅ GitHub Copilot CLI installed successfully" && \
+		echo "" && \
+		echo "To authenticate, run:" && \
+		echo "  copilot" && \
+		echo "Then in the interactive session, type:" && \
+		echo "  /login" || \
+		echo "❌ Failed to install GitHub Copilot CLI"; \
+	else \
+		echo "❌ npm not found - please install Node.js and npm first"; \
+		echo "   Visit: https://nodejs.org/"; \
+		echo "" ; \
+		echo "Alternative installation methods:"; \
+		echo "  - Homebrew (macOS/Linux): brew install copilot-cli"; \
+		echo "  - WinGet (Windows): winget install GitHub.Copilot"; \
+	fi

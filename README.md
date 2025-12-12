@@ -14,25 +14,32 @@ A CLI tool to help create better commit messages.
 
 - [Features](#features)
 - [Installation](#installation)
-- [From Source](#from-source)
+  - [Alpine Linux](#alpine-linux)
+  - [From Source](#from-source)
+  - [Pre-built Binaries](#pre-built-binaries)
 - [Usage](#usage)
-- [Basic Usage](#basic-usage)
-- [AI-Powered Mode](#ai-powered-mode)
-- [Keyboard Controls](#keyboard-controls)
-- [Advanced Options](#advanced-options)
-- [GitHub Token Setup](docs/github-token-setup.md)
+  - [Basic Usage](#basic-usage)
+  - [AI-Powered Mode](#ai-powered-mode)
+    - [Testing Your Setup](#testing-your-setup)
+  - [Keyboard Controls](#keyboard-controls)
+    - [Main Interface](#main-interface)
+    - [Editor Mode](#editor-mode)
+    - [Diff Viewer](#diff-viewer)
+  - [Advanced Options](#advanced-options)
 - [Development](#development)
-- [Prerequisites](#prerequisites)
-- [Dev Container (Recommended)](#dev-container-recommended)
-- [Quick Start](#quick-start)
-- [Building](#building)
+  - [Prerequisites](#prerequisites)
+  - [Dev Container (Recommended)](#dev-container-recommended)
+    - [Quick Start](#quick-start)
+  - [Building](#building)
   - [Running](#running)
   - [Testing](#testing)
   - [Linting](#linting)
   - [Formatting](#formatting)
-- [Contributing](#contributing)
+  - [Pre-commit Hooks](#pre-commit-hooks)
+  - [Contributing](#contributing)
   - [CI/CD Workflows](#cicd-workflows)
 - [License](#license)
+- [Credits](#credits)
 
 ---
 
@@ -80,60 +87,63 @@ sudo tar xzf commit-wizard-0.1.0-x86_64.tar.gz -C /
 
 ## Basic Usage
 
-Stage your changes and run the wizard:
+You don't need to stage your changes to run the wizard:
 
 ```bash
-git add .
 commit-wizard
 ```
 
 ## AI-Powered Mode
 
-Generate commit messages using AI (GitHub Models or OpenAI):
+Generate commit messages and group files intelligently using GitHub Copilot CLI:
 
 ```bash
-# Option 1: GitHub Models API (free, if available in your region)
-# Create a Personal Access Token: https://github.com/settings/tokens/new
-# Required scope: "read:user"
-export GITHUB_TOKEN="ghp_xxxxxxxxxxxxxxxxxxxx"
+# Prerequisites: GitHub CLI and Copilot CLI must be installed and authenticated
+# 1. Install GitHub Copilot CLI
+#    Choose one of the following methods:
 
-# Option 2: OpenAI API (paid, ~$0.0001 per message, always available)
-# Get API key: https://platform.openai.com/api-keys
-export OPENAI_API_KEY="sk-xxxxxxxxxxxxxxxxxxxx"
+# Option A: Install with npm (recommended)
+npm install -g @github/copilot
 
-# Option 3: Both (automatic fallback if GitHub Models unavailable)
-export GITHUB_TOKEN="ghp_xxxxxxxxxxxxxxxxxxxx"
-export OPENAI_API_KEY="sk-xxxxxxxxxxxxxxxxxxxx"
+# Option B: Install with Homebrew (macOS/Linux)
+brew install copilot-cli
 
-# Test your token(s)
-commit-wizard test-token
+# Option C: Install with WinGet (Windows)
+winget install GitHub.Copilot
 
-# Run with AI enabled
-commit-wizard --ai
+# 2. Authenticate Copilot CLI
+#    Launch 'copilot' and follow the prompts:
+copilot
+#    Then in the interactive session, type:
+#    /login
+
+# Run with AI enabled (default)
+commit-wizard
+
+# Or explicitly disable AI and use heuristic grouping
+commit-wizard --no-ai
 ```
 
-**Note:** GitHub Models API may not be available in all regions/environments. OpenAI is recommended for production use. See [AI API Configuration](docs/ai-api-configuration.md) for details.
+**Note:** AI features are enabled by default. The tool will automatically fall back to heuristic grouping if Copilot CLI is not available or not authenticated.
 
-### Testing Your Token
+### Testing Your Setup
 
-Before using AI features, verify your token works:
+Before using AI features, verify your Copilot authentication:
 
 ```bash
-# Built-in token validator
-commit-wizard test-token
+# Quick test - will prompt for authentication if needed
+copilot -p "Hello, world"
 
-# Or run the bash script
-./scripts/test-github-token.sh
+# Or start the tool with verbose output to see AI availability
+commit-wizard --verbose
 ```
 
-The test will check:
+The tool will automatically check:
 
-- Token is set and valid format
-- GitHub API authentication works
-- Models API is accessible
-- Full request/response cycle
-
-In the TUI, press `a` to generate a commit message for the selected group using AI.
+- GitHub CLI installation
+- Copilot CLI availability
+- Authentication status
+- Interactive login if needed
 
 ## Keyboard Controls
 
@@ -143,7 +153,6 @@ In the TUI, press `a` to generate a commit message for the selected group using 
 - `Tab` / `Shift+Tab` - Switch between panels (Groups, Message, Files)
 - `e` - Edit commit message in integrated editor
 - `d` - View diff for selected file
-- `a` - Generate commit message with AI (requires `--ai` flag)
 - `c` - Commit selected group
 - `C` - Commit all groups
 - `Ctrl+L` - Clear status message
@@ -171,8 +180,11 @@ commit-wizard --repo /path/to/repo
 # Enable verbose output
 commit-wizard --verbose
 
+# Disable AI and use heuristic grouping only
+commit-wizard --no-ai
+
 # Combine options
-commit-wizard --ai --verbose --repo /path/to/repo
+commit-wizard --verbose --repo /path/to/repo
 ```
 
 # Development
@@ -272,3 +284,8 @@ All changes must:
 # License
 
 This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
+
+# Credits
+
+- [@jfheinrich](mailto:joerg@jfheinrich.eu): Initiator and code owner
+- With assistance of GitHub Copilot

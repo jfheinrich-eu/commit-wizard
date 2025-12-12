@@ -49,3 +49,8 @@ openai.sh
 pkg/
 dist/
 lcov.info
+
+# temporary files
+tmp/
+temp/
+commit-wizard.log

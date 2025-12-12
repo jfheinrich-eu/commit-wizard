@@ -1,6 +1,18 @@
 # Token Testing & Troubleshooting Guide
 
-## Quick Test
+> **⚠️ DEPRECATED**: This document and the `test-token` command are no longer available.
+>
+> **Current version uses GitHub Copilot CLI** which handles authentication automatically.
+> To test your Copilot setup:
+> ```bash
+> copilot --version              # Check if Copilot CLI is installed
+> copilot -p "Hello, world"      # Test authentication (will prompt /login if needed)
+> ```
+> See the main [README.md](../README.md) for current setup instructions.
+
+---
+
+## Quick Test (LEGACY)
 
 ```bash
 # Test your GitHub token

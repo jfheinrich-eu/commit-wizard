@@ -15,16 +15,24 @@ use regex::Regex;
 use tempfile::NamedTempFile;
 
 use crate::types::{ChangeGroup, ChangedFile};
+use log::{debug, error};
 
-/// Collects all staged files from the git repository.
+/// Collects all changed files from the git repository (staged and unstaged).
+///
+/// This function collects:
+/// - Modified files (staged or unstaged)
+/// - New files (tracked or untracked)
+/// - Deleted files
+/// - Renamed files
 ///
 /// # Arguments
 ///
 /// * `repo` - A reference to the git repository
+/// * `include_untracked` - Whether to include untracked (new) files
 ///
 /// # Returns
 ///
-/// A vector of [`ChangedFile`] representing all staged changes.
+/// A vector of [`ChangedFile`] representing all changes.
 ///
 /// # Errors
 ///
@@ -34,15 +42,19 @@ use crate::types::{ChangeGroup, ChangedFile};
 ///
 /// ```no_run
 /// use git2::Repository;
-/// use commit_wizard::git::collect_staged_files;
+/// use commit_wizard::git::collect_changed_files;
 ///
 /// let repo = Repository::open(".").unwrap();
-/// let files = collect_staged_files(&repo).unwrap();
-/// println!("Found {} staged files", files.len());
+/// let files = collect_changed_files(&repo, true).unwrap();
+/// println!("Found {} changed files", files.len());
 /// ```
-pub fn collect_staged_files(repo: &Repository) -> Result<Vec<ChangedFile>> {
+pub fn collect_changed_files(
+    repo: &Repository,
+    include_untracked: bool,
+) -> Result<Vec<ChangedFile>> {
     let mut opts = StatusOptions::new();
-    opts.include_untracked(false)
+    opts.include_untracked(include_untracked)
+        .include_ignored(false)
         .renames_head_to_index(true)
         .renames_index_to_workdir(true);
 
@@ -55,14 +67,31 @@ pub fn collect_staged_files(repo: &Repository) -> Result<Vec<ChangedFile>> {
     for entry in statuses.iter() {
         let status = entry.status();
 
-        // Only process staged changes
-        if !status.intersects(
+        // Process both staged and unstaged changes, including untracked if requested
+        let relevant_flags = if include_untracked {
             Status::INDEX_NEW
                 | Status::INDEX_MODIFIED
                 | Status::INDEX_DELETED
                 | Status::INDEX_RENAMED
-                | Status::INDEX_TYPECHANGE,
-        ) {
+                | Status::INDEX_TYPECHANGE
+                | Status::WT_NEW
+                | Status::WT_MODIFIED
+                | Status::WT_DELETED
+                | Status::WT_RENAMED
+                | Status::WT_TYPECHANGE
+        } else {
+            Status::INDEX_NEW
+                | Status::INDEX_MODIFIED
+                | Status::INDEX_DELETED
+                | Status::INDEX_RENAMED
+                | Status::INDEX_TYPECHANGE
+                | Status::WT_MODIFIED
+                | Status::WT_DELETED
+                | Status::WT_RENAMED
+                | Status::WT_TYPECHANGE
+        };
+
+        if !status.intersects(relevant_flags) {
             continue;
         }
 
@@ -89,6 +118,48 @@ pub fn collect_staged_files(repo: &Repository) -> Result<Vec<ChangedFile>> {
 
         if let Some(path) = path {
             let path_str = path.to_string_lossy().to_string();
+
+            // Validate path (security: prevent directory traversal)
+            if is_valid_path(&path_str) {
+                result.push(ChangedFile::new(path_str, status));
+            }
+        }
+    }
+
+    Ok(result)
+}
+
+/// Collects only untracked files that are not ignored by gitignore.
+///
+/// # Arguments
+///
+/// * `repo` - A reference to the git repository
+///
+/// # Returns
+///
+/// A vector of [`ChangedFile`] representing untracked files.
+pub fn collect_untracked_files(repo: &Repository) -> Result<Vec<ChangedFile>> {
+    let mut opts = StatusOptions::new();
+    opts.include_untracked(true)
+        .include_ignored(false)
+        .recurse_untracked_dirs(true);
+
+    let statuses = repo
+        .statuses(Some(&mut opts))
+        .context("Failed to get git status")?;
+
+    let mut result = Vec::new();
+
+    for entry in statuses.iter() {
+        let status = entry.status();
+
+        // Only collect untracked files (WT_NEW)
+        if !status.contains(Status::WT_NEW) {
+            continue;
+        }
+
+        if let Some(path) = entry.path() {
+            let path_str = path.to_string();
 
             // Validate path (security: prevent directory traversal)
             if is_valid_path(&path_str) {
@@ -224,6 +295,18 @@ pub fn extract_ticket_from_branch(branch: &str) -> Option<String> {
 
 /// Commits a single change group to the repository.
 ///
+/// This function performs the following steps:
+/// 1. Validates all file paths for security
+/// 2. Stages the files in the group with `git add`
+/// 3. Commits only those specific files with the group's message
+///
+/// # Behavior
+///
+/// This function will stage ALL files in the group, including files that were
+/// previously unstaged. This is a behavior change from earlier versions that
+/// relied on files already being staged. Users should be aware that running
+/// this function will automatically stage any unstaged files in the group.
+///
 /// # Arguments
 ///
 /// * `repo_path` - Path to the git repository
@@ -232,16 +315,17 @@ pub fn extract_ticket_from_branch(branch: &str) -> Option<String> {
 /// # Errors
 ///
 /// Returns an error if:
+/// - Any file path in the group is invalid
+/// - The git add (staging) command fails
 /// - The commit message file cannot be created
 /// - The git commit command fails
-/// - Any file path in the group is invalid
 ///
 /// # Security
 ///
 /// - Validates all file paths before passing to git
 /// - Uses temporary files for commit messages
 /// - Sets a timeout to prevent hanging
-pub fn commit_group(repo_path: &Path, group: &ChangeGroup) -> Result<()> {
+pub fn commit_group(repo_path: &Path, group: &ChangeGroup) -> Result<String> {
     // Validate all file paths first
     for file in &group.files {
         if !is_valid_path(&file.path) {
@@ -249,6 +333,29 @@ pub fn commit_group(repo_path: &Path, group: &ChangeGroup) -> Result<()> {
         }
     }
 
+    // Stage the files in this group
+    debug!("Staging {} file(s) for commit", group.files.len());
+
+    let mut stage_cmd = Command::new("git");
+    stage_cmd.arg("-C").arg(repo_path).arg("add").arg("--");
+
+    for file in &group.files {
+        stage_cmd.arg(&file.path);
+    }
+
+    let stage_output = execute_with_timeout(&mut stage_cmd, Duration::from_secs(10))
+        .context("Failed to stage files")?;
+
+    if !stage_output.status.success() {
+        let stderr = String::from_utf8_lossy(&stage_output.stderr);
+        error!("git add failed: {}", stderr);
+        bail!("Failed to stage files: {}", stderr);
+    }
+
+    // Note: We stage files here to ensure all group files are committed,
+    // even if they were previously unstaged. This is intentional behavior.
+
+    // Create commit message
     let msg = group.full_message();
     let mut tmp = NamedTempFile::new().context("Failed to create temporary file")?;
 
@@ -256,6 +363,7 @@ pub fn commit_group(repo_path: &Path, group: &ChangeGroup) -> Result<()> {
         .context("Failed to write commit message")?;
     tmp.flush().context("Failed to flush commit message")?;
 
+    // Commit the staged files
     let mut cmd = Command::new("git");
     cmd.arg("-C")
         .arg(repo_path)
@@ -270,15 +378,27 @@ pub fn commit_group(repo_path: &Path, group: &ChangeGroup) -> Result<()> {
     }
 
     // Execute with timeout for robustness
+    debug!(
+        "Committing group with args: {}\n",
+        cmd.get_args()
+            .map(|arg| arg.to_string_lossy())
+            .collect::<Vec<_>>()
+            .join(" ")
+    );
     let output = execute_with_timeout(&mut cmd, Duration::from_secs(30))
         .context("Failed to execute git commit")?;
 
+    // Capture both stdout and stderr for display
+    let stdout = String::from_utf8_lossy(&output.stdout);
+    let stderr = String::from_utf8_lossy(&output.stderr);
+    let combined_output = format!("{}{}", stdout, stderr);
+
     if !output.status.success() {
-        let stderr = String::from_utf8_lossy(&output.stderr);
+        error!("git commit failed: {}", stderr);
         bail!("git commit failed: {}", stderr);
     }
 
-    Ok(())
+    Ok(combined_output)
 }
 
 /// Commits all change groups sequentially.

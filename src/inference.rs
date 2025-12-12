@@ -301,5 +301,11 @@ pub fn build_groups(files: Vec<ChangedFile>, ticket: Option<String>) -> Vec<Chan
     // Sort by commit type for consistent ordering
     groups.sort_by_key(|g| g.commit_type);
 
+    // Validate no duplicate files (sanity check - should not happen with BTreeMap approach)
+    if let Err(e) = crate::copilot::validate_no_duplicate_files(&groups) {
+        // This should never happen due to BTreeMap grouping, but log if it does
+        log::error!("Unexpected duplicate files in heuristic grouping: {}", e);
+    }
+
     groups
 }

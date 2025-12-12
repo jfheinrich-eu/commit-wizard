@@ -251,7 +251,9 @@ impl ChangeGroup {
             msg.push_str("\n\n");
             for line in &self.body_lines {
                 msg.push_str("- ");
-                msg.push_str(line);
+                // Defensive: strip '- ' prefix if present (shouldn't happen, but be safe)
+                let clean_line = line.strip_prefix("- ").unwrap_or(line);
+                msg.push_str(clean_line);
                 msg.push('\n');
             }
         }
@@ -325,6 +327,12 @@ pub struct AppState {
     pub selected_file_index: usize,
     /// Scroll offset for files panel
     pub files_scroll_offset: usize,
+    /// Git commit output to display in popup
+    pub commit_output: String,
+    /// Scroll offset for commit output popup
+    pub commit_output_scroll: usize,
+    /// Whether the commit output popup is shown
+    pub show_commit_output: bool,
 }
 
 impl AppState {
@@ -346,6 +354,9 @@ impl AppState {
             commit_message_scroll_offset: 0,
             selected_file_index: 0,
             files_scroll_offset: 0,
+            commit_output: String::new(),
+            commit_output_scroll: 0,
+            show_commit_output: false,
         }
     }
 

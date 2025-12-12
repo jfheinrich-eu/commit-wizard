@@ -45,7 +45,7 @@ use crate::types::{ActivePanel, AppState};
 /// - `C` - Commit all groups
 /// - `Ctrl+L` - Clear status message
 /// - `q` or `Esc` - Quit
-pub fn run_tui(mut app: AppState, repo_path: &Path, ai_enabled: bool) -> Result<()> {
+pub fn run_tui(mut app: AppState, repo_path: &Path) -> Result<()> {
     // Setup terminal
     enable_raw_mode()?;
     let mut stdout = io::stdout();
@@ -55,7 +55,7 @@ pub fn run_tui(mut app: AppState, repo_path: &Path, ai_enabled: bool) -> Result<
     terminal.clear()?;
     terminal.hide_cursor()?;
 
-    let result = run_event_loop(&mut terminal, &mut app, repo_path, ai_enabled);
+    let result = run_event_loop(&mut terminal, &mut app, repo_path);
 
     // Restore terminal state
     disable_raw_mode()?;
@@ -70,14 +70,13 @@ fn run_event_loop<B: ratatui::backend::Backend + std::io::Write>(
     terminal: &mut Terminal<B>,
     app: &mut AppState,
     repo_path: &Path,
-    ai_enabled: bool,
 ) -> Result<()> {
     let tick_rate = Duration::from_millis(250);
     let mut last_tick = Instant::now();
 
     loop {
         // Draw UI
-        draw_ui(terminal, app, ai_enabled)?;
+        draw_ui(terminal, app)?;
 
         // Handle events
         let timeout = tick_rate
@@ -86,7 +85,7 @@ fn run_event_loop<B: ratatui::backend::Backend + std::io::Write>(
 
         if event::poll(timeout)? {
             if let CEvent::Key(key) = event::read()? {
-                if handle_key_event(key, app, repo_path, terminal, ai_enabled)? {
+                if handle_key_event(key, app, repo_path, terminal)? {
                     break; // User wants to quit
                 }
             }
@@ -109,8 +108,41 @@ fn handle_key_event<B: ratatui::backend::Backend + std::io::Write>(
     app: &mut AppState,
     repo_path: &Path,
     terminal: &mut Terminal<B>,
-    ai_enabled: bool,
 ) -> Result<bool> {
+    // If commit output popup is shown, handle it first
+    if app.show_commit_output {
+        match key.code {
+            KeyCode::Esc => {
+                app.show_commit_output = false;
+                app.commit_output.clear();
+                app.commit_output_scroll = 0;
+                return Ok(false);
+            }
+            KeyCode::Down | KeyCode::Char('j') => {
+                let lines = app.commit_output.lines().count();
+                if app.commit_output_scroll + 1 < lines {
+                    app.commit_output_scroll += 1;
+                }
+                return Ok(false);
+            }
+            KeyCode::Up | KeyCode::Char('k') => {
+                app.commit_output_scroll = app.commit_output_scroll.saturating_sub(1);
+                return Ok(false);
+            }
+            KeyCode::PageDown => {
+                let lines = app.commit_output.lines().count();
+                app.commit_output_scroll =
+                    (app.commit_output_scroll + 10).min(lines.saturating_sub(1));
+                return Ok(false);
+            }
+            KeyCode::PageUp => {
+                app.commit_output_scroll = app.commit_output_scroll.saturating_sub(10);
+                return Ok(false);
+            }
+            _ => return Ok(false),
+        }
+    }
+
     // If editor help is shown, handle it first
     if app.show_editor_help {
         match key.code {
@@ -225,17 +257,10 @@ fn handle_key_event<B: ratatui::backend::Backend + std::io::Write>(
         KeyCode::Char('d') => {
             handle_diff_action(app, repo_path)?;
         }
-        KeyCode::Char('a') => {
-            if ai_enabled {
-                handle_ai_generate_action(app, terminal)?;
-            } else {
-                app.set_status("✗ AI mode not enabled. Use --ai or --copilot flag.");
-            }
-        }
         KeyCode::Char('c') => {
             handle_commit_action(app, repo_path)?;
         }
-        KeyCode::Char('C') if key.modifiers.is_empty() => {
+        KeyCode::Char('C') if key.modifiers.contains(KeyModifiers::SHIFT) => {
             handle_commit_all_action(app, repo_path)?;
         }
         KeyCode::Char('l') if key.modifiers.contains(KeyModifiers::CONTROL) => {
@@ -320,61 +345,6 @@ fn handle_diff_action(app: &mut AppState, repo_path: &Path) -> Result<()> {
     Ok(())
 }
 
-/// Handles AI-powered commit message generation.
-fn handle_ai_generate_action<B: ratatui::backend::Backend + std::io::Write>(
-    app: &mut AppState,
-    _terminal: &mut Terminal<B>,
-) -> Result<()> {
-    use crate::ai::generate_commit_message;
-    use git2::Repository;
-
-    // Clone data we need before borrowing mutably
-    let (group_clone, files_clone) = if let Some(group) = app.selected_group() {
-        (group.clone(), group.files.clone())
-    } else {
-        return Ok(());
-    };
-
-    app.set_status("🤖 Generating commit message with AI...");
-
-    // Try to get git diff for better context
-    let diff = Repository::discover(".").ok().and_then(|repo| {
-        let mut diff_text = String::new();
-        for file in &files_clone {
-            if let Ok(diff) = crate::git::get_file_diff(&repo, &file.path) {
-                diff_text.push_str(&diff);
-            }
-        }
-        if diff_text.is_empty() {
-            None
-        } else {
-            Some(diff_text)
-        }
-    });
-
-    match generate_commit_message(&group_clone, &files_clone, diff.as_deref()) {
-        Ok((description, body)) => {
-            // Now update the actual group
-            if let Some(group) = app.selected_group_mut() {
-                group.description = description;
-                // Convert optional body string to Vec<String> of lines
-                group.body_lines = body
-                    .map(|b| b.lines().map(String::from).collect())
-                    .unwrap_or_default();
-            }
-            app.set_status("✓ AI generated commit message successfully");
-        }
-        Err(e) => {
-            app.set_status(format!(
-                "✗ AI generation failed: {}. Check GITHUB_TOKEN.",
-                e
-            ));
-        }
-    }
-
-    Ok(())
-}
-
 /// Handles committing a single group.
 fn handle_commit_action(app: &mut AppState, repo_path: &Path) -> Result<()> {
     let selected_idx = app.selected_index;
@@ -386,12 +356,17 @@ fn handle_commit_action(app: &mut AppState, repo_path: &Path) -> Result<()> {
         }
 
         match commit_group(repo_path, group) {
-            Ok(()) => {
+            Ok(output) => {
                 // Mark the group as committed
                 if let Some(group) = app.groups.get_mut(selected_idx) {
                     group.mark_as_committed();
                 }
                 app.set_status("✓ Committed selected group successfully");
+
+                // Show commit output in popup
+                app.commit_output = output;
+                app.commit_output_scroll = 0;
+                app.show_commit_output = true;
             }
             Err(e) => {
                 app.set_status(format!("✗ Commit failed: {}", e));
@@ -415,13 +390,15 @@ fn handle_commit_all_action(app: &mut AppState, repo_path: &Path) -> Result<()> 
 
     let mut committed_count = 0;
     let mut failed = false;
+    let mut all_outputs = Vec::new();
 
     for group in &mut app.groups {
         if !group.is_committed() {
             match commit_group(repo_path, group) {
-                Ok(()) => {
+                Ok(output) => {
                     group.mark_as_committed();
                     committed_count += 1;
+                    all_outputs.push(format!("Group {}: {}", committed_count, output));
                 }
                 Err(e) => {
                     app.set_status(format!("✗ Failed to commit group: {}", e));
@@ -437,6 +414,11 @@ fn handle_commit_all_action(app: &mut AppState, repo_path: &Path) -> Result<()> 
             "✓ Successfully committed {} group(s)",
             committed_count
         ));
+
+        // Show combined output in popup
+        app.commit_output = all_outputs.join("\n\n");
+        app.commit_output_scroll = 0;
+        app.show_commit_output = true;
     }
 
     Ok(())
@@ -446,7 +428,6 @@ fn handle_commit_all_action(app: &mut AppState, repo_path: &Path) -> Result<()> 
 fn draw_ui<B: ratatui::backend::Backend>(
     terminal: &mut Terminal<B>,
     app: &mut AppState,
-    ai_enabled: bool,
 ) -> io::Result<()> {
     terminal.draw(|f| {
         let size = f.area();
@@ -482,7 +463,7 @@ fn draw_ui<B: ratatui::backend::Backend>(
         draw_files_panel(f, app, right_chunks[1], is_files_active);
 
         // Bottom shortcuts bar
-        draw_shortcuts_bar(f, ai_enabled, vertical_chunks[1]);
+        draw_shortcuts_bar(f, vertical_chunks[1]);
 
         // Draw status popup overlay if there's a status message
         if !app.status_message.is_empty() {
@@ -502,6 +483,11 @@ fn draw_ui<B: ratatui::backend::Backend>(
         // Draw editor help popup if active (highest z-order)
         if app.show_editor_help {
             draw_editor_help_popup(f, app, size);
+        }
+
+        // Draw commit output popup if active (topmost z-order)
+        if app.show_commit_output {
+            draw_commit_output_popup(f, app, size);
         }
     })?;
 
@@ -758,8 +744,8 @@ fn draw_files_panel(
 }
 
 /// Draws the keyboard shortcuts bar at the bottom.
-fn draw_shortcuts_bar(f: &mut ratatui::Frame, ai_enabled: bool, area: ratatui::layout::Rect) {
-    let mut shortcuts = vec![
+fn draw_shortcuts_bar(f: &mut ratatui::Frame, area: ratatui::layout::Rect) {
+    let shortcuts = vec![
         Span::styled(
             " ↑↓/jk ",
             Style::default()
@@ -781,19 +767,6 @@ fn draw_shortcuts_bar(f: &mut ratatui::Frame, ai_enabled: bool, area: ratatui::l
                 .add_modifier(Modifier::BOLD),
         ),
         Span::raw("Diff "),
-    ];
-
-    if ai_enabled {
-        shortcuts.push(Span::styled(
-            " a ",
-            Style::default()
-                .fg(Color::Magenta)
-                .add_modifier(Modifier::BOLD),
-        ));
-        shortcuts.push(Span::raw("AI "));
-    }
-
-    shortcuts.extend(vec![
         Span::styled(
             " c ",
             Style::default()
@@ -820,7 +793,7 @@ fn draw_shortcuts_bar(f: &mut ratatui::Frame, ai_enabled: bool, area: ratatui::l
             Style::default().fg(Color::Red).add_modifier(Modifier::BOLD),
         ),
         Span::raw("Quit"),
-    ]);
+    ];
 
     let shortcuts_line = Line::from(shortcuts);
     let shortcuts_paragraph = Paragraph::new(shortcuts_line)
@@ -1260,4 +1233,84 @@ fn draw_diff_viewer_popup(f: &mut ratatui::Frame, app: &AppState, area: ratatui:
         .wrap(Wrap { trim: false })
         .alignment(Alignment::Left);
     f.render_widget(paragraph, inner_area);
+}
+
+/// Draws a popup displaying git commit output.
+fn draw_commit_output_popup(f: &mut ratatui::Frame, app: &AppState, area: ratatui::layout::Rect) {
+    use ratatui::text::{Line, Span};
+    use ratatui::widgets::{
+        Block, Borders, Clear, Paragraph, Scrollbar, ScrollbarOrientation, ScrollbarState,
+    };
+
+    // Calculate popup area (95% of screen size)
+    let popup_area = centered_rect(95, 95, area);
+
+    // Clear the area for the popup
+    f.render_widget(Clear, popup_area);
+
+    // Create block with border and title
+    let block = Block::default()
+        .borders(Borders::ALL)
+        .title(" Commit Output (Press Esc to close) ")
+        .border_style(Style::default().fg(Color::Green));
+
+    let inner_area = block.inner(popup_area);
+    f.render_widget(block, popup_area);
+
+    // Calculate visible lines
+    let visible_lines = inner_area.height as usize;
+    let lines: Vec<_> = app.commit_output.lines().collect();
+    let total_lines = lines.len();
+
+    // Render scrollbar if content is larger than visible area
+    if total_lines > visible_lines {
+        let scrollbar = Scrollbar::new(ScrollbarOrientation::VerticalRight)
+            .begin_symbol(Some("↑"))
+            .end_symbol(Some("↓"));
+
+        let mut scrollbar_state = ScrollbarState::new(total_lines.saturating_sub(visible_lines))
+            .position(app.commit_output_scroll);
+
+        f.render_stateful_widget(scrollbar, popup_area, &mut scrollbar_state);
+    }
+
+    // Render commit output with scroll offset
+    let start_line = app.commit_output_scroll;
+    let end_line = (start_line + visible_lines).min(total_lines);
+
+    let visible_lines: Vec<Line> = lines[start_line..end_line]
+        .iter()
+        .map(|line| Line::from(Span::raw(*line)))
+        .collect();
+
+    let paragraph = Paragraph::new(visible_lines)
+        .wrap(Wrap { trim: false })
+        .alignment(Alignment::Left);
+
+    f.render_widget(paragraph, inner_area);
+}
+
+/// Creates a centered rectangle with the given percentage of width and height.
+fn centered_rect(
+    percent_x: u16,
+    percent_y: u16,
+    r: ratatui::layout::Rect,
+) -> ratatui::layout::Rect {
+    let popup_layout = Layout::default()
+        .direction(Direction::Vertical)
+        .constraints([
+            Constraint::Percentage((100 - percent_y) / 2),
+            Constraint::Percentage(percent_y),
+            Constraint::Percentage((100 - percent_y) / 2),
+        ])
+        .split(r);
+
+    Layout::default()
+        .direction(Direction::Horizontal)
+        .constraints([
+            Constraint::Percentage((100 - percent_x) / 2),
+            Constraint::Percentage(percent_x),
+            Constraint::Percentage((100 - percent_x) / 2),
+        ])
+        .split(popup_layout[1])[1]
 }
