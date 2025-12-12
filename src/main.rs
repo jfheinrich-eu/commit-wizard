@@ -26,9 +26,8 @@
 //! ```
 
 use std::env;
-use std::io::{self, IsTerminal, Write};
+use std::io::Write;
 use std::path::PathBuf;
-use std::sync::Arc;
 
 use anyhow::{bail, Context, Result};
 use clap::Parser;
@@ -42,6 +41,7 @@ use commit_wizard::git::{
 };
 use commit_wizard::inference::build_groups;
 use commit_wizard::logging;
+use commit_wizard::progress::ProgressSpinner;
 use commit_wizard::types::AppState;
 use commit_wizard::ui::run_tui;
 
@@ -112,58 +112,6 @@ fn main() -> Result<()> {
     }
 
     run_application(cli)
-}
-
-/// Progress indicator that runs in background and animates
-struct ProgressSpinner {
-    running: Arc<std::sync::atomic::AtomicBool>,
-    handle: Option<std::thread::JoinHandle<()>>,
-}
-
-impl ProgressSpinner {
-    fn new(message: impl Into<String>, step: usize, total: usize) -> Self {
-        let message = message.into();
-        let running = Arc::new(std::sync::atomic::AtomicBool::new(true));
-
-        let msg_clone = message.clone();
-        let running_clone = running.clone();
-
-        let handle = if std::io::stderr().is_terminal() {
-            Some(std::thread::spawn(move || {
-                let spinners = ["⠋", "⠙", "⠹", "⠸", "⠼", "⠴", "⠦", "⠧", "⠇", "⠏"];
-                let mut idx = 0;
-
-                while running_clone.load(std::sync::atomic::Ordering::Relaxed) {
-                    eprint!(
-                        "\r\x1B[2K[{}/{}] {} {}",
-                        step, total, spinners[idx], msg_clone
-                    );
-                    io::stderr().flush().unwrap();
-
-                    idx = (idx + 1) % spinners.len();
-                    std::thread::sleep(std::time::Duration::from_millis(100));
-                }
-
-                // Clear line when done
-                eprint!("\r\x1B[2K");
-                io::stderr().flush().unwrap();
-            }))
-        } else {
-            None
-        };
-
-        Self { running, handle }
-    }
-
-    fn stop(self) {
-        self.running
-            .store(false, std::sync::atomic::Ordering::Relaxed);
-        if let Some(handle) = self.handle {
-            if let Err(e) = handle.join() {
-                eprintln!("Warning: spinner thread panicked: {:?}", e);
-            }
-        }
-    }
 }
 
 /// Prompts user to select which untracked files to include.

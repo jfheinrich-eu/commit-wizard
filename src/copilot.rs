@@ -328,9 +328,32 @@ fn call_copilot_cli(prompt: &str) -> Result<String> {
     }
 
     // Execute copilot CLI with prompt as argument
-    // Note: The copilot CLI expects the prompt via the -p flag as an argument,
-    // not via stdin. While passing via stdin would be ideal for security,
-    // the CLI's design requires this approach.
+    //
+    // SECURITY NOTE: The GitHub Copilot CLI expects the prompt via the -p flag
+    // as a command-line argument, not via stdin. This is a design constraint
+    // of the Copilot CLI itself.
+    //
+    // Security implications and mitigations:
+    // 1. Process listing exposure: The prompt will be visible in process listings
+    //    (e.g., ps, top) while the command is running. This is unavoidable given
+    //    the CLI's design.
+    //    - Mitigation: Prompts are auto-generated from git diffs and do not
+    //      contain secrets or sensitive user data. File paths and code diffs
+    //      are the only user data included.
+    //
+    // 2. Argument length limits: Command-line arguments have platform-specific
+    //    limits (typically 2MB on Linux, 32KB on Windows).
+    //    - Mitigation: We monitor prompt size and warn if it exceeds 100KB.
+    //      In practice, prompts are typically 1-10KB for normal commits.
+    //
+    // 3. Command injection: Passing untrusted data as arguments could enable
+    //    command injection attacks.
+    //    - Mitigation: All prompt content is generated internally from
+    //      git repository data. No external user input is passed directly.
+    //      File paths are validated for safety before inclusion.
+    //
+    // If the Copilot CLI adds stdin support in the future, we should migrate
+    // to that approach to eliminate process listing exposure.
     let child = Command::new("copilot")
         .arg("-p")
         .arg(prompt)
