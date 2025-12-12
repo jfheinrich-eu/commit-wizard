@@ -342,7 +342,7 @@ fn call_copilot_cli(prompt: &str) -> Result<String> {
     //      are the only user data included.
     //
     // 2. Argument length limits: Command-line arguments have platform-specific
-    //    limits (typically 128KB-2MB on Linux, 32KB on Windows).
+    //    limits (typically 2MB on Linux, 32KB on Windows).
     //    - Mitigation: We monitor prompt size and warn if it exceeds 100KB.
     //      In practice, prompts are typically 1-10KB for normal commits.
     //

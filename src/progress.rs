@@ -69,7 +69,7 @@ impl ProgressSpinner {
                         "\r\x1B[2K[{}/{}] {} {}",
                         step, total, spinners[idx], msg_clone
                     );
-                    io::stderr().flush().unwrap();
+                    let _ = io::stderr().flush();
 
                     idx = (idx + 1) % spinners.len();
                     thread::sleep(Duration::from_millis(100));
@@ -77,7 +77,7 @@ impl ProgressSpinner {
 
                 // Clear line when done
                 eprint!("\r\x1B[2K");
-                io::stderr().flush().unwrap();
+                let _ = io::stderr().flush();
             }))
         } else {
             None
