@@ -29,6 +29,21 @@ pub struct ProgressSpinner {
     handle: Option<thread::JoinHandle<()>>,
 }
 
+impl Drop for ProgressSpinner {
+    /// Ensures the spinner thread is stopped when the instance is dropped.
+    ///
+    /// This prevents the background thread from continuing to run if the
+    /// spinner goes out of scope without an explicit `stop()` call.
+    fn drop(&mut self) {
+        self.running.store(false, Ordering::Relaxed);
+        if let Some(handle) = self.handle.take() {
+            if let Err(e) = handle.join() {
+                eprintln!("Warning: spinner thread panicked: {:?}", e);
+            }
+        }
+    }
+}
+
 impl ProgressSpinner {
     /// Creates a new progress spinner with a message.
     ///
@@ -81,9 +96,9 @@ impl ProgressSpinner {
     /// This method consumes the spinner and ensures the animation thread
     /// is properly terminated. If the thread panicked, a warning is printed
     /// to stderr but the method does not panic.
-    pub fn stop(self) {
+    pub fn stop(mut self) {
         self.running.store(false, Ordering::Relaxed);
-        if let Some(handle) = self.handle {
+        if let Some(handle) = self.handle.take() {
             if let Err(e) = handle.join() {
                 eprintln!("Warning: spinner thread panicked: {:?}", e);
             }
