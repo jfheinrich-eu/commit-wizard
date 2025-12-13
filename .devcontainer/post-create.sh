@@ -176,7 +176,27 @@ if [ -f ".pre-commit-config.yaml" ]; then
     fi
 fi
 
+# Check GitHub Copilot CLI status
+echo "🤖 Checking GitHub Copilot CLI..."
+if command -v copilot >/dev/null 2>&1; then
+    echo "✅ GitHub Copilot CLI is installed"
+
+    # Test authentication status (non-interactive)
+    if copilot -s -p "test" >/dev/null 2>&1; then
+        echo "✅ GitHub Copilot CLI is authenticated"
+    else
+        echo "⚠️  GitHub Copilot CLI is NOT authenticated"
+        echo "   To authenticate, run: copilot"
+        echo "   Then type: /login"
+    fi
+else
+    echo "❌ GitHub Copilot CLI not found"
+    echo "   This should not happen - check Dockerfile installation"
+fi
+
+echo ""
 echo "✅ Development environment setup complete!"
 echo "💡 Available aliases: cb, cr, ct, cc, cf, ccl, cw, cu, tree"
 echo "🔗 Git commit aliases: gcf, gcfix, gcd, gcs, gcr, gct, gcc"
 echo "🪝 Pre-commit hooks: make pre-commit-run"
+echo "🤖 GitHub Copilot CLI: copilot (run '/login' to authenticate)"

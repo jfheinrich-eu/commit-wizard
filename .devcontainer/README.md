@@ -24,6 +24,9 @@ This dev container provides a complete Rust CLI development environment with all
 
 ### 🛠️ Development Tools
 
+- **Node.js 22 LTS** - Latest LTS version for modern npm packages
+- **npm 10+** - Package manager for JavaScript tools
+- **GitHub Copilot CLI** - AI-powered command suggestions (pre-installed)
 - **GitHub CLI (gh)** - Direct GitHub integration
 - **Git** - Version control with GPG signing support
 - **Ripgrep & fd** - Fast file and text search
@@ -232,6 +235,32 @@ If GitHub CLI needs authentication:
 # Login with GitHub CLI (recommended)
 gh auth login
 ```
+
+### GitHub Copilot CLI Setup
+
+The GitHub Copilot CLI is pre-installed but requires authentication:
+
+```bash
+# Check if installed
+copilot --version
+
+# Authenticate (required for AI features)
+copilot
+# In the interactive session, type: /login
+# Follow the browser authentication flow
+# Type: /exit to exit the session
+
+# Test authentication
+commit-wizard --verbose
+# Should show: "🤖 AI mode enabled"
+```
+
+**Note**: Copilot CLI requires:
+- Active GitHub Copilot subscription
+- GitHub account authentication
+- Node.js 22+ and npm 10+ (pre-installed in container)
+
+If Copilot is not authenticated, commit-wizard will fall back to heuristic grouping.
 
 ## Container Rebuild
 

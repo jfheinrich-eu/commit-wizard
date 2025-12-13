@@ -14,9 +14,13 @@ A CLI tool to help create better commit messages.
 
 - [Features](#features)
 - [Installation](#installation)
-  - [Alpine Linux](#alpine-linux)
-  - [From Source](#from-source)
-  - [Pre-built Binaries](#pre-built-binaries)
+  - [Quick Install](#quick-install)
+    - [Linux (any distro)](#linux-any-distro)
+    - [Debian/Ubuntu](#debianubuntu)
+    - [Fedora/RHEL/CentOS](#fedorarhelcentos)
+    - [Alpine Linux](#alpine-linux)
+    - [macOS](#macos)
+    - [From Source](#from-source)
 - [Usage](#usage)
   - [Basic Usage](#basic-usage)
   - [AI-Powered Mode](#ai-powered-mode)
@@ -55,33 +59,58 @@ A CLI tool to help create better commit messages.
 
 # Installation
 
-## Alpine Linux
+## Quick Install
 
-Quick install to `/usr/local`:
+### Linux (any distro)
 
 ```bash
-# Build and install
-make alpine-package
-sudo make alpine-install
+VERSION="0.1.0"
+curl -LO "https://github.com/jfheinrich-eu/commit-wizard/releases/download/$VERSION/commit-wizard-$VERSION-linux-x86_64-musl.tar.gz"
+tar xzf "commit-wizard-$VERSION-linux-x86_64-musl.tar.gz"
+sudo mv "commit-wizard-$VERSION-linux-x86_64-musl/commit-wizard" /usr/local/bin/
 ```
 
-See [Alpine Installation Guide](docs/ALPINE_INSTALL.md) for detailed instructions.
+### Debian/Ubuntu
 
-## From Source
+```bash
+VERSION="0.1.0"
+wget "https://github.com/jfheinrich-eu/commit-wizard/releases/download/$VERSION/commit-wizard_${VERSION}_amd64.deb"
+sudo dpkg -i "commit-wizard_${VERSION}_amd64.deb"
+```
+
+### Fedora/RHEL/CentOS
+
+```bash
+VERSION="0.1.0"
+wget "https://github.com/jfheinrich-eu/commit-wizard/releases/download/$VERSION/commit-wizard-${VERSION}-1.x86_64.rpm"
+sudo dnf install "./commit-wizard-${VERSION}-1.x86_64.rpm"
+```
+
+### Alpine Linux
+
+```bash
+VERSION="0.1.0"
+wget "https://github.com/jfheinrich-eu/commit-wizard/releases/download/$VERSION/commit-wizard-${VERSION}-alpine-x86_64.tar.gz"
+sudo tar xzf "commit-wizard-${VERSION}-alpine-x86_64.tar.gz" -C /
+```
+
+### macOS
+
+```bash
+VERSION="0.1.0"
+# Intel Macs
+curl -LO "https://github.com/jfheinrich-eu/commit-wizard/releases/download/$VERSION/commit-wizard-$VERSION-macos-x86_64.tar.gz"
+# Apple Silicon (M1/M2/M3)
+curl -LO "https://github.com/jfheinrich-eu/commit-wizard/releases/download/$VERSION/commit-wizard-$VERSION-macos-aarch64.tar.gz"
+```
+
+### From Source
 
 ```bash
 cargo install --path .
 ```
 
-## Pre-built Binaries
-
-Download from [GitHub Releases](https://github.com/jfheinrich-eu/commit-wizard/releases):
-
-```bash
-# Download and extract
-wget https://github.com/jfheinrich-eu/commit-wizard/releases/download/v0.1.0/commit-wizard-0.1.0-x86_64.tar.gz
-sudo tar xzf commit-wizard-0.1.0-x86_64.tar.gz -C /
-```
+**📦 For detailed installation instructions**, see the [Installation Guide](docs/INSTALLATION.md).
 
 # Usage
 
@@ -124,7 +153,8 @@ commit-wizard
 commit-wizard --no-ai
 ```
 
-**Note:** AI features are enabled by default. The tool will automatically fall back to heuristic grouping if Copilot CLI is not available or not authenticated.
+**Note:** AI features are enabled by default. The tool will automatically fall back to heuristic grouping if Copilot CLI
+is not available or not authenticated.
 
 ### Testing Your Setup
 
@@ -267,7 +297,8 @@ See [docs/PRE_COMMIT.md](docs/PRE_COMMIT.md) for detailed documentation.
 
 ## Contributing
 
-Please read [BRANCH_PROTECTION.md](.github/BRANCH_PROTECTION.md) for details on our branch protection rules and the process for submitting pull requests.
+Please read [BRANCH_PROTECTION.md](.github/BRANCH_PROTECTION.md) for details on our branch protection rules and the
+process for submitting pull requests.
 
 All changes must:
 

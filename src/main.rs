@@ -274,22 +274,32 @@ fn run_application(cli: Cli) -> Result<()> {
 
     // Step 2: Determine if AI should be used
     let spinner = ProgressSpinner::new("Checking AI availability...", 2, 4);
-    let use_ai = !cli.no_ai && is_ai_available();
+    let ai_available = is_ai_available();
+    let use_ai = !cli.no_ai && ai_available;
     spinner.stop();
 
     log::info!(
         "AI mode: enabled={}, available={}, no_ai_flag={}",
         use_ai,
-        is_ai_available(),
+        ai_available,
         cli.no_ai
     );
-    if cli.verbose {
-        if use_ai {
+    if use_ai {
+        if cli.verbose {
             eprintln!("🤖 AI mode enabled - using GitHub Copilot for grouping and messages");
-        } else if cli.no_ai {
+        }
+    } else if cli.no_ai {
+        if cli.verbose {
             eprintln!("🔧 AI mode disabled by --no-ai flag - using heuristic grouping");
-        } else {
-            eprintln!("🔧 GitHub Copilot CLI not available - falling back to heuristic grouping");
+        }
+    } else if !ai_available {
+        eprintln!("⚠️  GitHub Copilot CLI not available or not authenticated");
+        eprintln!("   Falling back to heuristic grouping");
+        if cli.verbose {
+            eprintln!("\n   To enable AI features:");
+            eprintln!("   1. Install: npm install -g @github/copilot");
+            eprintln!("   2. Authenticate: Run 'copilot' and type '/login'");
+            eprintln!();
         }
     }
 

@@ -30,6 +30,7 @@ jobs:
   auto-review:
     name: Auto Review by Bot
     runs-on: ubuntu-latest
+    timeout-minutes: 15
     env:
       # If you set BOT_TOKEN, it will be used instead of GITHUB_TOKEN.
       # BOT_TOKEN should have the minimum required permissions (ideally: 'repo' and 'pull_request:write' only).

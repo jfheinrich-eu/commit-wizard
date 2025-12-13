@@ -30,7 +30,7 @@ jobs:
           cache: true
       # Initialize CodeQL with improved configuration
       - name: Initialize CodeQL
-        uses: github/codeql-action/init@ba454b8ab46733eb6145342877cd148270bb77ab # v2.23.5
+        uses: github/codeql-action/init@55f241477386da271f97b8ec400e2e58759c21b2 # v3.31.8
         with:
           languages: rust
           config-file: .github/codeql-config.yml
@@ -47,6 +47,6 @@ jobs:
           cargo metadata --format-version 1 > metadata.json
 
       - name: Perform CodeQL Analysis
-        uses: github/codeql-action/analyze@ba454b8ab46733eb6145342877cd148270bb77ab # v2.23.5
+        uses: github/codeql-action/analyze@55f241477386da271f97b8ec400e2e58759c21b2 # v3.31.8
         with:
           category: "/language:rust"
