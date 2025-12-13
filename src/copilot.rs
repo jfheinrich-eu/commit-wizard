@@ -62,23 +62,8 @@ fn is_copilot_cli_available() -> bool {
             // Check if authentication error occurred (Copilot may return 0 even on auth errors)
             if combined_output.contains("Error: No authentication information found.") {
                 error!("GitHub Copilot CLI is not authenticated");
-                eprintln!("\n⚠️  GitHub Copilot CLI requires authentication");
-                eprintln!("Please run the following command to authenticate:");
-                eprintln!("  copilot");
-                eprintln!("\nThen in the interactive session, type:");
-                eprintln!("  /login");
-                eprintln!("\nAfter authentication, run this command again.\n");
-
-                // Start interactive session for authentication
-                eprintln!("Starting interactive Copilot session...");
-                eprintln!("Type '/login' to authenticate, then exit with '/exit'\n");
-
-                let _ = Command::new("copilot")
-                    .stdin(Stdio::inherit())
-                    .stdout(Stdio::inherit())
-                    .stderr(Stdio::inherit())
-                    .status();
-
+                warn!("To authenticate, run: copilot");
+                warn!("Then type '/login' in the interactive session");
                 return false;
             }
 
