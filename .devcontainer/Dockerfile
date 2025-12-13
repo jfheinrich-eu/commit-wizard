@@ -29,6 +29,9 @@ RUN apt-get update && apt-get install -y \
     # Ruby for markdownlint
     ruby \
     ruby-dev \
+    # Node.js and npm for GitHub Copilot CLI
+    nodejs \
+    npm \
     # CLI tools
     curl \
     wget \
@@ -81,6 +84,17 @@ RUN python3 -m pip install --no-cache-dir pre-commit
 
 # Install markdownlint gem
 RUN gem install mdl
+
+# Upgrade Node.js to latest LTS version using n
+# Debian bullseye ships with Node.js 12.x which is too old for @github/copilot
+RUN npm install -g n && \
+    n lts && \
+    hash -r && \
+    npm --version && \
+    node --version
+
+# Install GitHub Copilot CLI globally
+RUN npm install -g @github/copilot
 
 # Create symlinks for fd (some systems use fdfind)
 RUN if [ -x /usr/bin/fdfind ]; then ln -sf /usr/bin/fdfind /usr/local/bin/fd || echo "Warning: Could not create fd symlink"; fi
