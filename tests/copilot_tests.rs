@@ -671,3 +671,63 @@ fn test_path_with_special_characters() {
     let result = validate_no_duplicate_files(&groups);
     assert!(result.is_ok());
 }
+
+// =============================================================================
+// TESTS FOR is_ai_available() and authentication checks
+// =============================================================================
+
+#[test]
+fn test_is_ai_available_executes_without_panic() {
+    use commit_wizard::copilot::is_ai_available;
+
+    // This test simply verifies the function can be called without panicking
+    // The actual result depends on whether copilot CLI is installed/authenticated
+    let _result = is_ai_available();
+
+    // If we reach here, the function executed without panic
+    // We don't assert on the result since it depends on the environment
+}
+
+#[test]
+fn test_check_copilot_auth_error_with_auth_error() {
+    use commit_wizard::copilot::check_copilot_auth_error;
+
+    let output = "Error: No authentication information found.\nPlease authenticate first.";
+    let result = check_copilot_auth_error(output, true);
+
+    // Should return false when auth error is present, even if status is success
+    assert!(!result);
+}
+
+#[test]
+fn test_check_copilot_auth_error_authenticated() {
+    use commit_wizard::copilot::check_copilot_auth_error;
+
+    let output = "Successfully authenticated\nReady to use Copilot";
+    let result = check_copilot_auth_error(output, true);
+
+    // Should return true when no auth error and status is success
+    assert!(result);
+}
+
+#[test]
+fn test_check_copilot_auth_error_with_failed_status() {
+    use commit_wizard::copilot::check_copilot_auth_error;
+
+    let output = "Some other error occurred";
+    let result = check_copilot_auth_error(output, false);
+
+    // Should return false when status is not success
+    assert!(!result);
+}
+
+#[test]
+fn test_check_copilot_auth_error_empty_output() {
+    use commit_wizard::copilot::check_copilot_auth_error;
+
+    let output = "";
+    let result = check_copilot_auth_error(output, true);
+
+    // Should return true with empty output and success status
+    assert!(result);
+}

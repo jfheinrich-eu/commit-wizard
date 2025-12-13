@@ -59,22 +59,40 @@ fn is_copilot_cli_available() -> bool {
             let stderr = String::from_utf8_lossy(&output.stderr);
             let combined_output = format!("{}{}", stdout, stderr);
 
-            // Check if authentication error occurred (Copilot may return 0 even on auth errors)
-            if combined_output.contains("Error: No authentication information found.") {
-                error!("GitHub Copilot CLI is not authenticated");
-                warn!("To authenticate, run: copilot");
-                warn!("Then type '/login' in the interactive session");
-                return false;
-            }
-
-            // If no authentication error and status is success, we're authenticated
-            output.status.success()
+            check_copilot_auth_error(&combined_output, output.status.success())
         }
         Err(e) => {
             error!("Failed to test Copilot CLI authentication: {}", e);
             false
         }
     }
+}
+
+/// Checks Copilot output for authentication errors and returns auth status.
+///
+/// This function is extracted for testability. It checks if the Copilot CLI
+/// output contains authentication error messages.
+///
+/// # Arguments
+///
+/// * `output` - Combined stdout/stderr output from Copilot CLI
+/// * `status_success` - Whether the command exit status was successful
+///
+/// # Returns
+///
+/// `true` if authenticated (no auth error and success status), `false` otherwise.
+#[doc(hidden)] // Internal helper for testing
+pub fn check_copilot_auth_error(output: &str, status_success: bool) -> bool {
+    // Check if authentication error occurred (Copilot may return 0 even on auth errors)
+    if output.contains("Error: No authentication information found.") {
+        error!("GitHub Copilot CLI is not authenticated");
+        warn!("To authenticate, run: copilot");
+        warn!("Then type '/login' in the interactive session");
+        return false;
+    }
+
+    // If no authentication error and status is success, we're authenticated
+    status_success
 }
 
 /// Groups changed files using AI analysis.
