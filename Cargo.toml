@@ -48,6 +48,50 @@ vendored-openssl = ["git2/vendored-openssl"]
 tempfile = "3"
 mockito = "1.7"
 
+# Metadata for cargo-deb (Debian/Ubuntu packages)
+[package.metadata.deb]
+maintainer = "jfheinrich <joerg@jfheinrich.eu>"
+copyright = "2025, jfheinrich <joerg@jfheinrich.eu>"
+license-file = ["LICENSE", "0"]
+extended-description = """\
+A CLI tool to help create better commit messages following conventional commit \
+standards. Features interactive wizards and GitHub Copilot integration."""
+depends = "$auto"
+section = "devel"
+priority = "optional"
+assets = [
+    [
+        "target/release/commit-wizard",
+        "usr/bin/",
+        "755",
+    ],
+    [
+        "README.md",
+        "usr/share/doc/commit-wizard/",
+        "644",
+    ],
+    [
+        "LICENSE",
+        "usr/share/doc/commit-wizard/",
+        "644",
+    ],
+    [
+        "docs/*",
+        "usr/share/doc/commit-wizard/",
+        "644",
+    ],
+]
+
+# Metadata for cargo-generate-rpm (Fedora/RHEL/CentOS packages)
+[package.metadata.generate-rpm]
+assets = [
+    { source = "target/release/commit-wizard", dest = "/usr/bin/commit-wizard", mode = "755" },
+    { source = "README.md", dest = "/usr/share/doc/commit-wizard/README.md", mode = "644", doc = true },
+    { source = "LICENSE", dest = "/usr/share/doc/commit-wizard/LICENSE", mode = "644", doc = true },
+]
+[package.metadata.generate-rpm.requires]
+git = "*"
+
 [[bin]]
 name = "commit-wizard"
 path = "src/main.rs"
