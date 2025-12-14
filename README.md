@@ -6,6 +6,7 @@
 
 A CLI tool to help create better commit messages.
 
+[![Latest Release](https://img.shields.io/github/v/release/jfheinrich-eu/commit-wizard?label=latest%20release)](https://github.com/jfheinrich-eu/commit-wizard/releases/latest)
 [![CodeQL](https://github.com/jfheinrich-eu/commit-wizard/actions/workflows/codeql.yml/badge.svg)](https://github.com/jfheinrich-eu/commit-wizard/actions/workflows/codeql.yml)
 [![Rust Tests](https://github.com/jfheinrich-eu/commit-wizard/actions/workflows/rust-tests.yml/badge.svg)](https://github.com/jfheinrich-eu/commit-wizard/actions/workflows/rust-tests.yml)
 [![codecov](https://codecov.io/gh/jfheinrich-eu/commit-wizard/branch/main/graph/badge.svg)](https://codecov.io/gh/jfheinrich-eu/commit-wizard)
@@ -35,6 +36,7 @@ A CLI tool to help create better commit messages.
   - [Dev Container (Recommended)](#dev-container-recommended)
     - [Quick Start](#quick-start)
   - [Building](#building)
+    - [Release Builds](#release-builds)
   - [Running](#running)
   - [Testing](#testing)
   - [Linting](#linting)
@@ -245,8 +247,31 @@ See [.devcontainer/README.md](.devcontainer/README.md) for details.
 ## Building
 
 ```bash
+# Standard build
 cargo build
+
+# Release build
+cargo build --release
+# or
+make release
 ```
+
+### Release Builds
+
+The project includes parametrized Makefile targets for creating release artifacts identical to those in CI/CD:
+
+```bash
+# Build for specific target
+make build-target TARGET=x86_64-unknown-linux-musl PLATFORM_NAME=linux-x86_64-musl
+
+# Create release archive
+make build-archive TARGET=x86_64-unknown-linux-musl PLATFORM_NAME=linux-x86_64-musl VERSION=1.0.0
+
+# Build all Linux packages (deb, rpm, alpine)
+make build-all-packages VERSION=1.0.0
+```
+
+See [docs/MAKEFILE_RELEASE_BUILDS.md](docs/MAKEFILE_RELEASE_BUILDS.md) for complete documentation.
 
 ## Running
 

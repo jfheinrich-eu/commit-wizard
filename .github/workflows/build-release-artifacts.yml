@@ -3,320 +3,269 @@ name: Build Release Artifacts
 permissions: {}
 
 on:
-    push:
-        tags:
-            - "[0-9]+.[0-9]+.[0-9]+"
-    workflow_dispatch:
-        inputs:
-            tag:
-                description: "Tag to build (e.g., 1.2.3)"
-                required: true
-                type: string
+  push:
+    tags:
+      - "[0-9]+.[0-9]+.[0-9]+"
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: "Tag to build (e.g., 1.2.3)"
+        required: true
+        type: string
 
 jobs:
-    build-binaries:
-        name: Build ${{ matrix.name }}
-        runs-on: ${{ matrix.os }}
-        timeout-minutes: 45
-        permissions:
-            contents: read
-        strategy:
-            fail-fast: false
-            matrix:
-                include:
-                    # Linux x86_64 (musl - static, works on any distro)
-                    - os: ubuntu-latest
-                      target: x86_64-unknown-linux-musl
-                      name: linux-x86_64-musl
-                      cross: false
+  build-binaries:
+    name: Build ${{ matrix.name }}
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 45
+    permissions:
+      contents: read
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          # Linux x86_64 (musl - static, works on any distro)
+          - os: ubuntu-latest
+            target: x86_64-unknown-linux-musl
+            name: linux-x86_64-musl
+            cross: false
 
-                    # Linux x86_64 (glibc - for modern systems)
-                    - os: ubuntu-latest
-                      target: x86_64-unknown-linux-gnu
-                      name: linux-x86_64
-                      cross: false
+          # Linux x86_64 (glibc - for modern systems)
+          - os: ubuntu-latest
+            target: x86_64-unknown-linux-gnu
+            name: linux-x86_64
+            cross: false
 
-                    # Linux ARM64 (musl - static for ARM servers/devices)
-                    - os: ubuntu-latest
-                      target: aarch64-unknown-linux-musl
-                      name: linux-aarch64-musl
-                      cross: true
+          # Linux ARM64 (musl - static for ARM servers/devices)
+          - os: ubuntu-latest
+            target: aarch64-unknown-linux-musl
+            name: linux-aarch64-musl
+            cross: true
 
-                    # Linux ARM64 (glibc)
-                    - os: ubuntu-latest
-                      target: aarch64-unknown-linux-gnu
-                      name: linux-aarch64
-                      cross: true
+          # Linux ARM64 (glibc)
+          - os: ubuntu-latest
+            target: aarch64-unknown-linux-gnu
+            name: linux-aarch64
+            cross: true
 
-                    # macOS x86_64 (Intel Macs)
-                    - os: macos-13
-                      target: x86_64-apple-darwin
-                      name: macos-x86_64
-                      cross: false
+          # macOS x86_64 (Intel Macs)
+          - os: macos-13
+            target: x86_64-apple-darwin
+            name: macos-x86_64
+            cross: false
 
-                    # macOS ARM64 (Apple Silicon M1/M2/M3)
-                    - os: macos-14
-                      target: aarch64-apple-darwin
-                      name: macos-aarch64
-                      cross: false
+          # macOS ARM64 (Apple Silicon M1/M2/M3)
+          - os: macos-14
+            target: aarch64-apple-darwin
+            name: macos-aarch64
+            cross: false
 
-        steps:
-            - name: Checkout repository
-              uses: actions/checkout@8e8c483db84b4bee98b60c0593521ed34d9990e8 # v6.0.1
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@8e8c483db84b4bee98b60c0593521ed34d9990e8 # v6.0.1
 
-            - name: Setup Rust toolchain
-              uses: actions-rust-lang/setup-rust-toolchain@1780873c7b576612439a134613cc4cc74ce5538c # v1.15.2
-              with:
-                  toolchain: stable
-                  target: ${{ matrix.target }}
-                  cache: true
+      - name: Set VERSION variable
+        id: version
+        run: |
+          VERSION="${{ github.event.inputs.tag || github.ref_name }}"
+          echo "VERSION=$VERSION" >> $GITHUB_OUTPUT
+          echo "Building version: $VERSION"
 
-            - name: Install cross-compilation tools
-              if: matrix.cross
-              run: |
-                  cargo install cross --git https://github.com/cross-rs/cross --locked
+      - name: Setup Rust toolchain
+        uses: actions-rust-lang/setup-rust-toolchain@1780873c7b576612439a134613cc4cc74ce5538c # v1.15.2
+        with:
+          toolchain: stable
+          target: ${{ matrix.target }}
+          cache: true
 
-            - name: Install musl tools (Linux musl targets)
-              if: contains(matrix.target, 'musl') && runner.os == 'Linux'
-              run: |
-                  sudo apt-get update
-                  sudo apt-get install -y musl-tools
+      - name: Install musl tools (Linux musl targets)
+        if: contains(matrix.target, 'musl') && runner.os == 'Linux'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y musl-tools
 
-            - name: Build binary
-              run: |
-                  if [ "${{ matrix.cross }}" = "true" ]; then
-                    cross build --release --target ${{ matrix.target }} --locked
-                  else
-                    cargo build --release --target ${{ matrix.target }} --locked
-                  fi
+      - name: Build binary and create archive
+        run: |
+          VERSION="${{ steps.version.outputs.VERSION }}"
+          make build-archive \
+            TARGET=${{ matrix.target }} \
+            PLATFORM_NAME=${{ matrix.name }} \
+            VERSION=$VERSION \
+            USE_CROSS=${{ matrix.cross }}
 
-            - name: Strip binary (Linux/macOS)
-              if: runner.os != 'Windows'
-              run: |
-                  strip target/${{ matrix.target }}/release/commit-wizard || true
+      - name: Upload artifacts
+        uses: actions/upload-artifact@65c4c4a1ddee5b72f698fdd19549f0f0fb45cf08 # v4.6.0
+        with:
+          name: ${{ matrix.name }}
+          path: |
+            dist/*.tar.gz
+            dist/*.sha256
+          retention-days: 7
 
-            - name: Create archive
-              run: |
-                  VERSION="${{ github.event.inputs.tag || github.ref_name }}"
-                  ARCHIVE_NAME="commit-wizard-$VERSION-${{ matrix.name }}"
+  build-packages:
+    name: Build Linux Packages
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    permissions:
+      contents: read
 
-                  mkdir -p "dist/$ARCHIVE_NAME"
-                  cp target/${{ matrix.target }}/release/commit-wizard "dist/$ARCHIVE_NAME/"
-                  cp README.md LICENSE "dist/$ARCHIVE_NAME/"
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@8e8c483db84b4bee98b60c0593521ed34d9990e8 # v6.0.1
 
-                  cd dist
-                  tar czf "$ARCHIVE_NAME.tar.gz" "$ARCHIVE_NAME"
+      - name: Set VERSION variable
+        id: version
+        run: |
+          VERSION="${{ github.event.inputs.tag || github.ref_name }}"
+          echo "VERSION=$VERSION" >> $GITHUB_OUTPUT
+          echo "Building version: $VERSION"
 
-                  # Generate SHA256 checksum
-                  if command -v shasum >/dev/null 2>&1; then
-                    shasum -a 256 "$ARCHIVE_NAME.tar.gz" > "$ARCHIVE_NAME.tar.gz.sha256"
-                  else
-                    sha256sum "$ARCHIVE_NAME.tar.gz" > "$ARCHIVE_NAME.tar.gz.sha256"
-                  fi
+      - name: Setup Rust toolchain
+        uses: actions-rust-lang/setup-rust-toolchain@1780873c7b576612439a134613cc4cc74ce5538c # v1.15.2
+        with:
+          toolchain: stable
+          target: x86_64-unknown-linux-musl
+          cache: true
 
-            - name: Upload artifacts
-              uses: actions/upload-artifact@65c4c4a1ddee5b72f698fdd19549f0f0fb45cf08 # v4.6.0
-              with:
-                  name: ${{ matrix.name }}
-                  path: |
-                      dist/*.tar.gz
-                      dist/*.sha256
-                  retention-days: 7
+      - name: Install packaging tools
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y musl-tools tar gzip
 
-    build-packages:
-        name: Build Linux Packages
-        runs-on: ubuntu-latest
-        timeout-minutes: 30
-        permissions:
-            contents: read
+      - name: Build all Linux packages
+        run: |
+          VERSION="${{ steps.version.outputs.VERSION }}"
+          make build-all-packages VERSION=$VERSION
 
-        steps:
-            - name: Checkout repository
-              uses: actions/checkout@8e8c483db84b4bee98b60c0593521ed34d9990e8 # v6.0.1
+      - name: Upload package artifacts
+        uses: actions/upload-artifact@65c4c4a1ddee5b72f698fdd19549f0f0fb45cf08 # v4.6.0
+        with:
+          name: linux-packages
+          path: |
+            dist/*.deb
+            dist/*.rpm
+            dist/*alpine*.tar.gz
+            dist/*.sha256
+          retention-days: 7
 
-            - name: Setup Rust toolchain
-              uses: actions-rust-lang/setup-rust-toolchain@1780873c7b576612439a134613cc4cc74ce5538c # v1.15.2
-              with:
-                  toolchain: stable
-                  target: x86_64-unknown-linux-musl
-                  cache: true
+  create-release:
+    name: Create GitHub Release
+    needs: [build-binaries, build-packages]
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    permissions:
+      contents: write
+    if: github.event_name == 'push' && startsWith(github.ref, 'refs/tags/') || github.event_name == 'workflow_dispatch'
 
-            - name: Install packaging tools
-              run: |
-                  cargo install cargo-deb --locked
-                  cargo install cargo-generate-rpm --locked
-                  sudo apt-get update
-                  sudo apt-get install -y musl-tools tar gzip
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@8e8c483db84b4bee98b60c0593521ed34d9990e8 # v6.0.1
 
-            - name: Build release binary
-              run: |
-                  cargo build --release --locked
+      - name: Set VERSION variable
+        id: version
+        run: |
+          VERSION="${{ github.event.inputs.tag || github.ref_name }}"
+          echo "VERSION=$VERSION" >> $GITHUB_OUTPUT
+          echo "Creating release for version: $VERSION"
 
-            - name: Build Debian package
-              run: |
-                  cargo deb --no-build --no-strip
+      - name: Download all artifacts
+        uses: actions/download-artifact@fa0a91b85d4f404e444e00e005971372dc801d16 # v4.1.8
+        with:
+          path: artifacts
 
-                  VERSION="${{ github.event.inputs.tag || github.ref_name }}"
-                  DEB_FILE=$(ls target/debian/*.deb)
-                  mkdir -p dist
-                  cp "$DEB_FILE" "dist/commit-wizard_${VERSION}_amd64.deb"
+      - name: Prepare release assets
+        run: |
+          mkdir -p release-assets
 
-                  # Generate SHA256 checksum
-                  cd dist
-                  sha256sum "commit-wizard_${VERSION}_amd64.deb" > "commit-wizard_${VERSION}_amd64.deb.sha256"
+          # Collect all artifacts
+          find artifacts -type f \( -name "*.tar.gz" -o -name "*.deb" -o -name "*.rpm" -o -name "*.sha256" \) \
+            -exec cp {} release-assets/ \;
 
-            - name: Build RPM package
-              run: |
-                  cargo generate-rpm
+          # Create combined checksums file
+          cd release-assets
+          cat *.sha256 > SHA256SUMS.txt
 
-                  VERSION="${{ github.event.inputs.tag || github.ref_name }}"
-                  RPM_FILE=$(ls target/generate-rpm/*.rpm)
-                  cp "$RPM_FILE" "dist/commit-wizard-${VERSION}-1.x86_64.rpm"
+          # List all assets
+          echo "Release assets:"
+          ls -lh
 
-                  # Generate SHA256 checksum
-                  cd dist
-                  sha256sum "commit-wizard-${VERSION}-1.x86_64.rpm" > "commit-wizard-${VERSION}-1.x86_64.rpm.sha256"
+      - name: Generate release notes
+        id: release-notes
+        run: |
+          VERSION="${{ steps.version.outputs.VERSION }}"
 
-            - name: Build Alpine package
-              run: |
-                  VERSION="${{ github.event.inputs.tag || github.ref_name }}"
-                  ARCH=$(uname -m)
+          cat << EOF > release-notes.md
+          ## Installation
 
-                  # Build static musl binary for Alpine
-                  cargo build --release --target x86_64-unknown-linux-musl --locked
+          ### Quick Install (Linux/macOS)
 
-                  # Use Makefile to create Alpine package structure
-                  make alpine-package
+          \`\`\`bash
+          # Download and install (replace <platform> with your platform)
+          curl -LO https://github.com/${{ github.repository }}/releases/download/$VERSION/commit-wizard-$VERSION-<platform>.tar.gz
+          tar xzf commit-wizard-$VERSION-<platform>.tar.gz
+          sudo mv commit-wizard-$VERSION-<platform>/commit-wizard /usr/local/bin/
+          \`\`\`
 
-                  # Move to dist directory
-                  mv dist/commit-wizard-*.tar.gz dist/commit-wizard-${VERSION}-alpine-${ARCH}.tar.gz
+          ### Platform-Specific
 
-                  # Generate SHA256 checksum
-                  cd dist
-                  sha256sum "commit-wizard-${VERSION}-alpine-${ARCH}.tar.gz" > "commit-wizard-${VERSION}-alpine-${ARCH}.tar.gz.sha256"
+          #### Debian/Ubuntu
+          \`\`\`bash
+          wget https://github.com/${{ github.repository }}/releases/download/$VERSION/commit-wizard_${VERSION}_amd64.deb
+          sudo dpkg -i commit-wizard_${VERSION}_amd64.deb
+          \`\`\`
 
-            - name: Upload package artifacts
-              uses: actions/upload-artifact@65c4c4a1ddee5b72f698fdd19549f0f0fb45cf08 # v4.6.0
-              with:
-                  name: linux-packages
-                  path: |
-                      dist/*.deb
-                      dist/*.rpm
-                      dist/*alpine*.tar.gz
-                      dist/*.sha256
-                  retention-days: 7
+          #### Fedora/RHEL/CentOS
+          \`\`\`bash
+          wget https://github.com/${{ github.repository }}/releases/download/$VERSION/commit-wizard-${VERSION}-1.x86_64.rpm
+          sudo rpm -i commit-wizard-${VERSION}-1.x86_64.rpm
+          \`\`\`
 
-    create-release:
-        name: Create GitHub Release
-        needs: [build-binaries, build-packages]
-        runs-on: ubuntu-latest
-        timeout-minutes: 15
-        permissions:
-            contents: write
-        if: github.event_name == 'push' && startsWith(github.ref, 'refs/tags/')
+          #### Alpine Linux
+          \`\`\`bash
+          wget https://github.com/${{ github.repository }}/releases/download/$VERSION/commit-wizard-${VERSION}-alpine-x86_64.tar.gz
+          sudo tar xzf commit-wizard-${VERSION}-alpine-x86_64.tar.gz -C /
+          \`\`\`
 
-        steps:
-            - name: Checkout repository
-              uses: actions/checkout@8e8c483db84b4bee98b60c0593521ed34d9990e8 # v6.0.1
+          ### Available Binaries
 
-            - name: Download all artifacts
-              uses: actions/download-artifact@fa0a91b85d4f404e444e00e005971372dc801d16 # v4.1.8
-              with:
-                  path: artifacts
+          - **Linux x86_64 (musl)**: Static binary, works on any distro
+          - **Linux x86_64 (glibc)**: For modern Linux systems
+          - **Linux ARM64 (musl)**: Static binary for ARM servers/devices
+          - **Linux ARM64 (glibc)**: For ARM systems with glibc
+          - **macOS x86_64**: Intel Macs
+          - **macOS ARM64**: Apple Silicon (M1/M2/M3)
 
-            - name: Prepare release assets
-              run: |
-                  mkdir -p release-assets
+          ### Verify Downloads
 
-                  # Collect all artifacts
-                  find artifacts -type f \( -name "*.tar.gz" -o -name "*.deb" -o -name "*.rpm" -o -name "*.sha256" \) \
-                    -exec cp {} release-assets/ \;
+          All artifacts include SHA256 checksums. Verify with:
 
-                  # Create combined checksums file
-                  cd release-assets
-                  cat *.sha256 > SHA256SUMS.txt
+          \`\`\`bash
+          sha256sum -c commit-wizard-$VERSION-<platform>.tar.gz.sha256
+          \`\`\`
 
-                  # List all assets
-                  echo "Release assets:"
-                  ls -lh
+          Or check against SHA256SUMS.txt.
 
-            - name: Generate release notes
-              id: release-notes
-              run: |
-                  VERSION="${{ github.ref_name }}"
+          ---
 
-                  cat << EOF > release-notes.md
-                  ## Installation
+          EOF
 
-                  ### Quick Install (Linux/macOS)
+          # Append changelog if exists
+          if [ -f CHANGELOG.md ]; then
+            echo "## Changes" >> release-notes.md
+            echo "" >> release-notes.md
+            # Extract changes for this version from CHANGELOG
+            sed -n "/## \[$VERSION\]/,/## \[/p" CHANGELOG.md | head -n -1 >> release-notes.md || \
+              echo "See [CHANGELOG.md](CHANGELOG.md) for details." >> release-notes.md
+          fi
 
-                  \`\`\`bash
-                  # Download and install (replace <platform> with your platform)
-                  curl -LO https://github.com/${{ github.repository }}/releases/download/$VERSION/commit-wizard-$VERSION-<platform>.tar.gz
-                  tar xzf commit-wizard-$VERSION-<platform>.tar.gz
-                  sudo mv commit-wizard-$VERSION-<platform>/commit-wizard /usr/local/bin/
-                  \`\`\`
-
-                  ### Platform-Specific
-
-                  #### Debian/Ubuntu
-                  \`\`\`bash
-                  wget https://github.com/${{ github.repository }}/releases/download/$VERSION/commit-wizard_${VERSION}_amd64.deb
-                  sudo dpkg -i commit-wizard_${VERSION}_amd64.deb
-                  \`\`\`
-
-                  #### Fedora/RHEL/CentOS
-                  \`\`\`bash
-                  wget https://github.com/${{ github.repository }}/releases/download/$VERSION/commit-wizard-${VERSION}-1.x86_64.rpm
-                  sudo rpm -i commit-wizard-${VERSION}-1.x86_64.rpm
-                  \`\`\`
-
-                  #### Alpine Linux
-                  \`\`\`bash
-                  wget https://github.com/${{ github.repository }}/releases/download/$VERSION/commit-wizard-${VERSION}-alpine-x86_64.tar.gz
-                  sudo tar xzf commit-wizard-${VERSION}-alpine-x86_64.tar.gz -C /
-                  \`\`\`
-
-                  ### Available Binaries
-
-                  - **Linux x86_64 (musl)**: Static binary, works on any distro
-                  - **Linux x86_64 (glibc)**: For modern Linux systems
-                  - **Linux ARM64 (musl)**: Static binary for ARM servers/devices
-                  - **Linux ARM64 (glibc)**: For ARM systems with glibc
-                  - **macOS x86_64**: Intel Macs
-                  - **macOS ARM64**: Apple Silicon (M1/M2/M3)
-
-                  ### Verify Downloads
-
-                  All artifacts include SHA256 checksums. Verify with:
-
-                  \`\`\`bash
-                  sha256sum -c commit-wizard-$VERSION-<platform>.tar.gz.sha256
-                  \`\`\`
-
-                  Or check against SHA256SUMS.txt.
-
-                  ---
-
-                  EOF
-
-                  # Append changelog if exists
-                  if [ -f CHANGELOG.md ]; then
-                    echo "## Changes" >> release-notes.md
-                    echo "" >> release-notes.md
-                    # Extract changes for this version from CHANGELOG
-                    sed -n "/## \[$VERSION\]/,/## \[/p" CHANGELOG.md | head -n -1 >> release-notes.md || \
-                      echo "See [CHANGELOG.md](CHANGELOG.md) for details." >> release-notes.md
-                  fi
-
-            - name: Create GitHub Release
-              uses: softprops/action-gh-release@a06a81a03ee405af7f2048a818ed3f03bbf83c7b # v2.5.0
-              with:
-                  tag_name: ${{ github.ref_name }}
-                  name: "Release ${{ github.ref_name }}"
-                  body_path: release-notes.md
-                  files: release-assets/*
-                  draft: false
-                  prerelease: false
-              env:
-                  GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@a06a81a03ee405af7f2048a818ed3f03bbf83c7b # v2.5.0
+        with:
+          tag_name: ${{ github.ref_name }}
+          name: "Release ${{ github.ref_name }}"
+          body_path: release-notes.md
+          files: release-assets/*
+          draft: false
+          prerelease: false
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
