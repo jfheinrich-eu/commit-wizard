@@ -21,7 +21,9 @@ A CLI tool to help create better commit messages.
     - [Fedora/RHEL/CentOS](#fedorarhelcentos)
     - [Alpine Linux](#alpine-linux)
     - [macOS](#macos)
-    - [From Source](#from-source)
+- [For Intel Macs, use:](#for-intel-macs-use)
+- [For Apple Silicon (M1/M2/M3), use:](#for-apple-silicon-m1m2m3-use)
+- [Apple Silicon (M1/M2/M3)](#apple-silicon-m1m2m3)
 - [Usage](#usage)
   - [Basic Usage](#basic-usage)
   - [AI-Powered Mode](#ai-powered-mode)
@@ -98,9 +100,10 @@ sudo tar xzf "commit-wizard-${VERSION}-alpine-x86_64.tar.gz" -C /
 
 ### macOS
 
-```bash
-VERSION="0.1.0"
-# Intel Macs
+# For Intel Macs, use:
+curl -LO "https://github.com/jfheinrich-eu/commit-wizard/releases/download/$VERSION/commit-wizard-$VERSION-macos-x86_64.tar.gz"
+
+# For Apple Silicon (M1/M2/M3), use:
 curl -LO "https://github.com/jfheinrich-eu/commit-wizard/releases/download/$VERSION/commit-wizard-$VERSION-macos-x86_64.tar.gz"
 # Apple Silicon (M1/M2/M3)
 curl -LO "https://github.com/jfheinrich-eu/commit-wizard/releases/download/$VERSION/commit-wizard-$VERSION-macos-aarch64.tar.gz"

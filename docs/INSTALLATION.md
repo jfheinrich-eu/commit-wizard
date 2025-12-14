@@ -77,16 +77,6 @@ For detailed Alpine installation instructions, see [docs/ALPINE_INSTALL.md](ALPI
 
 **Coming Soon**: Package will be available on the Arch User Repository (AUR).
 
-```bash
-# Using an AUR helper like yay or paru
-yay -S commit-wizard
-
-# Or build manually from PKGBUILD
-git clone https://aur.archlinux.org/commit-wizard.git
-cd commit-wizard
-makepkg -si
-```
-
 ### macOS
 
 #### Intel Macs (x86_64)
