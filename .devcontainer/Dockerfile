@@ -87,11 +87,12 @@ RUN gem install mdl
 
 # Upgrade Node.js to latest LTS version using n
 # Debian bullseye ships with Node.js 12.x which is too old for @github/copilot
-RUN npm install -g n && \
-    n lts && \
-    hash -r && \
-    npm --version && \
-    node --version
+RUN set -e; \
+    npm install -g n; \
+    n lts; \
+    hash -r; \
+    echo "Node.js version: $(node --version)"; \
+    echo "npm version: $(npm --version)"
 
 # Install GitHub Copilot CLI globally
 RUN npm install -g @github/copilot
