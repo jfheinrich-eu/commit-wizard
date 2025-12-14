@@ -284,6 +284,7 @@ fn run_application(cli: Cli) -> Result<()> {
         ai_available,
         cli.no_ai
     );
+    #[allow(clippy::collapsible_if)]
     if use_ai {
         if cli.verbose {
             eprintln!("🤖 AI mode enabled - using GitHub Copilot for grouping and messages");
@@ -292,13 +293,15 @@ fn run_application(cli: Cli) -> Result<()> {
         if cli.verbose {
             eprintln!("🔧 AI mode disabled by --no-ai flag - using heuristic grouping");
         }
-    } else if !ai_available && cli.verbose {
-        eprintln!("⚠️  GitHub Copilot CLI not available or not authenticated");
-        eprintln!("   Falling back to heuristic grouping");
-        eprintln!("\n   To enable AI features:");
-        eprintln!("   1. Install: npm install -g @github/copilot");
-        eprintln!("   2. Authenticate: Run 'copilot' and type '/login'");
-        eprintln!();
+    } else if !ai_available {
+        if cli.verbose {
+            eprintln!("⚠️  GitHub Copilot CLI not available or not authenticated");
+            eprintln!("   Falling back to heuristic grouping");
+            eprintln!("\n   To enable AI features:");
+            eprintln!("   1. Install: npm install -g @github/copilot");
+            eprintln!("   2. Authenticate: Run 'copilot' and type '/login'");
+            eprintln!();
+        }
     }
 
     // Step 3: Build commit groups (AI-first approach)

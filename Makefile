@@ -265,7 +265,7 @@ build-target:
 	if [ "$(USE_CROSS)" = "true" ]; then \
 		if ! command -v cross >/dev/null 2>&1; then \
 			echo "Installing cross..."; \
-			cargo install cross --git https://github.com/cross-rs/cross --locked; \
+			cargo install cross --git https://github.com/cross-rs/cross --tag v0.2.5 --locked; \
 		fi; \
 		cross build --release --target $(TARGET) --locked $$BUILD_FEATURES; \
 	else \
@@ -331,7 +331,7 @@ build-debian:
 	@# Install cargo-deb if needed
 	@if ! cargo deb --version >/dev/null 2>&1; then \
 		echo "Installing cargo-deb..."; \
-		cargo install cargo-deb --locked; \
+		cargo install cargo-deb --version 3.6.2 --locked; \
 	fi
 	@# Build release binary if not exists
 	@if [ ! -f target/release/$(PACKAGE_NAME) ]; then \
@@ -353,7 +353,7 @@ build-rpm:
 	@# Install cargo-generate-rpm if needed
 	@if ! cargo generate-rpm --version >/dev/null 2>&1; then \
 		echo "Installing cargo-generate-rpm..."; \
-		cargo install cargo-generate-rpm --locked; \
+		cargo install cargo-generate-rpm --version 0.20.0 --locked; \
 	fi
 	@# Build release binary if not exists
 	@if [ ! -f target/release/$(PACKAGE_NAME) ]; then \
@@ -378,9 +378,15 @@ build-alpine-pkg:
 	@$(MAKE) alpine-package
 	@# Move and rename to dist directory
 	@mkdir -p $(DIST_DIR)
-	@ALPINE_TAR=$$(ls $(DIST_DIR)/$(PACKAGE_NAME)-*-$(ARCH).tar.gz 2>/dev/null | grep -v alpine | head -1); \
-	if [ -n "$$ALPINE_TAR" ]; then \
-		mv "$$ALPINE_TAR" "$(DIST_DIR)/$(PACKAGE_NAME)-$(VERSION)-alpine-$(ARCH).tar.gz"; \
+	@set -e; \
+	files=$$(find $(DIST_DIR) -maxdepth 1 -type f -name "$(PACKAGE_NAME)-*-$(ARCH).tar.gz" ! -name "*alpine*" ); \
+	count=$$(echo "$$files" | wc -w); \
+	if [ "$$count" -eq 0 ]; then \
+		echo "❌ Error: No tarball found to rename for Alpine package." >&2; exit 1; \
+	elif [ "$$count" -gt 1 ]; then \
+		echo "❌ Error: Multiple tarballs found to rename for Alpine package:" >&2; echo "$$files" >&2; exit 1; \
+	else \
+		mv $$files "$(DIST_DIR)/$(PACKAGE_NAME)-$(VERSION)-alpine-$(ARCH).tar.gz"; \
 	fi
 	@# Generate checksum
 	@cd $(DIST_DIR) && sha256sum "$(PACKAGE_NAME)-$(VERSION)-alpine-$(ARCH).tar.gz" > "$(PACKAGE_NAME)-$(VERSION)-alpine-$(ARCH).tar.gz.sha256"

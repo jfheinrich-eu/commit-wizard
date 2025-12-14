@@ -677,7 +677,7 @@ fn test_path_with_special_characters() {
 // =============================================================================
 
 #[test]
-fn test_is_ai_available_executes_without_panic() {
+fn test_is_ai_available_returns_result() {
     use commit_wizard::copilot::is_ai_available;
 
     // This test simply verifies the function can be called without panicking
