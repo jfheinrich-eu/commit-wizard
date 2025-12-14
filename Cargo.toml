@@ -76,7 +76,12 @@ assets = [
         "644",
     ],
     [
-        "docs/*",
+        "docs/BRANCH_PROTECTION.md",
+        "usr/share/doc/commit-wizard/",
+        "644",
+    ],
+    [
+        "docs/dependabot.yml",
         "usr/share/doc/commit-wizard/",
         "644",
     ],
