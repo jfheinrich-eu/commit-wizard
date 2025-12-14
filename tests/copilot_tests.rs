@@ -1,8 +1,7 @@
 //! Tests for copilot module functions.
 //!
-//! This test suite focuses on testable pure functions in copilot.rs that don't
-//! require external CLI calls or I/O operations. Functions like `call_copilot_cli()`
-//! and `is_copilot_cli_available()` are excluded as they require real external processes.
+//! This test suite now includes full coverage of the Copilot CLI availability checks
+//! using dependency injection with mock command executors.
 //!
 //! Note: End-to-end integration tests for actual Copilot CLI interaction are not included
 //! in the automated test suite because they require:
@@ -13,12 +12,99 @@
 //! Manual testing should be performed to verify CLI integration before releases.
 
 use commit_wizard::copilot::{
-    build_commit_message_prompt, build_grouping_prompt, extract_response_between_markers,
-    parse_commit_message, parse_commit_type, validate_no_duplicate_files,
+    build_commit_message_prompt, build_grouping_prompt, check_copilot_availability_with_executor,
+    extract_response_between_markers, parse_commit_message, parse_commit_type,
+    validate_no_duplicate_files,
 };
 use commit_wizard::types::{ChangeGroup, ChangedFile, CommitType};
 use git2::Status;
 use std::collections::HashMap;
+use std::io;
+
+// =============================================================================
+// Mock CommandExecutor for testing
+// =============================================================================
+
+/// Mock implementation of CommandExecutor for testing.
+///
+/// This allows us to simulate different scenarios without requiring the actual
+/// GitHub Copilot CLI to be installed.
+struct MockCommandExecutor {
+    version_available: bool,
+    auth_output: Option<String>,
+    auth_status: bool,
+    auth_fails: bool,
+}
+
+impl MockCommandExecutor {
+    fn new_available_and_authenticated() -> Self {
+        Self {
+            version_available: true,
+            auth_output: Some("Success response".to_string()),
+            auth_status: true,
+            auth_fails: false,
+        }
+    }
+
+    fn new_not_installed() -> Self {
+        Self {
+            version_available: false,
+            auth_output: None,
+            auth_status: false,
+            auth_fails: false,
+        }
+    }
+
+    fn new_not_authenticated() -> Self {
+        Self {
+            version_available: true,
+            auth_output: Some("Error: No authentication information found.".to_string()),
+            auth_status: false,
+            auth_fails: false,
+        }
+    }
+
+    fn new_auth_check_fails() -> Self {
+        Self {
+            version_available: true,
+            auth_output: None,
+            auth_status: false,
+            auth_fails: true,
+        }
+    }
+
+    fn new_auth_returns_non_zero() -> Self {
+        Self {
+            version_available: true,
+            auth_output: Some("Some error message".to_string()),
+            auth_status: false,
+            auth_fails: false,
+        }
+    }
+}
+
+// Import the CommandExecutor trait (now public for testing)
+use commit_wizard::copilot::CommandExecutor;
+
+impl CommandExecutor for MockCommandExecutor {
+    fn check_version(&self) -> bool {
+        self.version_available
+    }
+
+    fn check_auth(&self) -> Result<(String, bool), io::Error> {
+        if self.auth_fails {
+            Err(io::Error::new(
+                io::ErrorKind::Other,
+                "Command execution failed",
+            ))
+        } else {
+            Ok((
+                self.auth_output.clone().unwrap_or_default(),
+                self.auth_status,
+            ))
+        }
+    }
+}
 
 // Re-export private functions for testing via this test module
 // These tests cover the parsing and helper logic that doesn't require CLI
@@ -43,6 +129,76 @@ fn mock_group(
         "test description".to_string(),
         vec![],
     )
+}
+
+// =============================================================================
+// TESTS FOR check_copilot_availability_with_executor()
+// =============================================================================
+
+#[test]
+fn test_copilot_not_installed() {
+    let executor = MockCommandExecutor::new_not_installed();
+    let result = check_copilot_availability_with_executor(&executor);
+    assert!(
+        !result,
+        "Should return false when Copilot CLI is not installed"
+    );
+}
+
+#[test]
+fn test_copilot_installed_and_authenticated() {
+    let executor = MockCommandExecutor::new_available_and_authenticated();
+    let result = check_copilot_availability_with_executor(&executor);
+    assert!(
+        result,
+        "Should return true when Copilot CLI is installed and authenticated"
+    );
+}
+
+#[test]
+fn test_copilot_installed_but_not_authenticated() {
+    let executor = MockCommandExecutor::new_not_authenticated();
+    let result = check_copilot_availability_with_executor(&executor);
+    assert!(
+        !result,
+        "Should return false when Copilot CLI is installed but not authenticated"
+    );
+}
+
+#[test]
+fn test_copilot_auth_check_command_fails() {
+    let executor = MockCommandExecutor::new_auth_check_fails();
+    let result = check_copilot_availability_with_executor(&executor);
+    assert!(
+        !result,
+        "Should return false when auth check command execution fails"
+    );
+}
+
+#[test]
+fn test_copilot_auth_returns_non_zero_status() {
+    let executor = MockCommandExecutor::new_auth_returns_non_zero();
+    let result = check_copilot_availability_with_executor(&executor);
+    assert!(
+        !result,
+        "Should return false when auth check returns non-zero status without auth error"
+    );
+}
+
+#[test]
+fn test_copilot_auth_error_with_success_status() {
+    // Edge case: auth error message but exit code 0
+    let executor = MockCommandExecutor {
+        version_available: true,
+        auth_output: Some("Error: No authentication information found.".to_string()),
+        auth_status: true, // Success status, but error in output
+        auth_fails: false,
+    };
+    let result = check_copilot_availability_with_executor(&executor);
+    assert!(
+        !result,
+        "Should return false when auth error is in output even with success status"
+    );
 }
 
 // =============================================================================

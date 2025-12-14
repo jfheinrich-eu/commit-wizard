@@ -19,6 +19,83 @@ const MAX_DIFF_SIZE: usize = 1000;
 const START_MARKER: &str = "**START COMMIT MESSAGE**";
 const END_MARKER: &str = "**END COMMIT MESSAGE**";
 
+/// Trait for abstracting command execution (enables testing).
+///
+/// This trait allows dependency injection of command execution logic,
+/// making the availability check fully testable without requiring the actual
+/// GitHub Copilot CLI to be installed.
+///
+/// Note: This trait is public for testing purposes but hidden from documentation.
+#[doc(hidden)]
+pub trait CommandExecutor {
+    /// Checks if the copilot command exists by running --version.
+    fn check_version(&self) -> bool;
+
+    /// Checks authentication by running a test prompt.
+    /// Returns (combined_output, status_success).
+    fn check_auth(&self) -> Result<(String, bool), std::io::Error>;
+}
+
+/// Production implementation that executes real commands.
+struct RealCommandExecutor;
+
+impl CommandExecutor for RealCommandExecutor {
+    fn check_version(&self) -> bool {
+        Command::new("copilot")
+            .arg("--version")
+            .stdout(Stdio::null())
+            .stderr(Stdio::null())
+            .status()
+            .map(|status| status.success())
+            .unwrap_or(false)
+    }
+
+    fn check_auth(&self) -> Result<(String, bool), std::io::Error> {
+        let output = Command::new("copilot")
+            .arg("-s")
+            .arg("-p")
+            .arg("Test")
+            .output()?;
+
+        let stdout = String::from_utf8_lossy(&output.stdout);
+        let stderr = String::from_utf8_lossy(&output.stderr);
+        let combined_output = format!("{}{}", stdout, stderr);
+
+        Ok((combined_output, output.status.success()))
+    }
+}
+
+/// Core availability check logic with dependency injection.
+///
+/// This function is extracted for testability. It performs the same checks
+/// as the public `is_copilot_cli_available()` but accepts a command executor
+/// that can be mocked in tests.
+///
+/// # Arguments
+///
+/// * `executor` - The command executor to use for checks
+///
+/// # Returns
+///
+/// `true` if Copilot CLI is available and authenticated, `false` otherwise.
+#[doc(hidden)] // Internal use and testing only
+pub fn check_copilot_availability_with_executor(executor: &dyn CommandExecutor) -> bool {
+    // First check if copilot command exists
+    if !executor.check_version() {
+        warn!("GitHub Copilot CLI not found. Install it with: npm install -g @github/copilot");
+        return false;
+    }
+
+    // Check if authenticated by running a test prompt
+    match executor.check_auth() {
+        Ok((output, status)) => check_copilot_auth_error(&output, status),
+        Err(e) => {
+            error!("Failed to test Copilot CLI authentication: {}", e);
+            false
+        }
+    }
+}
+
 /// Checks if GitHub Copilot CLI is available and authenticated.
 ///
 /// This function performs two checks:
@@ -32,40 +109,7 @@ const END_MARKER: &str = "**END COMMIT MESSAGE**";
 ///
 /// `true` if Copilot CLI is available and authenticated, `false` otherwise.
 fn is_copilot_cli_available() -> bool {
-    // First check if copilot command exists
-    let version_check = Command::new("copilot")
-        .arg("--version")
-        .stdout(Stdio::null())
-        .stderr(Stdio::null())
-        .status()
-        .map(|status| status.success())
-        .unwrap_or(false);
-
-    if !version_check {
-        warn!("GitHub Copilot CLI not found. Install it with: npm install -g @github/copilot");
-        return false;
-    }
-
-    // Check if authenticated by running a test prompt
-    let auth_test = Command::new("copilot")
-        .arg("-s")
-        .arg("-p")
-        .arg("Test")
-        .output();
-
-    match auth_test {
-        Ok(output) => {
-            let stdout = String::from_utf8_lossy(&output.stdout);
-            let stderr = String::from_utf8_lossy(&output.stderr);
-            let combined_output = format!("{}{}", stdout, stderr);
-
-            check_copilot_auth_error(&combined_output, output.status.success())
-        }
-        Err(e) => {
-            error!("Failed to test Copilot CLI authentication: {}", e);
-            false
-        }
-    }
+    check_copilot_availability_with_executor(&RealCommandExecutor)
 }
 
 /// Checks Copilot output for authentication errors and returns auth status.
