@@ -374,19 +374,16 @@ build-alpine-pkg:
 	@echo "Building Alpine static package for version $(VERSION)..."
 	@# Build static musl binary
 	@$(MAKE) build-target TARGET=x86_64-unknown-linux-musl PLATFORM_NAME=linux-x86_64-musl
+	@# Remove any existing Alpine package to avoid confusion
+	@rm -f "$(DIST_DIR)/$(PACKAGE_NAME)-$(VERSION)-alpine-$(ARCH).tar.gz" "$(DIST_DIR)/$(PACKAGE_NAME)-$(VERSION)-alpine-$(ARCH).tar.gz.sha256"
 	@# Create Alpine package using existing target
 	@$(MAKE) alpine-package
-	@# Move and rename to dist directory
+	@# Rename the tarball created by alpine-package to include "alpine" in the name
 	@mkdir -p $(DIST_DIR)
-	@set -e; \
-	files=$$(find $(DIST_DIR) -maxdepth 1 -type f -name "$(PACKAGE_NAME)-*-$(ARCH).tar.gz" ! -name "*alpine*" ); \
-	count=$$(echo "$$files" | wc -w); \
-	if [ "$$count" -eq 0 ]; then \
-		echo "❌ Error: No tarball found to rename for Alpine package." >&2; exit 1; \
-	elif [ "$$count" -gt 1 ]; then \
-		echo "❌ Error: Multiple tarballs found to rename for Alpine package:" >&2; echo "$$files" >&2; exit 1; \
+	@if [ -f "$(DIST_DIR)/$(PACKAGE_NAME)-$(VERSION)-$(ARCH).tar.gz" ]; then \
+		mv "$(DIST_DIR)/$(PACKAGE_NAME)-$(VERSION)-$(ARCH).tar.gz" "$(DIST_DIR)/$(PACKAGE_NAME)-$(VERSION)-alpine-$(ARCH).tar.gz"; \
 	else \
-		mv $$files "$(DIST_DIR)/$(PACKAGE_NAME)-$(VERSION)-alpine-$(ARCH).tar.gz"; \
+		echo "❌ Error: Expected tarball $(DIST_DIR)/$(PACKAGE_NAME)-$(VERSION)-$(ARCH).tar.gz not found." >&2; exit 1; \
 	fi
 	@# Generate checksum
 	@cd $(DIST_DIR) && sha256sum "$(PACKAGE_NAME)-$(VERSION)-alpine-$(ARCH).tar.gz" > "$(PACKAGE_NAME)-$(VERSION)-alpine-$(ARCH).tar.gz.sha256"
