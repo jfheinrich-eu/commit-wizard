@@ -20,6 +20,7 @@ robustness, and automated release management with multi-platform support.
 
 - Updated CodeQL from v2.23.5 → **v3.31.8**
 - New SHA: `55f241477386da271f97b8ec400e2e58759c21b2`
+- Version verified against [GitHub's official releases](https://github.com/github/codeql-action/releases/tag/v3.31.8)
 - Ensures latest security scanning capabilities
 
 #### ✅ Enhanced Token Permissions
