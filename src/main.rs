@@ -194,6 +194,26 @@ fn prompt_untracked_files_selection(
     }
 }
 
+/// Prints verbose AI mode status message based on availability and configuration.
+fn print_ai_status(verbose: bool, use_ai: bool, no_ai: bool, ai_available: bool) {
+    if !verbose {
+        return;
+    }
+
+    if use_ai {
+        eprintln!("🤖 AI mode enabled - using GitHub Copilot for grouping and messages");
+    } else if no_ai {
+        eprintln!("🔧 AI mode disabled by --no-ai flag - using heuristic grouping");
+    } else if !ai_available {
+        eprintln!("⚠️  GitHub Copilot CLI not available or not authenticated");
+        eprintln!("   Falling back to heuristic grouping");
+        eprintln!("\n   To enable AI features:");
+        eprintln!("   1. Install: npm install -g @github/copilot");
+        eprintln!("   2. Authenticate: Run 'copilot' and type '/login'");
+        eprintln!();
+    }
+}
+
 /// Runs the main application logic.
 fn run_application(cli: Cli) -> Result<()> {
     // Determine repository path
@@ -284,25 +304,7 @@ fn run_application(cli: Cli) -> Result<()> {
         ai_available,
         cli.no_ai
     );
-    #[allow(clippy::collapsible_if)]
-    if use_ai {
-        if cli.verbose {
-            eprintln!("🤖 AI mode enabled - using GitHub Copilot for grouping and messages");
-        }
-    } else if cli.no_ai {
-        if cli.verbose {
-            eprintln!("🔧 AI mode disabled by --no-ai flag - using heuristic grouping");
-        }
-    } else if !ai_available {
-        if cli.verbose {
-            eprintln!("⚠️  GitHub Copilot CLI not available or not authenticated");
-            eprintln!("   Falling back to heuristic grouping");
-            eprintln!("\n   To enable AI features:");
-            eprintln!("   1. Install: npm install -g @github/copilot");
-            eprintln!("   2. Authenticate: Run 'copilot' and type '/login'");
-            eprintln!();
-        }
-    }
+    print_ai_status(cli.verbose, use_ai, cli.no_ai, ai_available);
 
     // Step 3: Build commit groups (AI-first approach)
     let spinner = ProgressSpinner::new("Creating commit groups...", 3, 4);
