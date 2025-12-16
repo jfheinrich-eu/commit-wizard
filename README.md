@@ -103,7 +103,6 @@ sudo tar xzf "commit-wizard-${VERSION}-alpine-x86_64.tar.gz" -C /
 curl -LO "https://github.com/jfheinrich-eu/commit-wizard/releases/download/$VERSION/commit-wizard-$VERSION-macos-x86_64.tar.gz"
 
 # For Apple Silicon (M1/M2/M3), use:
-curl -LO "https://github.com/jfheinrich-eu/commit-wizard/releases/download/$VERSION/commit-wizard-$VERSION-macos-x86_64.tar.gz"
 
 # Apple Silicon (M1/M2/M3)
 curl -LO "https://github.com/jfheinrich-eu/commit-wizard/releases/download/$VERSION/commit-wizard-$VERSION-macos-aarch64.tar.gz"
