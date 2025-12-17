@@ -1,6 +1,6 @@
 # Copilot Instructions for commit-wizard
 
-This is a Rust CLI tool for creating better commit messages following conventional commit standards. The project is in early development with basic structure in place.
+This is a Rust CLI tool for creating better commit messages following conventional commit standards. The project features an interactive TUI, AI-powered commit message generation using GitHub Copilot CLI, and smart file grouping capabilities.
 
 ## Interaction Style & Collaboration Approach
 
@@ -27,17 +27,32 @@ This is a Rust CLI tool for creating better commit messages following convention
 
 ## Project Architecture
 
-**Single Binary Structure**: Simple CLI application with all logic in `src/main.rs`. Uses clap for command-line argument parsing with derive macros.
+**Library + Binary Structure**: Modular Rust project with library crate (`src/lib.rs`) and binary entry point (`src/main.rs`). Uses clap for command-line argument parsing with derive macros.
 
-**Core Components**:
+**Core Modules**:
 
-- `Cli` struct: Defines command-line interface using clap's derive API
-- Main function: Entry point with basic verbose flag handling
-- Built-in test module for CLI validation
+- `src/main.rs`: CLI entry point with argument parsing and orchestration
+- `src/lib.rs`: Public library interface and module exports
+- `src/types.rs`: Core data types (AppState, ChangeGroup, ChangedFile, CommitType)
+- `src/git.rs`: Git repository operations (staging, diffing, branch info)
+- `src/inference.rs`: File grouping logic and conventional commit inference
+- `src/copilot.rs`: GitHub Copilot CLI integration for AI-powered features
+- `src/ai.rs`: Legacy HTTP API module (deprecated in favor of Copilot CLI)
+- `src/ui.rs`: Interactive TUI built with ratatui (terminal UI framework)
+- `src/editor.rs`: Built-in vim-style text editor for commit messages
+- `src/progress.rs`: Progress indicators and spinners
+- `src/logging.rs`: Logging configuration and utilities
+
+**Test Organization**:
+
+- `tests/`: Integration tests organized by feature/module
+  - `git_tests.rs`, `copilot_tests.rs`, `inference_tests.rs`, etc.
+  - Separate validation and format tests for commit messages
+- Unit tests: Embedded in source files using `#[cfg(test)]` modules
 
 ## Key Development Patterns
 
-**Clap Integration**: Uses clap 4.5 with derive features for CLI definition:
+**Clap Integration**: Uses clap 4.5 with derive features for CLI definition with multiple subcommands and options:
 
 ```rust
 #[derive(Parser, Debug)]
@@ -45,22 +60,67 @@ This is a Rust CLI tool for creating better commit messages following convention
 struct Cli {
     #[arg(short, long)]
     verbose: bool,
+    #[arg(long)]
+    repo: Option<PathBuf>,
+    #[arg(long)]
+    no_ai: bool,
+    // ... other options
 }
 ```
+
+**Error Handling**: Uses `anyhow::Result` for flexible error handling with context. Errors are propagated with `.context()` for better debugging.
+
+**TUI Framework**: Built with `ratatui` (formerly tui-rs) for terminal user interface:
+- Event-driven architecture with keyboard input handling
+- Custom widgets for commit group display, diff viewing, and editing
+- Modal dialogs for confirmation and help screens
+
+**AI Integration**: GitHub Copilot CLI integration via subprocess:
+- Streams AI responses for real-time feedback
+- JSON-based communication for structured data exchange
+- Fallback to manual grouping when AI is unavailable or disabled
+
+**Git Operations**: Uses `git2` crate (libgit2 bindings) for:
+- Repository inspection and status checking
+- File staging and unstaging
+- Diff generation and parsing
+- Branch information extraction
 
 **Project Metadata**: All project info is centralized in `Cargo.toml` with proper keywords, categories, and repository links for crates.io publishing.
 
 ## Development Workflow
 
-**Standard Rust Commands**:
+**Makefile Targets** (Preferred): The project includes a comprehensive Makefile with shortcuts:
+
+- `make build` - Build debug version
+- `make release` - Build optimized release version
+- `make test` - Run all tests (unit + integration + doc tests)
+- `make lint` - Run clippy with `-D warnings` and format checks
+- `make fmt` - Format all code
+- `make ci` - Run complete CI pipeline (lint + test + build + release)
+- `make dev` - Run with verbose output for development
+- `make watch` - Auto-rebuild on changes (requires cargo-watch)
+- `make coverage` - Generate code coverage report (requires cargo-llvm-cov)
+- `make coverage-html` - Generate HTML coverage report
+- `make docs` - Generate and open documentation
+- `make pre-commit-install` - Install pre-commit hooks
+- `make deps-audit` - Check for security vulnerabilities
+- `make deps-machete` - Check for unused dependencies
+
+**Standard Rust Commands** (Alternative):
 
 - `cargo build` - Build the project
 - `cargo run` - Run during development
-- `cargo test` - Run tests (currently has basic CLI struct test)
-- `cargo clippy` - Linting
+- `cargo test` - Run tests
+- `cargo clippy -- -D warnings` - Linting (warnings as errors)
 - `cargo fmt` - Code formatting
+- `cargo llvm-cov` - Code coverage
 
-**Installation**: Supports `cargo install --path .` for local installation.
+**Installation Options**:
+
+- `cargo install --path .` - Local installation to ~/.cargo/bin
+- `make install` - Same as cargo install
+- `make alpine-package && sudo make alpine-install` - Alpine Linux package installation
 
 ## Branch Protection & Contribution
 
@@ -74,20 +134,112 @@ struct Cli {
 
 ## Current State & Roadmap
 
-**Implemented**: Basic CLI structure with verbose flag, proper Rust project setup, branch protection workflow.
+**Fully Implemented Features**:
 
-**Planned Features** (from README):
+- ✅ Interactive TUI with keyboard navigation (ratatui-based)
+- ✅ Conventional Commits specification compliance
+- ✅ Smart file grouping by commit type and scope
+- ✅ AI-powered commit message generation (GitHub Copilot CLI)
+- ✅ Integrated vim-style text editor for commit messages
+- ✅ Diff viewer with syntax highlighting
+- ✅ Ticket/issue number extraction from branch names
+- ✅ External editor integration (EDITOR env var)
+- ✅ Progress indicators and spinners
+- ✅ Comprehensive test suite with ~85% code coverage
+- ✅ Alpine Linux packaging support
+- ✅ Pre-commit hooks integration
+- ✅ Security scanning (CodeQL, cargo-audit)
 
-- Interactive commit message wizard
-- Conventional commit standards implementation
-- Enhanced user-friendly interface
+**In Active Development**:
+
+- Ongoing refactoring for improved modularity
+- Enhanced error handling and user feedback
+- Performance optimizations
 
 ## Key Files
 
-- `src/main.rs`: Single source file containing all application logic
-- `Cargo.toml`: Project configuration with publishing metadata
-- `.github/BRANCH_PROTECTION.md`: Detailed branch protection setup guide
-- `.github/dependabot.yml`: Automated dependency update configuration
+**Source Code**:
+
+- `src/main.rs`: CLI entry point and orchestration
+- `src/lib.rs`: Public library interface
+- `src/types.rs`: Core data types and structures
+- `src/git.rs`: Git repository operations
+- `src/inference.rs`: File grouping and commit type inference
+- `src/copilot.rs`: GitHub Copilot CLI integration (AI features)
+- `src/ui.rs`: TUI implementation (ratatui widgets)
+- `src/editor.rs`: Built-in text editor
+- `src/progress.rs`: Progress indicators
+- `src/logging.rs`: Logging utilities
+
+**Configuration & Build**:
+
+- `Cargo.toml`: Project configuration with dependencies and metadata
+- `Makefile`: Development workflow automation
+- `rust-toolchain.toml`: Rust version specification
+- `.pre-commit-config.yaml`: Pre-commit hooks configuration
+- `codecov.yml`: Code coverage configuration
+
+**GitHub & CI/CD**:
+
+- `.github/copilot-instructions.md`: This file - Copilot agent guidance
+- `.github/BRANCH_PROTECTION.md`: Branch protection setup guide
+- `.github/dependabot.yml`: Automated dependency updates
+- `.github/CODEOWNERS`: Code ownership configuration
+- `.github/workflows/`: CI/CD workflow definitions
+
+**Documentation**:
+
+- `README.md`: Main project documentation
+- `CONTRIBUTING.md`: Contribution guidelines
+- `CHANGELOG.md`: Version history
+- `docs/`: Additional documentation (AI features, Alpine install, coverage, etc.)
+
+## AI & Copilot Integration
+
+**GitHub Copilot CLI Integration**: The project uses GitHub Copilot CLI (not the HTTP API) for AI features:
+
+- **Installation**: Via npm (`@github/copilot`), Homebrew, or WinGet
+- **Authentication**: Users must authenticate via `copilot` CLI before using AI features
+- **Communication**: Subprocess-based with JSON streaming for responses
+- **Graceful Degradation**: Falls back to manual inference when AI unavailable
+- **Optional Feature**: AI can be disabled with `--no-ai` flag
+
+**Key AI Use Cases**:
+
+1. **Smart File Grouping**: AI analyzes file changes and groups them by logical commits
+2. **Commit Message Generation**: AI generates conventional commit messages from diffs
+3. **Scope Detection**: AI identifies appropriate scopes based on file paths and changes
+
+**Implementation Details**:
+
+- Module: `src/copilot.rs`
+- Tests: `tests/copilot_tests.rs`
+- Documentation: `docs/ai-features.md`, `docs/ai-api-configuration.md`
+- Availability check: `is_ai_available()` function checks for CLI installation
+- Legacy: `src/ai.rs` contains deprecated HTTP API code (marked deprecated)
+
+## TUI & User Interface
+
+**Ratatui Framework**: Terminal UI built with ratatui (v0.29+):
+
+- **Event-Driven**: Keyboard input handling with crossterm backend
+- **Modal System**: Help screens, confirmation dialogs, diff viewer
+- **Custom Widgets**: Commit group lists, diff display, text editor
+- **Keyboard Navigation**: Vim-like shortcuts (j/k for up/down, h/l for navigation)
+
+**Key Features**:
+
+- **Commit Group Management**: Add/remove files, edit messages, split/merge groups
+- **Integrated Editor**: Vim-style text editor with syntax awareness
+- **Diff Viewer**: Scroll through file diffs with line-by-line highlighting
+- **Progress Indicators**: Spinners and status messages for long operations
+
+**UI Module Organization**:
+
+- `src/ui.rs`: Main TUI implementation
+- `src/editor.rs`: Text editor component
+- External editor support via `$EDITOR` environment variable
+- Coverage exclusion: TUI code excluded from coverage (ratatui testing complexity)
 
 ## Code Quality & Language Standards
 
@@ -304,4 +456,11 @@ cargo llvm-cov --all-features --workspace --html
 - Provide troubleshooting sections for common issues
 - Include badges for CI/CD status, version, and license
 
-When working on this project, focus on expanding the CLI functionality while maintaining the simple, single-file structure until complexity justifies modularization.
+When working on this project, focus on:
+
+- Maintaining the modular architecture with clear separation of concerns
+- Adding comprehensive tests for new features (target: 85% coverage)
+- Following conventional commit standards in all commits
+- Using the Makefile for common development tasks
+- Running `make ci` before submitting changes
+- Documenting AI features and TUI behavior in user-facing documentation
