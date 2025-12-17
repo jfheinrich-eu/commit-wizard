@@ -41,6 +41,7 @@ use commit_wizard::git::{
 };
 use commit_wizard::inference::build_groups;
 use commit_wizard::logging;
+use commit_wizard::output::print_ai_status;
 use commit_wizard::progress::ProgressSpinner;
 use commit_wizard::types::AppState;
 use commit_wizard::ui::run_tui;
@@ -194,26 +195,6 @@ fn prompt_untracked_files_selection(
     }
 }
 
-/// Prints verbose AI mode status message based on availability and configuration.
-fn print_ai_status(verbose: bool, use_ai: bool, no_ai: bool, ai_available: bool) {
-    if !verbose {
-        return;
-    }
-
-    if use_ai {
-        eprintln!("🤖 AI mode enabled - using GitHub Copilot for grouping and messages");
-    } else if no_ai {
-        eprintln!("🔧 AI mode disabled by --no-ai flag - using heuristic grouping");
-    } else if !ai_available {
-        eprintln!("⚠️  GitHub Copilot CLI not available or not authenticated");
-        eprintln!("   Falling back to heuristic grouping");
-        eprintln!("\n   To enable AI features:");
-        eprintln!("   1. Install: npm install -g @github/copilot");
-        eprintln!("   2. Authenticate: Run 'copilot' and type '/login'");
-        eprintln!();
-    }
-}
-
 /// Runs the main application logic.
 fn run_application(cli: Cli) -> Result<()> {
     // Determine repository path
@@ -278,14 +259,6 @@ fn run_application(cli: Cli) -> Result<()> {
         } else {
             log::info!("User excluded all untracked files");
         }
-    }
-
-    if changed_files.is_empty() {
-        log::warn!("No changes found");
-        bail!(
-            "No changes found in repository.\n\
-             Hint: Modify some files or create new ones to get started."
-        );
     }
 
     if cli.verbose {
