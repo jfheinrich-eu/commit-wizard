@@ -99,13 +99,17 @@ sudo tar xzf "commit-wizard-${VERSION}-alpine-x86_64.tar.gz" -C /
 ### macOS
 
 ```bash
-# For Intel Macs, use:
+VERSION="0.1.0"
+
+# For Intel Macs (x86_64):
 curl -LO "https://github.com/jfheinrich-eu/commit-wizard/releases/download/$VERSION/commit-wizard-$VERSION-macos-x86_64.tar.gz"
+tar xzf "commit-wizard-$VERSION-macos-x86_64.tar.gz"
+sudo mv commit-wizard /usr/local/bin/
 
-# For Apple Silicon (M1/M2/M3), use:
-
-# Apple Silicon (M1/M2/M3)
+# For Apple Silicon (M1/M2/M3 - aarch64):
 curl -LO "https://github.com/jfheinrich-eu/commit-wizard/releases/download/$VERSION/commit-wizard-$VERSION-macos-aarch64.tar.gz"
+tar xzf "commit-wizard-$VERSION-macos-aarch64.tar.gz"
+sudo mv commit-wizard /usr/local/bin/
 ```
 
 ### From Source
