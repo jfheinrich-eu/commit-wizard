@@ -52,7 +52,7 @@ This is a Rust CLI tool for creating better commit messages following convention
 
 ## Key Development Patterns
 
-**Clap Integration**: Uses clap 4.5 with derive features for CLI definition with multiple subcommands and options:
+**Clap Integration**: Uses clap 4.5 with derive features for CLI definition with multiple command-line options:
 
 ```rust
 #[derive(Parser, Debug)]
@@ -145,7 +145,7 @@ struct Cli {
 - ✅ Ticket/issue number extraction from branch names
 - ✅ External editor integration (EDITOR env var)
 - ✅ Progress indicators and spinners
-- ✅ Comprehensive test suite with ~85% code coverage
+- ✅ Comprehensive test suite with ~38% code coverage (target: 70-80% overall)
 - ✅ Alpine Linux packaging support
 - ✅ Pre-commit hooks integration
 - ✅ Security scanning (CodeQL, cargo-audit)
@@ -459,7 +459,7 @@ cargo llvm-cov --all-features --workspace --html
 When working on this project, focus on:
 
 - Maintaining the modular architecture with clear separation of concerns
-- Adding comprehensive tests for new features (target: 85% coverage)
+- Adding comprehensive tests for new features (target: 70-80% coverage)
 - Following conventional commit standards in all commits
 - Using the Makefile for common development tasks
 - Running `make ci` before submitting changes
