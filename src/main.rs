@@ -41,6 +41,7 @@ use commit_wizard::git::{
 };
 use commit_wizard::inference::build_groups;
 use commit_wizard::logging;
+use commit_wizard::output::print_ai_status;
 use commit_wizard::progress::ProgressSpinner;
 use commit_wizard::types::AppState;
 use commit_wizard::ui::run_tui;
@@ -260,14 +261,6 @@ fn run_application(cli: Cli) -> Result<()> {
         }
     }
 
-    if changed_files.is_empty() {
-        log::warn!("No changes found");
-        bail!(
-            "No changes found in repository.\n\
-             Hint: Modify some files or create new ones to get started."
-        );
-    }
-
     if cli.verbose {
         eprintln!("📋 Found {} changed file(s)", changed_files.len());
     }
@@ -284,25 +277,7 @@ fn run_application(cli: Cli) -> Result<()> {
         ai_available,
         cli.no_ai
     );
-    #[allow(clippy::collapsible_if)]
-    if use_ai {
-        if cli.verbose {
-            eprintln!("🤖 AI mode enabled - using GitHub Copilot for grouping and messages");
-        }
-    } else if cli.no_ai {
-        if cli.verbose {
-            eprintln!("🔧 AI mode disabled by --no-ai flag - using heuristic grouping");
-        }
-    } else if !ai_available {
-        if cli.verbose {
-            eprintln!("⚠️  GitHub Copilot CLI not available or not authenticated");
-            eprintln!("   Falling back to heuristic grouping");
-            eprintln!("\n   To enable AI features:");
-            eprintln!("   1. Install: npm install -g @github/copilot");
-            eprintln!("   2. Authenticate: Run 'copilot' and type '/login'");
-            eprintln!();
-        }
-    }
+    print_ai_status(cli.verbose, use_ai, cli.no_ai, ai_available);
 
     // Step 3: Build commit groups (AI-first approach)
     let spinner = ProgressSpinner::new("Creating commit groups...", 3, 4);
