@@ -76,7 +76,7 @@ assets = [
         "644",
     ],
     [
-        "docs/BRANCH_PROTECTION.md",
+        ".github/BRANCH_PROTECTION.md",
         "usr/share/doc/commit-wizard/",
         "644",
     ],

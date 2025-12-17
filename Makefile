@@ -263,10 +263,8 @@ build-target:
 		echo "Using vendored OpenSSL for musl target"; \
 	fi; \
 	if [ "$(USE_CROSS)" = "true" ]; then \
-		if ! command -v cross >/dev/null 2>&1; then \
-			echo "Installing cross..."; \
-			cargo install cross --git https://github.com/cross-rs/cross --tag v0.2.5 --locked; \
-		fi; \
+		echo "Installing cross (forced, version v0.2.5)..."; \
+		cargo install cross --git https://github.com/cross-rs/cross --tag v0.2.5 --locked --force; \
 		cross build --release --target $(TARGET) --locked $$BUILD_FEATURES; \
 	else \
 		cargo build --release --target $(TARGET) --locked $$BUILD_FEATURES; \
