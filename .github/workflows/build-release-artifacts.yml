@@ -202,16 +202,16 @@ jobs:
           echo "Release assets:"
           ls -lh
 
+      # Note on macOS runners:
+      # - macos-13 and earlier = Intel (x86_64) architecture
+      # - macos-14 and later = Apple Silicon (ARM64) architecture
+      # Ensure the runner version matches the target architecture for your build.
+
       - name: Generate release notes
         # Step to generate release notes for the current release
         # This step extracts and formats release notes that will be included
         # in the GitHub Release. The release notes are stored in the output
         # variable and can be referenced by subsequent steps.
-        #
-        # Note on macOS runners:
-        # - macos-13 and earlier = Intel (x86_64) architecture
-        # - macos-14 and later = Apple Silicon (ARM64) architecture
-        # Ensure the runner version matches the target architecture for your build.
         id: release-notes
         run: |
           VERSION="${{ steps.version.outputs.VERSION }}"
