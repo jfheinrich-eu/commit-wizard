@@ -54,28 +54,21 @@ fn test_print_ai_status_ai_not_available_message() {
 }
 
 #[test]
-fn test_print_ai_status_conditional_logic() {
-    // Verify the conditional logic is mutually exclusive and complete
-
-    // Case 1: AI enabled (use_ai = true)
-    let case1 = (true, true, false, true);
-    assert!(case1.0 && case1.1); // Should hit first condition
-
-    // Case 2: AI disabled by flag (use_ai = false, no_ai = true)
-    let case2 = (true, false, true, true);
-    assert!(case2.0 && !case2.1 && case2.2); // Should hit second condition
-
-    // Case 3: AI not available (use_ai = false, no_ai = false, ai_available = false)
-    let case3 = (true, false, false, false);
-    assert!(case3.0 && !case3.1 && !case3.2 && !case3.3); // Should hit third condition
-
-    // Case 4: No output (verbose = false)
-    let case4 = (false, false, false, false);
-    assert!(!case4.0); // Should return early
+fn test_print_ai_status_all_combinations() {
+    // Test all logical combinations to ensure no panics
+    for verbose in [false, true] {
+        for use_ai in [false, true] {
+            for no_ai in [false, true] {
+                for ai_available in [false, true] {
+                    print_ai_status(verbose, use_ai, no_ai, ai_available);
+                }
+            }
+        }
+    }
 }
 
 #[test]
-fn test_print_ai_status_all_combinations() {
+fn test_print_ai_status_message_content() {
     // Test all logical combinations to ensure no panics
     for verbose in [false, true] {
         for use_ai in [false, true] {
