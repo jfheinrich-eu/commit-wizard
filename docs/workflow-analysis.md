@@ -255,7 +255,7 @@ Based on Rust project best practices and market share:
 uses: github/codeql-action/init@ba454b8ab46733eb6145342877cd148270bb77ab # v2.23.5
 
 # After (get latest v3 SHA)
-uses: github/codeql-action/init@<latest-v3-sha> # v3.27.9
+uses: github/codeql-action/init@<latest-v3-sha> # v3.31.8
 ```
 
 ### 5.2 Add Timeout to auto-review Workflow

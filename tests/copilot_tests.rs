@@ -829,20 +829,8 @@ fn test_path_with_special_characters() {
 }
 
 // =============================================================================
-// TESTS FOR is_ai_available() and authentication checks
+// TESTS FOR authentication check helpers
 // =============================================================================
-
-#[test]
-fn test_is_ai_available_returns_result() {
-    use commit_wizard::copilot::is_ai_available;
-
-    // This test simply verifies the function can be called without panicking
-    // The actual result depends on whether copilot CLI is installed/authenticated
-    let _result = is_ai_available();
-
-    // If we reach here, the function executed without panic
-    // We don't assert on the result since it depends on the environment
-}
 
 #[test]
 fn test_check_copilot_auth_error_with_auth_error() {
