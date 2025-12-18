@@ -55,7 +55,7 @@ uses: github/codeql-action/init@ba454b8ab46733eb6145342877cd148270bb77ab # v2.23
 uses: github/codeql-action/analyze@ba454b8ab46733eb6145342877cd148270bb77ab # v2.23.5
 ```
 
-**Issue**: Using v2.23.5 from early 2024. Current version is v3.x (latest v3.27.9).
+**Issue**: Using v2.23.5 from early 2024. Current version is v3.x (latest v3.31.8).
 
 **Recommendation**: Update to latest v3 with current SHA hash.
 
