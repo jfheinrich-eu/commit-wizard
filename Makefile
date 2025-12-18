@@ -368,11 +368,11 @@ build-rpm:
 
 # Build Alpine static package
 # Usage: make build-alpine-pkg VERSION=1.0.0
-build-alpine-pkg:
-	@echo "Building Alpine static package for version $(VERSION)..."
-	@# Build static musl binary
+	@# Build static musl binary for Alpine using the specified target
 	@$(MAKE) build-target TARGET=x86_64-unknown-linux-musl PLATFORM_NAME=linux-x86_64-musl
-	@# Create Alpine package using existing target
+	@# Remove any existing Alpine package artifacts to avoid stale or partially built tarballs from previous runs
+	@rm -f "$(DIST_DIR)/$(PACKAGE_NAME)-$(VERSION)-alpine-$(ARCH).tar.gz" "$(DIST_DIR)/$(PACKAGE_NAME)-$(VERSION)-alpine-$(ARCH).tar.gz.sha256"
+	@# Create a fresh Alpine package tarball using the newly built static binary
 	@$(MAKE) alpine-package
 	@# Rename the tarball created by alpine-package to include "alpine" in the name
 	@mkdir -p $(DIST_DIR)
