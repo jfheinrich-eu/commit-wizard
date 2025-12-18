@@ -376,10 +376,11 @@ build-rpm:
 	@$(MAKE) alpine-package
 	@# Rename the tarball created by alpine-package to include "alpine" in the name
 	@mkdir -p $(DIST_DIR)
-	@if [ -f "$(DIST_DIR)/$(PACKAGE_NAME)-$(VERSION)-$(ARCH).tar.gz" ]; then \
-		mv "$(DIST_DIR)/$(PACKAGE_NAME)-$(VERSION)-$(ARCH).tar.gz" "$(DIST_DIR)/$(PACKAGE_NAME)-$(VERSION)-alpine-$(ARCH).tar.gz"; \
+	@TARBALL=$$(ls "$(DIST_DIR)/$(PACKAGE_NAME)-$(VERSION)"*.tar.gz 2>/dev/null | head -n 1); \
+	if [ -n "$$TARBALL" ]; then \
+		mv "$$TARBALL" "$(DIST_DIR)/$(PACKAGE_NAME)-$(VERSION)-alpine-$(ARCH).tar.gz"; \
 	else \
-		echo "❌ Error: Expected tarball $(DIST_DIR)/$(PACKAGE_NAME)-$(VERSION)-$(ARCH).tar.gz not found." >&2; exit 1; \
+		echo "❌ Error: Expected tarball matching $(DIST_DIR)/$(PACKAGE_NAME)-$(VERSION)*.tar.gz not found." >&2; exit 1; \
 	fi
 	@# Generate checksum
 	@cd $(DIST_DIR) && sha256sum "$(PACKAGE_NAME)-$(VERSION)-alpine-$(ARCH).tar.gz" > "$(PACKAGE_NAME)-$(VERSION)-alpine-$(ARCH).tar.gz.sha256"
