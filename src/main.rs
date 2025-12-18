@@ -265,6 +265,13 @@ fn run_application(cli: Cli) -> Result<()> {
         eprintln!("📋 Found {} changed file(s)", changed_files.len());
     }
 
+    // Prevent continuing when there are no changes to commit
+    if changed_files.is_empty() {
+        if cli.verbose {
+            eprintln!("⚠️ No changed files detected. Stage or modify files before running commit-wizard.");
+        }
+        bail!("No changed files detected. Stage or modify files before running commit-wizard.");
+    }
     // Step 2: Determine if AI should be used
     let spinner = ProgressSpinner::new("Checking AI availability...", 2, 4);
     let ai_available = is_ai_available();
