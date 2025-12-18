@@ -372,8 +372,6 @@ build-alpine-pkg:
 	@echo "Building Alpine static package for version $(VERSION)..."
 	@# Build static musl binary
 	@$(MAKE) build-target TARGET=x86_64-unknown-linux-musl PLATFORM_NAME=linux-x86_64-musl
-	@# Remove any existing Alpine package to avoid confusion
-	@rm -f "$(DIST_DIR)/$(PACKAGE_NAME)-$(VERSION)-alpine-$(ARCH).tar.gz" "$(DIST_DIR)/$(PACKAGE_NAME)-$(VERSION)-alpine-$(ARCH).tar.gz.sha256"
 	@# Create Alpine package using existing target
 	@$(MAKE) alpine-package
 	@# Rename the tarball created by alpine-package to include "alpine" in the name
