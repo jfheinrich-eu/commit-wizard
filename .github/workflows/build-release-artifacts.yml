@@ -67,7 +67,16 @@ jobs:
       - name: Set VERSION variable
         id: version
         run: |
-          VERSION="${{ github.event.inputs.tag || github.ref_name }}"
+          if [ -n "${{ github.event.inputs.tag }}" ]; then
+            # Validate that the tag matches semver: e.g., 1.2.3
+            if ! echo "${{ github.event.inputs.tag }}" | grep -Eq '^[0-9]+\.[0-9]+\.[0-9]+$'; then
+              echo "Error: Provided tag '${{ github.event.inputs.tag }}' is not a valid semver (e.g., 1.2.3)" >&2
+              exit 1
+            fi
+            VERSION="${{ github.event.inputs.tag }}"
+          else
+            VERSION="${{ github.ref_name }}"
+          fi
           echo "VERSION=$VERSION" >> $GITHUB_OUTPUT
           echo "Building version: $VERSION"
 
@@ -183,16 +192,83 @@ jobs:
 
           # Create combined checksums file
           cd release-assets
-          cat *.sha256 > SHA256SUMS.txt
 
+          if compgen -G "*.sha256" > /dev/null; then
+            cat *.sha256 > SHA256SUMS.txt
+          else
+            echo "No .sha256 files found; skipping SHA256SUMS.txt generation."
+          fi
           # List all assets
           echo "Release assets:"
           ls -lh
 
       - name: Generate release notes
+        # Step to generate release notes for the current release
+        # This step extracts and formats release notes that will be included
+        # in the GitHub Release. The release notes are stored in the output
+        # variable and can be referenced by subsequent steps.
+        #
+        # Note on macOS runners:
+        # - macos-13 and earlier = Intel (x86_64) architecture
+        # - macos-14 and later = Apple Silicon (ARM64) architecture
+        # Ensure the runner version matches the target architecture for your build.
         id: release-notes
         run: |
           VERSION="${{ steps.version.outputs.VERSION }}"
+
+          cat << EOF > release-notes.md
+          ## Installation
+
+          ### Quick Install (Linux/macOS)
+
+          \`\`\`bash
+          # Download and install (replace <platform> with your platform)
+          curl -LO https://github.com/${{ github.repository }}/releases/download/$VERSION/commit-wizard-$VERSION-<platform>.tar.gz
+          tar xzf commit-wizard-$VERSION-<platform>.tar.gz
+          sudo mv commit-wizard-$VERSION-<platform>/commit-wizard /usr/local/bin/
+          \`\`\`
+
+          ### Platform-Specific
+
+          #### Debian/Ubuntu
+          \`\`\`bash
+          wget https://github.com/${{ github.repository }}/releases/download/$VERSION/commit-wizard_${VERSION}_amd64.deb
+          sudo dpkg -i commit-wizard_${VERSION}_amd64.deb
+          \`\`\`
+
+          #### Fedora/RHEL/CentOS
+          \`\`\`bash
+          wget https://github.com/${{ github.repository }}/releases/download/$VERSION/commit-wizard-${VERSION}-1.x86_64.rpm
+          sudo rpm -i commit-wizard-${VERSION}-1.x86_64.rpm
+          \`\`\`
+          #### Alpine Linux
+          \`\`\`bash
+          wget https://github.com/${{ github.repository }}/releases/download/$VERSION/commit-wizard-${VERSION}-alpine-x86_64.tar.gz
+          sudo tar xzf commit-wizard-${VERSION}-alpine-x86_64.tar.gz -C /
+          \`\`\`
+
+          ### Available Binaries
+
+          - **Linux x86_64 (musl)**: Static binary, works on any distro
+          - **Linux x86_64 (glibc)**: For modern Linux systems
+          - **Linux ARM64 (musl)**: Static binary for ARM servers/devices
+          - **Linux ARM64 (glibc)**: For ARM systems with glibc
+          - **macOS x86_64**: Intel Macs
+          - **macOS ARM64**: Apple Silicon (M1/M2/M3)
+
+          ### Verify Downloads
+
+          All artifacts include SHA256 checksums. Verify with:
+
+          \`\`\`bash
+          sha256sum -c commit-wizard-$VERSION-<platform>.tar.gz.sha256
+          \`\`\`
+
+          Or check against SHA256SUMS.txt.
+
+          ---
+
+          EOF
 
           cat << EOF > release-notes.md
           ## Installation

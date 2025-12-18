@@ -87,16 +87,39 @@ RUN gem install mdl
 
 # Upgrade Node.js to latest LTS version using n
 # Debian bullseye ships with Node.js 12.x which is too old for @github/copilot
-RUN set -e; \
-    npm install -g n; \
-    n lts; \
-    hash -r; \
-    echo "Node.js version: $(node --version)"; \
-    echo "npm version: $(npm --version)"
+RUN set -euo pipefail; \
+    echo "=== Node.js Upgrade Process ===" && \
+    echo "Step 1/5: Installing 'n' version manager..." && \
+    npm install -g n && \
+    echo "✓ 'n' installed successfully" && \
+    \
+    echo "Step 2/5: Upgrading to Node.js LTS..." && \
+    n lts && \
+    echo "✓ Node.js LTS installed" && \
+    \
+    echo "Step 3/5: Refreshing shell hash table..." && \
+    hash -r && \
+    echo "✓ Shell hash refreshed" && \
+    \
+    echo "Step 4/5: Verifying Node.js version..." && \
+    NODE_VERSION=$(node --version) && \
+    echo "✓ Node.js version: $NODE_VERSION" && \
+    \
+    echo "Step 5/5: Verifying npm version..." && \
+    NPM_VERSION=$(npm --version) && \
+    echo "✓ npm version: $NPM_VERSION" && \
+    \
+    echo "=== Node.js Upgrade Complete ==="
 
 # Install GitHub Copilot CLI globally
-RUN npm install -g @github/copilot
-
+RUN set -e; \
+    echo "Installing GitHub Copilot CLI (@github/copilot)..."; \
+    if npm install -g @github/copilot; then \
+        echo "GitHub Copilot CLI installed successfully."; \
+    else \
+        echo "ERROR: Failed to install GitHub Copilot CLI (@github/copilot)."; \
+        exit 1; \
+    fi
 # Create symlinks for fd (some systems use fdfind)
 RUN if [ -x /usr/bin/fdfind ]; then ln -sf /usr/bin/fdfind /usr/local/bin/fd || echo "Warning: Could not create fd symlink"; fi
 

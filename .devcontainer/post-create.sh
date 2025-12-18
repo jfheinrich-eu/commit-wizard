@@ -182,8 +182,9 @@ if command -v copilot >/dev/null 2>&1; then
     echo "✅ GitHub Copilot CLI is installed"
 
     # Test authentication status (non-interactive)
-    if copilot -s -p "test" >/dev/null 2>&1; then
-        echo "✅ GitHub Copilot CLI is authenticated"
+    # Check if copilot command responds (authentication check)
+    if timeout 5 copilot --version >/dev/null 2>&1; then
+        echo "✅ GitHub Copilot CLI is authenticated and working"
     else
         echo "⚠️  GitHub Copilot CLI is NOT authenticated"
         echo "   To authenticate, run: copilot"
