@@ -88,29 +88,35 @@ RUN gem install mdl
 # Upgrade Node.js to latest LTS version using n
 # Debian bullseye ships with Node.js 12.x which is too old for @github/copilot
 RUN set -euo pipefail; \
-    echo "=== Node.js Upgrade Process ===" && \
-    echo "Step 1/5: Installing 'n' version manager..." && \
-    npm install -g n && \
-    echo "✓ 'n' installed successfully" && \
-    \
-    echo "Step 2/5: Upgrading to Node.js LTS..." && \
-    n lts && \
-    echo "✓ Node.js LTS installed" && \
-    \
-    echo "Step 3/5: Refreshing shell hash table..." && \
-    hash -r && \
-    echo "✓ Shell hash refreshed" && \
-    \
-    echo "Step 4/5: Verifying Node.js version..." && \
-    NODE_VERSION=$(node --version) && \
-    echo "✓ Node.js version: $NODE_VERSION" && \
-    \
-    echo "Step 5/5: Verifying npm version..." && \
-    NPM_VERSION=$(npm --version) && \
-    echo "✓ npm version: $NPM_VERSION" && \
-    \
-    echo "=== Node.js Upgrade Complete ==="
+    cat <<'EOF' >/usr/local/bin/upgrade-node.sh; \
+#!/usr/bin/env bash
+set -euo pipefail
 
+echo "=== Node.js Upgrade Process ==="
+echo "Step 1/5: Installing 'n' version manager..."
+npm install -g n
+echo "✓ 'n' installed successfully"
+
+echo "Step 2/5: Upgrading to Node.js LTS..."
+n lts
+echo "✓ Node.js LTS installed"
+
+echo "Step 3/5: Refreshing shell hash table..."
+hash -r
+echo "✓ Shell hash refreshed"
+
+echo "Step 4/5: Verifying Node.js version..."
+NODE_VERSION=$(node --version)
+echo "✓ Node.js version: $NODE_VERSION"
+
+echo "Step 5/5: Verifying npm version..."
+NPM_VERSION=$(npm --version)
+echo "✓ npm version: $NPM_VERSION"
+
+echo "=== Node.js Upgrade Complete ==="
+EOF
+    chmod +x /usr/local/bin/upgrade-node.sh; \
+    /usr/local/bin/upgrade-node.sh
 # Install GitHub Copilot CLI globally
 RUN set -e; \
     echo "Installing GitHub Copilot CLI (@github/copilot)..."; \
