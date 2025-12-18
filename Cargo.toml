@@ -81,7 +81,7 @@ assets = [
         "644",
     ],
     [
-        "docs/dependabot.yml",
+        ".github/dependabot.yml",
         "usr/share/doc/commit-wizard/",
         "644",
     ],

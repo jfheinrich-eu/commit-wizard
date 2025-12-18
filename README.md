@@ -104,12 +104,12 @@ VERSION="0.1.0"
 # For Intel Macs (x86_64):
 curl -LO "https://github.com/jfheinrich-eu/commit-wizard/releases/download/$VERSION/commit-wizard-$VERSION-macos-x86_64.tar.gz"
 tar xzf "commit-wizard-$VERSION-macos-x86_64.tar.gz"
-sudo mv commit-wizard /usr/local/bin/
+sudo mv "commit-wizard-$VERSION-macos-x86_64/commit-wizard" /usr/local/bin/
 
 # For Apple Silicon (M1/M2/M3 - aarch64):
 curl -LO "https://github.com/jfheinrich-eu/commit-wizard/releases/download/$VERSION/commit-wizard-$VERSION-macos-aarch64.tar.gz"
 tar xzf "commit-wizard-$VERSION-macos-aarch64.tar.gz"
-sudo mv commit-wizard /usr/local/bin/
+sudo mv "commit-wizard-$VERSION-macos-aarch64/commit-wizard" /usr/local/bin/
 ```
 
 ### From Source
