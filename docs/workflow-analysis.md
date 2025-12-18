@@ -28,22 +28,6 @@ and recommendations for improvements.
   `riskledger/update-pr-description`, `jefflinse/pr-semver-bump`, `ad-m/github-push-action`, `requarks/changelog-action`
   all use hash pins
 
-  ### Issues Found
-
-  #### ❌ **CodeQL Action Version Outdated**
-
-  **Location**: [.github/workflows/codeql.yml](.github/workflows/codeql.yml#L33)
-
-  ```yaml
-  uses: github/codeql-action/init@ba454b8ab46733eb6145342877cd148270bb77ab # v2.23.5
-  uses: github/codeql-action/analyze@ba454b8ab46733eb6145342877cd148270bb77ab # v2.23.5
-  ```
-
-  **Issue**: Using v2.23.5 from early 2024. Current version is v3.x (latest v3.31.8).
-
-  **Recommendation**: Update to latest v3 with current SHA hash.
-all use hash pins
-
 ### Issues Found
 
 #### ❌ **CodeQL Action Version Outdated**
