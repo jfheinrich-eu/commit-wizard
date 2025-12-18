@@ -305,26 +305,6 @@ jobs:
           ### Available Binaries
 
           - **Linux x86_64 (musl)**: Static binary, works on any distro
-          - **Linux x86_64 (glibc)**: For modern Linux systems
-          - **Linux ARM64 (musl)**: Static binary for ARM servers/devices
-          - **Linux ARM64 (glibc)**: For ARM systems with glibc
-          - **macOS x86_64**: Intel Macs
-          - **macOS ARM64**: Apple Silicon (M1/M2/M3)
-
-          ### Verify Downloads
-
-          All artifacts include SHA256 checksums. Verify with:
-
-          \`\`\`bash
-          sha256sum -c commit-wizard-$VERSION-<platform>.tar.gz.sha256
-          \`\`\`
-
-          Or check against SHA256SUMS.txt.
-
-          ---
-
-          EOF
-
           # Append changelog if exists
           if [ -f CHANGELOG.md ]; then
             echo "## Changes" >> release-notes.md
