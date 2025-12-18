@@ -14,7 +14,7 @@ VERSION="0.1.0"
 curl -LO "https://github.com/jfheinrich-eu/commit-wizard/releases/download/$VERSION/commit-wizard-$VERSION-linux-x86_64-musl.tar.gz"
 tar xzf "commit-wizard-$VERSION-linux-x86_64-musl.tar.gz"
 sudo mv "commit-wizard-$VERSION-linux-x86_64-musl/commit-wizard" /usr/local/bin/
-rm -rf "commit-wizard-$VERSION-linux-x86_64-musl"*
+rm -rf "commit-wizard-$VERSION-linux-x86_64-musl" "commit-wizard-$VERSION-linux-x86_64-musl.tar.gz"
 
 # Verify installation
 commit-wizard --version
