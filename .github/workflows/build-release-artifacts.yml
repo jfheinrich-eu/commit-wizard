@@ -270,7 +270,7 @@ jobs:
 
           EOF
 
-          cat << EOF > release-notes.md
+          cat << EOF >> release-notes.md
           ## Installation
 
           ### Quick Install (Linux/macOS)
