@@ -368,6 +368,7 @@ build-rpm:
 
 # Build Alpine static package
 # Usage: make build-alpine-pkg VERSION=1.0.0
+build-alpine-pkg:
 	@# Build static musl binary for Alpine using the specified target
 	@$(MAKE) build-target TARGET=x86_64-unknown-linux-musl PLATFORM_NAME=linux-x86_64-musl
 	@# Remove any existing Alpine package artifacts to avoid stale or partially built tarballs from previous runs

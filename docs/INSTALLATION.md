@@ -7,7 +7,7 @@ This guide covers installation methods for various operating systems and Linux d
 ### Linux/macOS (Static Binary)
 
 ```bash
-# Download the latest release (replace VERSION with actual version, e.g., 0.1.0)
+# Download the latest release (check https://github.com/jfheinrich-eu/commit-wizard/releases for latest version)
 VERSION="0.1.0"
 
 # For Linux x86_64 (static musl - works on any distro)

@@ -118,9 +118,9 @@ EOF
     chmod +x /usr/local/bin/upgrade-node.sh; \
     /usr/local/bin/upgrade-node.sh
 # Install GitHub Copilot CLI globally
-RUN set -e; \
-    echo "Installing GitHub Copilot CLI (@github/copilot)..."; \
-    if npm install -g @github/copilot; then \
+ARG COPILOT_CLI_VERSION=0.0.371
+RUN echo "Installing GitHub Copilot CLI (@github/copilot@${COPILOT_CLI_VERSION})..."; \
+    if npm install -g @github/copilot@${COPILOT_CLI_VERSION}; then \
         echo "GitHub Copilot CLI installed successfully."; \
     else \
         echo "ERROR: Failed to install GitHub Copilot CLI (@github/copilot)."; \
