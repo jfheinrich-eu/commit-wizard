@@ -193,7 +193,7 @@ if command -v copilot >/dev/null 2>&1; then
 else
     echo "❌ GitHub Copilot CLI not found"
     echo "   The Copilot CLI installation may have failed during container build."
-    echo "   Try rebuilding the container, or manually run: npm install -g @github/copilot"
+    echo "   Try rebuilding the development container. If the problem persists, check the Dockerfile and build logs."
 fi
 
 echo ""
