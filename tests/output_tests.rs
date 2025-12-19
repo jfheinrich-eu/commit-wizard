@@ -80,24 +80,3 @@ fn test_print_ai_status_message_content() {
         }
     }
 }
-
-#[test]
-fn test_print_ai_status_message_content() {
-    // Verify that the expected message strings exist in the source
-    // This ensures refactoring doesn't accidentally change user-facing text
-
-    let source = include_str!("../src/output.rs");
-
-    // AI enabled message
-    assert!(source.contains("AI mode enabled - using GitHub Copilot"));
-
-    // No-AI flag message
-    assert!(source.contains("AI mode disabled by --no-ai flag"));
-
-    // AI not available message
-    assert!(source.contains("GitHub Copilot CLI not available or not authenticated"));
-    assert!(source.contains("Falling back to heuristic grouping"));
-    assert!(source.contains("To enable AI features:"));
-    assert!(source.contains("Install: npm install -g @github/copilot"));
-    assert!(source.contains("Authenticate: Run 'copilot' and type '/login'"));
-}
