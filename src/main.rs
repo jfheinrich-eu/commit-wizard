@@ -267,11 +267,6 @@ fn run_application(cli: Cli) -> Result<()> {
 
     // Prevent continuing when there are no changes to commit
     if changed_files.is_empty() {
-        if cli.verbose {
-            eprintln!(
-                "⚠️ No changed files detected. Stage or modify files before running commit-wizard."
-            );
-        }
         bail!("No changed files detected. Stage or modify files before running commit-wizard.");
     }
     // Step 2: Determine if AI should be used
