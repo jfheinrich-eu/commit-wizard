@@ -53,9 +53,7 @@ mockito = "1.7"
 maintainer = "jfheinrich <joerg@jfheinrich.eu>"
 copyright = "2025, jfheinrich <joerg@jfheinrich.eu>"
 license-file = ["LICENSE", "0"]
-extended-description = """\
-A CLI tool to help create better commit messages following conventional commit \
-standards. Features interactive wizards and GitHub Copilot integration."""
+extended-description = """A CLI tool to help create better commit messages following conventional commit standards. Features interactive wizards and GitHub Copilot integration."""
 depends = "$auto"
 section = "devel"
 priority = "optional"
