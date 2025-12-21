@@ -183,12 +183,16 @@ if command -v copilot >/dev/null 2>&1; then
 
     # Test authentication status (non-interactive) by running a prompt command
     # This will fail with an auth error if the user is not logged in
-    if timeout 5 copilot -s -p "test" >/dev/null 2>&1; then
-        echo "✅ GitHub Copilot CLI is authenticated and working"
+    if command -v timeout >/dev/null 2>&1; then
+        if timeout 5 copilot -s -p "test" >/dev/null 2>&1; then
+            echo "✅ GitHub Copilot CLI is authenticated and working"
+        else
+            echo "⚠️  GitHub Copilot CLI is NOT authenticated"
+            echo "   To authenticate, run: copilot"
+            echo "   Then type: /login"
+        fi
     else
-        echo "⚠️  GitHub Copilot CLI is NOT authenticated"
-        echo "   To authenticate, run: copilot"
-        echo "   Then type: /login"
+        echo "ℹ️  'timeout' command not found; skipping non-interactive Copilot authentication check"
     fi
 else
     echo "❌ GitHub Copilot CLI not found"
