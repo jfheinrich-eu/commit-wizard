@@ -25,13 +25,7 @@ pub fn print_ai_status(verbose: bool, use_ai: bool, no_ai: bool, ai_available: b
     // Stderr writes may fail if stderr is closed, redirected to /dev/null,
     // the process lacks write permissions, or there's a broken pipe.
     // Since logging also uses stderr, there's no better error reporting mechanism.
-    let _ = print_ai_status_to(
-        &mut io::stderr(),
-        verbose,
-        use_ai,
-        no_ai,
-        ai_available,
-    );
+    let _ = print_ai_status_to(&mut io::stderr(), verbose, use_ai, no_ai, ai_available);
 }
 
 /// Internal function that writes AI status to a given writer.
@@ -65,7 +59,10 @@ fn print_ai_status_to<W: Write>(
         writeln!(writer, "   Falling back to heuristic grouping")?;
         writeln!(writer, "\n   To enable AI features:")?;
         writeln!(writer, "   1. Install: npm install -g @github/copilot")?;
-        writeln!(writer, "   2. Authenticate: Run 'copilot' and type '/login'")?;
+        writeln!(
+            writer,
+            "   2. Authenticate: Run 'copilot' and type '/login'"
+        )?;
         writeln!(writer)?;
     }
 
