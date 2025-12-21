@@ -21,6 +21,8 @@ use std::io::{self, Write};
 /// - If `no_ai` flag is set, prints disabled by flag message
 /// - If AI is not available, prints installation instructions
 pub fn print_ai_status(verbose: bool, use_ai: bool, no_ai: bool, ai_available: bool) {
+    // Ignore stderr write errors - if we can't write to stderr, there's not much we can do
+    // since logging also uses stderr, and these are non-critical status messages
     let _ = print_ai_status_to(
         &mut io::stderr(),
         verbose,
