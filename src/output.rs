@@ -21,8 +21,10 @@ use std::io::{self, Write};
 /// - If `no_ai` flag is set, prints disabled by flag message
 /// - If AI is not available, prints installation instructions
 pub fn print_ai_status(verbose: bool, use_ai: bool, no_ai: bool, ai_available: bool) {
-    // Ignore stderr write errors - if we can't write to stderr, there's not much we can do
-    // since logging also uses stderr, and these are non-critical status messages
+    // Ignore stderr write errors - these are non-critical status messages.
+    // Stderr writes may fail if stderr is closed, redirected to /dev/null,
+    // the process lacks write permissions, or there's a broken pipe.
+    // Since logging also uses stderr, there's no better error reporting mechanism.
     let _ = print_ai_status_to(
         &mut io::stderr(),
         verbose,
@@ -127,10 +129,11 @@ mod tests {
     #[test]
     fn test_ai_unavailable_with_use_ai_true() {
         let mut output = Vec::new();
-        // In normal usage, use_ai is computed as !no_ai && ai_available,
-        // so this scenario (use_ai=true, ai_available=false) shouldn't occur.
-        // However, we test the function's behavior: use_ai is checked first,
-        // so it will show the enabled message even if AI isn't available.
+        // This tests the internal function's conditional priority:
+        // use_ai is checked before ai_available, so if called with use_ai=true
+        // and ai_available=false, it shows "enabled" (even though inconsistent).
+        // In practice, main.rs ensures use_ai = !no_ai && ai_available,
+        // preventing this inconsistency. This test documents the function behavior.
         print_ai_status_to(&mut output, true, true, false, false).unwrap();
         let result = String::from_utf8(output).unwrap();
         assert!(result.contains("AI mode enabled"));
