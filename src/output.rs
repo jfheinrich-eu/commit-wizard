@@ -125,10 +125,12 @@ mod tests {
     #[test]
     fn test_ai_unavailable_with_use_ai_true() {
         let mut output = Vec::new();
-        // Even if use_ai is true, unavailability should not show enabled message
+        // In normal usage, use_ai is computed as !no_ai && ai_available,
+        // so this scenario (use_ai=true, ai_available=false) shouldn't occur.
+        // However, we test the function's behavior: use_ai is checked first,
+        // so it will show the enabled message even if AI isn't available.
         print_ai_status_to(&mut output, true, true, false, false).unwrap();
         let result = String::from_utf8(output).unwrap();
-        // Since use_ai is checked first, it will show enabled message
         assert!(result.contains("AI mode enabled"));
     }
 }
