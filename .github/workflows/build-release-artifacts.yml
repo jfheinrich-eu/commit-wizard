@@ -68,14 +68,15 @@ jobs:
         id: version
         run: |
           if [ -n "${{ github.event.inputs.tag }}" ]; then
+            TAG="${{ github.event.inputs.tag }}"
             # Validate that the tag matches semver: e.g., 1.2.3
-            if ! echo "${{ github.event.inputs.tag }}" | grep -Eq '^[0-9]+\.[0-9]+\.[0-9]+$'; then
-              msg="Error: Provided tag '${{ github.event.inputs.tag }}' is not a valid semver (e.g., 1.2.3)"
+            if ! echo "$TAG" | grep -Eq '^[0-9]+\.[0-9]+\.[0-9]+$'; then
+              msg="Error: Provided tag '$TAG' is not a valid semver (e.g., 1.2.3)"
               echo "$msg" >&2
               echo "::error::$msg"
               exit 1
             fi
-            VERSION="${{ github.event.inputs.tag }}"
+            VERSION="$TAG"
           else
             VERSION="${{ github.ref_name }}"
           fi

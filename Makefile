@@ -381,7 +381,8 @@ build-alpine-pkg:
 	if [ -n "$$TARBALL" ]; then \
 		mv "$$TARBALL" "$(DIST_DIR)/$(PACKAGE_NAME)-$(VERSION)-alpine-$(ARCH).tar.gz"; \
 	else \
-		echo "❌ Error: Expected tarball matching $(DIST_DIR)/$(PACKAGE_NAME)-$(VERSION)*.tar.gz not found." >&2; exit 1; \
+		echo "❌ Error: Expected tarball matching $(DIST_DIR)/$(PACKAGE_NAME)-$(VERSION)*.tar.gz not found." >&2; \
+		exit 1; \
 	fi
 	@# Generate checksum
 	@cd $(DIST_DIR) && sha256sum "$(PACKAGE_NAME)-$(VERSION)-alpine-$(ARCH).tar.gz" > "$(PACKAGE_NAME)-$(VERSION)-alpine-$(ARCH).tar.gz.sha256"

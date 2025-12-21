@@ -16,7 +16,7 @@ robustness, and automated release management with multi-platform support.
 
 #### ✅ Updated Actions to Latest Versions
 
-**File**: [.github/workflows/codeql.yml](../.github/workflows/codeql.yml)
+**File**: `.github/workflows/codeql.yml`
 
 - Updated CodeQL from v2.23.5 → **v3.31.8**
 - New SHA: `55f241477386da271f97b8ec400e2e58759c21b2`
@@ -25,7 +25,7 @@ robustness, and automated release management with multi-platform support.
 
 #### ✅ Enhanced Token Permissions
 
-**File**: [.github/workflows/release.yml](../.github/workflows/release.yml)
+**File**: `.github/workflows/release.yml`
 
 - Moved `contents: write` from global to job-level
 - Follows principle of least privilege
@@ -53,7 +53,7 @@ jobs:
 
 #### ✅ Added Missing Timeout
 
-**File**: [.github/workflows/auto-review.yml](../.github/workflows/auto-review.yml)
+**File**: `.github/workflows/auto-review.yml`
 
 ```yaml
 jobs:
@@ -65,7 +65,7 @@ Prevents workflow from hanging indefinitely.
 
 #### ✅ Non-blocking Codecov Upload
 
-**File**: [.github/workflows/rust-tests.yml](../.github/workflows/rust-tests.yml)
+**File**: `.github/workflows/rust-tests.yml`
 
 ```yaml
 - name: Upload coverage to Codecov
@@ -80,7 +80,7 @@ CI won't fail if Codecov service is temporarily unavailable.
 
 #### ✅ New Workflow: Build Release Artifacts
 
-**File**: [.github/workflows/build-release-artifacts.yml](../.github/workflows/build-release-artifacts.yml)
+**File**: `.github/workflows/build-release-artifacts.yml`
 
 **Features**:
 
@@ -116,7 +116,7 @@ CI won't fail if Codecov service is temporarily unavailable.
 
 #### ✅ Enhanced Cargo.toml
 
-**File**: [Cargo.toml](../Cargo.toml)
+**File**: `Cargo.toml`
 
 Added metadata for automated package generation:
 
@@ -137,7 +137,7 @@ requires = { git = "*" }
 
 #### ✅ New Installation Guide
 
-**File**: [docs/INSTALLATION.md](../docs/INSTALLATION.md)
+**File**: `docs/INSTALLATION.md`
 
 Comprehensive installation instructions for:
 
@@ -152,14 +152,14 @@ Comprehensive installation instructions for:
 
 #### ✅ Updated README
 
-**File**: [README.md](../README.md)
+**File**: `README.md`
 
 - Quick install snippets for all platforms
 - Links to detailed installation guide
 
 #### ✅ Workflow Analysis Document
 
-**File**: [docs/workflow-analysis.md](../docs/workflow-analysis.md)
+**File**: `docs/workflow-analysis.md`
 
 - Complete security audit
 - Best practices compliance check
@@ -290,13 +290,13 @@ None. All changes are additions or improvements to existing workflows.
 
 ### For Release Creation
 
-The existing [.github/workflows/release.yml](../.github/workflows/release.yml) still handles:
+The existing `.github/workflows/release.yml` still handles:
 
 - CHANGELOG updates
 - Tag-based GitHub Release creation
 - Commit of CHANGELOG back to main
 
-The new [.github/workflows/build-release-artifacts.yml](../.github/workflows/build-release-artifacts.yml) adds:
+The new `.github/workflows/build-release-artifacts.yml` adds:
 
 - Binary builds for all platforms
 - Package creation
@@ -314,19 +314,19 @@ No changes to development workflow. All additions are CI/CD only.
 
 ### Modified
 
-- [.github/workflows/codeql.yml](../.github/workflows/codeql.yml)
-- [.github/workflows/auto-review.yml](../.github/workflows/auto-review.yml)
-- [.github/workflows/release.yml](../.github/workflows/release.yml)
-- [.github/workflows/rust-tests.yml](../.github/workflows/rust-tests.yml)
-- [Cargo.toml](../Cargo.toml)
-- [README.md](../README.md)
+- `.github/workflows/codeql.yml`
+- `.github/workflows/auto-review.yml`
+- `.github/workflows/release.yml`
+- `.github/workflows/rust-tests.yml`
+- `Cargo.toml`
+- `README.md`
 
 ### Added
 
-- [.github/workflows/build-release-artifacts.yml](../.github/workflows/build-release-artifacts.yml)
-- [docs/workflow-analysis.md](../docs/workflow-analysis.md)
-- [docs/INSTALLATION.md](../docs/INSTALLATION.md)
-- [docs/workflow-improvements-summary.md](workflow-improvements-summary.md) (this file)
+- `.github/workflows/build-release-artifacts.yml`
+- `docs/workflow-analysis.md`
+- `docs/INSTALLATION.md`
+- `docs/workflow-improvements-summary.md` (this file)
 
 ---
 
