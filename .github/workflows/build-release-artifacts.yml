@@ -304,7 +304,43 @@ jobs:
 
           ### Available Binaries
 
-          - **Linux x86_64 (musl)**: Static binary, works on any distro
+          - **Linux x86_64 (musl)**: Static binary, works on most modern Linux distributions
+          - **Linux x86_64 (glibc)**: Dynamic binary for Debian, Ubuntu, Fedora, RHEL, and other glibc-based distros
+          - **Linux arm64 (glibc)**: For 64-bit ARM servers and desktops (aarch64)
+          - **macOS x86_64**: Intel-based Macs
+          - **macOS arm64 (Apple Silicon)**: Apple Silicon Macs (M1, M2, M3)
+
+          ### Verifying Downloads
+
+          Every archive or binary published in this release includes a corresponding SHA-256 checksum
+          listed on the release page or in a `.sha256` file.
+
+          To verify a downloaded file on Linux or macOS:
+
+          ```bash
+          sha256sum commit-wizard-<version>-<target>.tar.gz
+          # or on macOS (if `sha256sum` is not available)
+          shasum -a 256 commit-wizard-<version>-<target>.tar.gz
+          ```
+
+          Compare the computed hash with the checksum published alongside the artifact.
+
+          ### Building from Source
+
+          If you prefer to build from source or your platform is not covered by the prebuilt
+          binaries, you can install using Cargo:
+
+          ```bash
+          cargo install commit-wizard
+          ```
+
+          Or build directly from a cloned repository:
+
+          ```bash
+          git clone https://github.com/${{ github.repository }}.git
+          cd commit-wizard
+          cargo build --release
+          ```
           - **Linux x86_64 (glibc)**: For modern Linux systems
           - **Linux ARM64 (musl)**: Static binary for ARM servers/devices
           - **Linux ARM64 (glibc)**: For ARM systems with glibc
