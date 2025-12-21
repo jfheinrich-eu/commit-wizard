@@ -108,11 +108,12 @@ RUN set -euo pipefail; \
 # Install GitHub Copilot CLI globally
 # NOTE: We intentionally pin the Copilot CLI version for reproducible devcontainers
 # and to avoid unexpected behavior changes from upstream releases.
+# As of 2025-12-21, version 0.0.372 is the latest stable release.
 # When updating, bump COPILOT_CLI_VERSION to a tested, known-good version
 # and verify that `commit-wizard`'s AI features work as expected.
 # You can also override this at build time:
 #   docker build --build-arg COPILOT_CLI_VERSION=0.0.XXX .
-ARG COPILOT_CLI_VERSION=0.0.371
+ARG COPILOT_CLI_VERSION=0.0.372
 RUN echo "Installing GitHub Copilot CLI (@github/copilot@${COPILOT_CLI_VERSION})..."; \
     if npm install -g @github/copilot@${COPILOT_CLI_VERSION}; then \
         echo "GitHub Copilot CLI installed successfully."; \
