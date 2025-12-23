@@ -265,7 +265,7 @@ fn run_application(cli: Cli) -> Result<()> {
         eprintln!("📋 Found {} changed file(s)", changed_files.len());
     }
 
-    // Prevent continuing when there are no changes to commit
+    // Prevent continuing when there are no changed files to process
     if changed_files.is_empty() {
         bail!("No changed files detected. Stage or modify files before running commit-wizard.");
     }
