@@ -377,7 +377,8 @@ build-alpine-pkg:
 	@$(MAKE) alpine-package
 	@# Rename the tarball created by alpine-package to include "alpine" in the name
 	@mkdir -p $(DIST_DIR)
-	@TARBALL=$$(ls "$(DIST_DIR)/$(PACKAGE_NAME)-$(VERSION)"*.tar.gz 2>/dev/null | head -n 1); \
+	@set -e; \
+	TARBALL=$$(ls "$(DIST_DIR)/$(PACKAGE_NAME)-$(VERSION)"*.tar.gz 2>/dev/null | head -n 1); \
 	if [ -n "$$TARBALL" ]; then \
 		mv "$$TARBALL" "$(DIST_DIR)/$(PACKAGE_NAME)-$(VERSION)-alpine-$(ARCH).tar.gz"; \
 	else \
