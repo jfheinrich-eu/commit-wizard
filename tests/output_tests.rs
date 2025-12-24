@@ -47,15 +47,20 @@ fn test_print_ai_status_ai_unavailable_no_panic() {
 
 #[test]
 fn test_print_ai_status_all_combinations_no_panic() {
-    // Test all combinations to ensure no panics occur
-    // Detailed output verification is done in src/output.rs unit tests
+    // Test all combinations to ensure no panics occur and function completes successfully.
+    // This integration test verifies that all parameter combinations are handled without
+    // crashing. Detailed output verification is done in src/output.rs unit tests.
+    let mut test_count = 0;
     for verbose in [false, true] {
         for use_ai in [false, true] {
             for no_ai in [false, true] {
                 for ai_available in [false, true] {
                     print_ai_status(verbose, use_ai, no_ai, ai_available);
+                    test_count += 1;
                 }
             }
         }
     }
+    // Assert that all 16 combinations were tested (2^4 = 16)
+    assert_eq!(test_count, 16, "Expected to test all 16 parameter combinations");
 }
