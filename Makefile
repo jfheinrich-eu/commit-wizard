@@ -378,11 +378,11 @@ build-alpine-pkg:
 	@# Rename the tarball created by alpine-package to include "alpine" in the name
 	@mkdir -p $(DIST_DIR)
 	@set -e; \
-	TARBALL=$$(ls "$(DIST_DIR)/$(PACKAGE_NAME)-$(VERSION)"*.tar.gz 2>/dev/null | head -n 1); \
-	if [ -n "$$TARBALL" ]; then \
+	TARBALL="$(DIST_DIR)/$(PACKAGE_NAME)-$(VERSION).tar.gz"; \
+	if [ -f "$$TARBALL" ]; then \
 		mv "$$TARBALL" "$(DIST_DIR)/$(PACKAGE_NAME)-$(VERSION)-alpine-$(ARCH).tar.gz"; \
 	else \
-		echo "❌ Error: Expected tarball matching $(DIST_DIR)/$(PACKAGE_NAME)-$(VERSION)*.tar.gz not found." >&2; \
+		echo "❌ Error: Expected tarball $$TARBALL not found." >&2; \
 		exit 1; \
 	fi
 	@# Generate checksum
