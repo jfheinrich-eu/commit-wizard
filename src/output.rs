@@ -41,6 +41,16 @@ fn print_ai_status_to<W: Write>(
         return Ok(());
     }
 
+    // Debug assertion: use_ai should only be true when ai_available is true.
+    // In production builds this is a no-op, but in debug builds it helps catch
+    // logic errors where the caller incorrectly sets use_ai=true despite AI being unavailable.
+    // This state should be prevented by main.rs logic: use_ai = !no_ai && ai_available
+    debug_assert!(
+        !use_ai || ai_available,
+        "Inconsistent state: use_ai=true but ai_available=false. \
+         This indicates a logic error in the caller."
+    );
+
     if use_ai {
         writeln!(
             writer,
@@ -124,13 +134,18 @@ mod tests {
     }
 
     #[test]
+    #[cfg(not(debug_assertions))]
     fn test_ai_unavailable_with_use_ai_true() {
         let mut output = Vec::new();
         // This tests the internal function's conditional priority:
         // use_ai is checked before ai_available, so if called with use_ai=true
         // and ai_available=false, it shows "enabled" (even though inconsistent).
         // In practice, main.rs ensures use_ai = !no_ai && ai_available,
-        // preventing this inconsistency. This test documents the function behavior.
+        // preventing this inconsistency. 
+        // 
+        // NOTE: This test only runs in release mode (with debug_assertions disabled).
+        // In debug mode, a debug_assert! catches this invalid state and panics,
+        // which is the desired behavior to catch logic errors during development.
         print_ai_status_to(&mut output, true, true, false, false).unwrap();
         let result = String::from_utf8(output).unwrap();
         assert!(result.contains("AI mode enabled"));
