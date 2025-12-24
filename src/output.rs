@@ -141,8 +141,8 @@ mod tests {
         // use_ai is checked before ai_available, so if called with use_ai=true
         // and ai_available=false, it shows "enabled" (even though inconsistent).
         // In practice, main.rs ensures use_ai = !no_ai && ai_available,
-        // preventing this inconsistency. 
-        // 
+        // preventing this inconsistency.
+        //
         // NOTE: This test only runs in release mode (with debug_assertions disabled).
         // In debug mode, a debug_assert! catches this invalid state and panics,
         // which is the desired behavior to catch logic errors during development.

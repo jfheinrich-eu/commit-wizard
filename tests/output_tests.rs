@@ -71,5 +71,8 @@ fn test_print_ai_status_all_combinations_no_panic() {
     }
     // Assert that all 12 valid combinations were tested (16 total - 4 invalid)
     // Invalid combinations: (use_ai=true, ai_available=false) with any verbose/no_ai values (4 combos)
-    assert_eq!(test_count, 12, "Expected to test all 12 valid parameter combinations");
+    assert_eq!(
+        test_count, 12,
+        "Expected to test all 12 valid parameter combinations"
+    );
 }
