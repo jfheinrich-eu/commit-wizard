@@ -87,11 +87,12 @@ RUN gem install mdl
 
 # Upgrade Node.js to latest LTS version using n
 # Debian bullseye ships with Node.js 12.x which is too old for @github/copilot
-RUN set -euo pipefail; \
+# Use bash explicitly since pipefail is a bash-specific feature
+RUN /bin/bash -c 'set -euo pipefail; \
     echo "=== Node.js Upgrade Process ==="; \
-    echo "Step 1/5: Installing 'n' version manager..."; \
+    echo "Step 1/5: Installing '\''n'\'' version manager..."; \
     npm install -g n; \
-    echo "✓ 'n' installed successfully"; \
+    echo "✓ '\''n'\'' installed successfully"; \
     echo "Step 2/5: Upgrading to Node.js LTS..."; \
     n lts; \
     echo "✓ Node.js LTS installed"; \
@@ -104,7 +105,7 @@ RUN set -euo pipefail; \
     echo "Step 5/5: Verifying npm version..."; \
     NPM_VERSION=$(npm --version); \
     echo "✓ npm version: $NPM_VERSION"; \
-    echo "=== Node.js Upgrade Complete ==="
+    echo "=== Node.js Upgrade Complete ==="'
 # Install GitHub Copilot CLI globally
 # NOTE: We intentionally pin the Copilot CLI version for reproducible devcontainers
 # and to avoid unexpected behavior changes from upstream releases.
