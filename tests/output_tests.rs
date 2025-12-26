@@ -47,15 +47,32 @@ fn test_print_ai_status_ai_unavailable_no_panic() {
 
 #[test]
 fn test_print_ai_status_all_combinations_no_panic() {
-    // Test all combinations to ensure no panics occur
-    // Detailed output verification is done in src/output.rs unit tests
+    // Test all valid combinations to ensure no panics occur and function completes successfully.
+    // This integration test verifies that all parameter combinations are handled without
+    // crashing. Detailed output verification is done in src/output.rs unit tests.
+    //
+    // Note: We skip the invalid combination where use_ai=true but ai_available=false,
+    // as this state is prevented by main.rs logic and caught by a debug_assert in the function.
+    let mut test_count = 0;
     for verbose in [false, true] {
         for use_ai in [false, true] {
             for no_ai in [false, true] {
                 for ai_available in [false, true] {
+                    // Skip invalid state: use_ai=true && ai_available=false
+                    // This combination should never occur in practice and is caught by debug_assert
+                    if use_ai && !ai_available {
+                        continue;
+                    }
                     print_ai_status(verbose, use_ai, no_ai, ai_available);
+                    test_count += 1;
                 }
             }
         }
     }
+    // Assert that all 12 valid combinations were tested (16 total - 4 invalid)
+    // Invalid combinations: (use_ai=true, ai_available=false) with any verbose/no_ai values (4 combos)
+    assert_eq!(
+        test_count, 12,
+        "Expected to test all 12 valid parameter combinations"
+    );
 }

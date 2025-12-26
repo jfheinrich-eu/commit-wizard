@@ -2,13 +2,16 @@
 
 This guide covers installation methods for various operating systems and Linux distributions.
 
+> **Note**: In the examples below, replace `<VERSION>` with the actual version number you want to install.  
+> Check the [releases page](https://github.com/jfheinrich-eu/commit-wizard/releases) for available versions (e.g., `0.1.0`).
+
 ## Quick Install (Recommended)
 
 ### Linux/macOS (Static Binary)
 
 ```bash
-# Download the latest release (check https://github.com/jfheinrich-eu/commit-wizard/releases for latest version)
-VERSION="0.1.0"
+# Set the version you want to install (check https://github.com/jfheinrich-eu/commit-wizard/releases for latest version)
+VERSION="<VERSION>"
 
 # For Linux x86_64 (static musl - works on any distro)
 curl -LO "https://github.com/jfheinrich-eu/commit-wizard/releases/download/$VERSION/commit-wizard-$VERSION-linux-x86_64-musl.tar.gz"
@@ -25,8 +28,8 @@ commit-wizard --version
 ### Debian / Ubuntu / Linux Mint / Pop!_OS
 
 ```bash
-# Download .deb package
-VERSION="0.1.0"
+# Set the version you want to install
+VERSION="<VERSION>"
 wget "https://github.com/jfheinrich-eu/commit-wizard/releases/download/$VERSION/commit-wizard_${VERSION}_amd64.deb"
 
 # Install with dpkg
@@ -42,8 +45,8 @@ commit-wizard --version
 ### Fedora / RHEL / CentOS / Rocky Linux / AlmaLinux
 
 ```bash
-# Download .rpm package
-VERSION="0.1.0"
+# Set the version you want to install
+VERSION="<VERSION>"
 wget "https://github.com/jfheinrich-eu/commit-wizard/releases/download/$VERSION/commit-wizard-${VERSION}-1.x86_64.rpm"
 
 # Install with rpm (Fedora/RHEL 9+)
@@ -59,8 +62,8 @@ commit-wizard --version
 ### Alpine Linux
 
 ```bash
-# Download Alpine package
-VERSION="0.1.0"
+# Set the version you want to install
+VERSION="<VERSION>"
 ARCH=$(uname -m)
 wget "https://github.com/jfheinrich-eu/commit-wizard/releases/download/$VERSION/commit-wizard-${VERSION}-alpine-${ARCH}.tar.gz"
 
@@ -82,7 +85,7 @@ For detailed Alpine installation instructions, see [docs/ALPINE_INSTALL.md](ALPI
 #### Intel Macs (x86_64)
 
 ```bash
-VERSION="0.1.0"
+VERSION="<VERSION>"
 curl -LO "https://github.com/jfheinrich-eu/commit-wizard/releases/download/$VERSION/commit-wizard-$VERSION-macos-x86_64.tar.gz"
 tar xzf "commit-wizard-$VERSION-macos-x86_64.tar.gz"
 sudo mv "commit-wizard-$VERSION-macos-x86_64/commit-wizard" /usr/local/bin/
@@ -92,7 +95,7 @@ rm -rf "commit-wizard-$VERSION-macos-x86_64"*
 #### Apple Silicon (M1/M2/M3)
 
 ```bash
-VERSION="0.1.0"
+VERSION="<VERSION>"
 curl -LO "https://github.com/jfheinrich-eu/commit-wizard/releases/download/$VERSION/commit-wizard-$VERSION-macos-aarch64.tar.gz"
 tar xzf "commit-wizard-$VERSION-macos-aarch64.tar.gz"
 sudo mv "commit-wizard-$VERSION-macos-aarch64/commit-wizard" /usr/local/bin/
