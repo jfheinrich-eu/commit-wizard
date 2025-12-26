@@ -5,7 +5,9 @@
 	pre-commit-install pre-commit-run pre-commit-update pre-commit-uninstall deps-machete \
 	alpine-package alpine-install alpine-uninstall alpine-clean alpine-static \
 	alpine-info alpine-test alpine-dist \
-	check-requirements install-requirements install-cargo-tools install-copilot
+	check-requirements install-requirements install-cargo-tools install-copilot \
+	build-target build-archive build-all-binaries build-debian build-rpm build-alpine-pkg \
+	build-all-packages
 
 # Default target - show help
 help:
@@ -68,7 +70,40 @@ help:
 	@echo "  make deps-audit     - Audit dependencies for security issues"
 	@echo "  make deps-machete   - Check for unused dependencies"
 	@echo ""
+	@echo "Release Builds (used by CI/CD workflows):"
+	@echo "  make build-target TARGET=<target> PLATFORM_NAME=<name> [USE_CROSS=true]"
+	@echo "                      - Build for specific target (e.g., x86_64-unknown-linux-musl)"
+	@echo "  make build-archive TARGET=<target> PLATFORM_NAME=<name> VERSION=<ver>"
+	@echo "                      - Build and create archive with checksums"
+	@echo "  make build-all-binaries VERSION=<ver>"
+	@echo "                      - Build all platform binaries"
+	@echo "  make build-debian VERSION=<ver>"
+	@echo "                      - Build Debian package (.deb)"
+	@echo "  make build-rpm VERSION=<ver>"
+	@echo "                      - Build RPM package"
+	@echo "  make build-alpine-pkg VERSION=<ver>"
+	@echo "                      - Build Alpine static package"
+	@echo "  make build-all-packages VERSION=<ver>"
+	@echo "                      - Build all Linux packages (deb, rpm, alpine)"
+	@echo ""
 	@echo "For Alpine installation guide, see: docs/ALPINE_INSTALL.md"
+
+# ============================================================================
+# Build Variables
+# ============================================================================
+PACKAGE_NAME = commit-wizard
+VERSION ?= $(shell grep '^version' Cargo.toml | head -1 | cut -d'"' -f2)
+ARCH = $(shell uname -m)
+
+# Build parameters (can be overridden)
+TARGET ?= x86_64-unknown-linux-gnu
+PLATFORM_NAME ?= linux-x86_64
+USE_CROSS ?= false
+DIST_DIR = dist
+
+# ============================================================================
+# Basic Development Targets
+# ============================================================================
 
 # Build debug version
 build:
@@ -205,12 +240,174 @@ deps-machete:
 	fi
 	@cargo machete
 
-# Alpine Linux package variables
-PACKAGE_NAME = commit-wizard
-VERSION = $(shell grep '^version' Cargo.toml | head -1 | cut -d'"' -f2)
-ARCH = $(shell uname -m)
+# ============================================================================
+# Release Build Targets (for CI/CD and local release builds)
+# ============================================================================
+
+# Build for a specific target
+# Usage: make build-target TARGET=x86_64-unknown-linux-musl PLATFORM_NAME=linux-x86_64-musl [USE_CROSS=true]
+build-target:
+	@echo "Building for target: $(TARGET)"
+	@echo "Platform name: $(PLATFORM_NAME)"
+	@echo "Use cross: $(USE_CROSS)"
+	@echo ""
+	@# Add target if not installed
+	@if ! rustup target list | grep -q "$(TARGET) (installed)"; then \
+		echo "Installing target $(TARGET)..."; \
+		rustup target add $(TARGET); \
+	fi
+	@# Determine build features based on target
+	@BUILD_FEATURES=""; \
+	if echo "$(TARGET)" | grep -q "musl"; then \
+		BUILD_FEATURES="--features vendored-openssl"; \
+		echo "Using vendored OpenSSL for musl target"; \
+	fi; \
+	if [ "$(USE_CROSS)" = "true" ]; then \
+		echo "Installing cross (forced, version v0.2.5)..."; \
+		cargo install cross --git https://github.com/cross-rs/cross --tag v0.2.5 --locked --force; \
+		cross build --release --target $(TARGET) --locked $$BUILD_FEATURES; \
+	else \
+		cargo build --release --target $(TARGET) --locked $$BUILD_FEATURES; \
+	fi
+	@# Strip binary if not Windows
+	@if ! echo "$(TARGET)" | grep -q "windows"; then \
+		strip target/$(TARGET)/release/$(PACKAGE_NAME) 2>/dev/null || true; \
+	fi
+	@echo "✅ Binary built: target/$(TARGET)/release/$(PACKAGE_NAME)"
+
+# Build and create archive with checksums
+# Usage: make build-archive TARGET=x86_64-unknown-linux-musl PLATFORM_NAME=linux-x86_64-musl VERSION=1.0.0
+build-archive: build-target
+	@echo "Creating archive for $(PLATFORM_NAME)..."
+	@mkdir -p $(DIST_DIR)
+	@ARCHIVE_NAME="$(PACKAGE_NAME)-$(VERSION)-$(PLATFORM_NAME)"; \
+	mkdir -p "$(DIST_DIR)/$$ARCHIVE_NAME"; \
+	cp target/$(TARGET)/release/$(PACKAGE_NAME) "$(DIST_DIR)/$$ARCHIVE_NAME/"; \
+	cp README.md LICENSE "$(DIST_DIR)/$$ARCHIVE_NAME/"; \
+	cd $(DIST_DIR) && tar czf "$$ARCHIVE_NAME.tar.gz" "$$ARCHIVE_NAME"; \
+	rm -rf "$$ARCHIVE_NAME"; \
+	if command -v shasum >/dev/null 2>&1; then \
+		shasum -a 256 "$$ARCHIVE_NAME.tar.gz" > "$$ARCHIVE_NAME.tar.gz.sha256"; \
+	else \
+		sha256sum "$$ARCHIVE_NAME.tar.gz" > "$$ARCHIVE_NAME.tar.gz.sha256"; \
+	fi
+	@echo "✅ Archive created: $(DIST_DIR)/$(PACKAGE_NAME)-$(VERSION)-$(PLATFORM_NAME).tar.gz"
+
+# Build all platform binaries
+# Usage: make build-all-binaries VERSION=1.0.0
+build-all-binaries:
+	@echo "Building all platform binaries for version $(VERSION)..."
+	@echo ""
+	@# Linux x86_64 musl
+	@$(MAKE) build-archive TARGET=x86_64-unknown-linux-musl PLATFORM_NAME=linux-x86_64-musl VERSION=$(VERSION)
+	@echo ""
+	@# Linux x86_64 gnu
+	@$(MAKE) build-archive TARGET=x86_64-unknown-linux-gnu PLATFORM_NAME=linux-x86_64 VERSION=$(VERSION)
+	@echo ""
+	@# Linux ARM64 musl
+	@$(MAKE) build-archive TARGET=aarch64-unknown-linux-musl PLATFORM_NAME=linux-aarch64-musl VERSION=$(VERSION) USE_CROSS=true
+	@echo ""
+	@# Linux ARM64 gnu
+	@$(MAKE) build-archive TARGET=aarch64-unknown-linux-gnu PLATFORM_NAME=linux-aarch64 VERSION=$(VERSION) USE_CROSS=true
+	@echo ""
+	@# macOS x86_64
+	@if [ "$$(uname)" = "Darwin" ]; then \
+		$(MAKE) build-archive TARGET=x86_64-apple-darwin PLATFORM_NAME=macos-x86_64 VERSION=$(VERSION); \
+		echo ""; \
+		$(MAKE) build-archive TARGET=aarch64-apple-darwin PLATFORM_NAME=macos-aarch64 VERSION=$(VERSION); \
+	else \
+		echo "⚠️  Skipping macOS builds (requires macOS runner)"; \
+	fi
+	@echo ""
+	@echo "✅ All binaries built successfully!"
+	@ls -lh $(DIST_DIR)/
+
+# Build Debian package
+# Usage: make build-debian VERSION=1.0.0
+build-debian:
+	@echo "Building Debian package for version $(VERSION)..."
+	@# Install cargo-deb if needed
+	@if ! cargo deb --version >/dev/null 2>&1; then \
+		echo "Installing cargo-deb..."; \
+		cargo install cargo-deb --version 3.6.2 --locked; \
+	fi
+	@# Build release binary if not exists
+	@if [ ! -f target/release/$(PACKAGE_NAME) ]; then \
+		cargo build --release --locked; \
+	fi
+	@# Build Debian package
+	@cargo deb --no-build --no-strip
+	@# Move to dist directory
+	@mkdir -p $(DIST_DIR)
+	@DEB_FILE=$$(ls target/debian/*.deb | head -1); \
+	cp "$$DEB_FILE" "$(DIST_DIR)/$(PACKAGE_NAME)_$(VERSION)_amd64.deb"; \
+	cd $(DIST_DIR) && sha256sum "$(PACKAGE_NAME)_$(VERSION)_amd64.deb" > "$(PACKAGE_NAME)_$(VERSION)_amd64.deb.sha256"
+	@echo "✅ Debian package: $(DIST_DIR)/$(PACKAGE_NAME)_$(VERSION)_amd64.deb"
+
+# Build RPM package
+# Usage: make build-rpm VERSION=1.0.0
+build-rpm:
+	@echo "Building RPM package for version $(VERSION)..."
+	@# Install cargo-generate-rpm if needed
+	@if ! cargo generate-rpm --version >/dev/null 2>&1; then \
+		echo "Installing cargo-generate-rpm..."; \
+		cargo install cargo-generate-rpm --version 0.20.0 --locked; \
+	fi
+	@# Build release binary if not exists
+	@if [ ! -f target/release/$(PACKAGE_NAME) ]; then \
+		cargo build --release --locked; \
+	fi
+	@# Build RPM package
+	@cargo generate-rpm
+	@# Move to dist directory
+	@mkdir -p $(DIST_DIR)
+	@RPM_FILE=$$(ls target/generate-rpm/*.rpm | head -1); \
+	cp "$$RPM_FILE" "$(DIST_DIR)/$(PACKAGE_NAME)-$(VERSION)-1.x86_64.rpm"; \
+	cd $(DIST_DIR) && sha256sum "$(PACKAGE_NAME)-$(VERSION)-1.x86_64.rpm" > "$(PACKAGE_NAME)-$(VERSION)-1.x86_64.rpm.sha256"
+	@echo "✅ RPM package: $(DIST_DIR)/$(PACKAGE_NAME)-$(VERSION)-1.x86_64.rpm"
+
+# Build Alpine static package
+# Usage: make build-alpine-pkg VERSION=1.0.0
+build-alpine-pkg:
+	@# Build static musl binary for Alpine using the specified target
+	@$(MAKE) build-target TARGET=x86_64-unknown-linux-musl PLATFORM_NAME=linux-x86_64-musl
+	@# Remove any existing Alpine package artifacts to avoid stale or partially built tarballs from previous runs
+	@rm -f "$(DIST_DIR)/$(PACKAGE_NAME)-$(VERSION)-alpine-$(ARCH).tar.gz" "$(DIST_DIR)/$(PACKAGE_NAME)-$(VERSION)-alpine-$(ARCH).tar.gz.sha256"
+	@# Create a fresh Alpine package tarball using the newly built static binary
+	@$(MAKE) alpine-package
+	@# Rename the tarball created by alpine-package to include "alpine" in the name
+	@mkdir -p $(DIST_DIR)
+	@set -e; \
+	TARBALL="$(DIST_DIR)/$(PACKAGE_NAME)-$(VERSION).tar.gz"; \
+	if [ -f "$$TARBALL" ]; then \
+		mv "$$TARBALL" "$(DIST_DIR)/$(PACKAGE_NAME)-$(VERSION)-alpine-$(ARCH).tar.gz"; \
+	else \
+		echo "❌ Error: Expected tarball $$TARBALL not found." >&2; \
+		exit 1; \
+	fi
+	@# Generate checksum
+	@cd $(DIST_DIR) && sha256sum "$(PACKAGE_NAME)-$(VERSION)-alpine-$(ARCH).tar.gz" > "$(PACKAGE_NAME)-$(VERSION)-alpine-$(ARCH).tar.gz.sha256"
+	@echo "✅ Alpine package: $(DIST_DIR)/$(PACKAGE_NAME)-$(VERSION)-alpine-$(ARCH).tar.gz"
+
+# Build all Linux packages (Debian, RPM, Alpine)
+# Usage: make build-all-packages VERSION=1.0.0
+build-all-packages:
+	@echo "Building all Linux packages for version $(VERSION)..."
+	@echo ""
+	@$(MAKE) build-debian VERSION=$(VERSION)
+	@echo ""
+	@$(MAKE) build-rpm VERSION=$(VERSION)
+	@echo ""
+	@$(MAKE) build-alpine-pkg VERSION=$(VERSION)
+	@echo ""
+	@echo "✅ All packages built successfully!"
+	@ls -lh $(DIST_DIR)/*.deb $(DIST_DIR)/*.rpm $(DIST_DIR)/*alpine*.tar.gz
+
+# ============================================================================
+# Alpine Linux Package Targets (for local installation)
+# ============================================================================
+
 PKG_DIR = pkg
-DIST_DIR = dist
 INSTALL_DIR = /usr/local
 BINARY_DIR = $(INSTALL_DIR)/bin
 DOC_DIR = $(INSTALL_DIR)/share/doc/$(PACKAGE_NAME)

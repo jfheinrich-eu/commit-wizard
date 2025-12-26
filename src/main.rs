@@ -41,6 +41,7 @@ use commit_wizard::git::{
 };
 use commit_wizard::inference::build_groups;
 use commit_wizard::logging;
+use commit_wizard::output::print_ai_status;
 use commit_wizard::progress::ProgressSpinner;
 use commit_wizard::types::AppState;
 use commit_wizard::ui::run_tui;
@@ -260,38 +261,27 @@ fn run_application(cli: Cli) -> Result<()> {
         }
     }
 
-    if changed_files.is_empty() {
-        log::warn!("No changes found");
-        bail!(
-            "No changes found in repository.\n\
-             Hint: Modify some files or create new ones to get started."
-        );
-    }
-
     if cli.verbose {
         eprintln!("📋 Found {} changed file(s)", changed_files.len());
     }
 
+    // Prevent continuing when there are no changed files to process
+    if changed_files.is_empty() {
+        bail!("No changed files detected. Stage or modify files before running commit-wizard.");
+    }
     // Step 2: Determine if AI should be used
     let spinner = ProgressSpinner::new("Checking AI availability...", 2, 4);
-    let use_ai = !cli.no_ai && is_ai_available();
+    let ai_available = is_ai_available();
+    let use_ai = !cli.no_ai && ai_available;
     spinner.stop();
 
     log::info!(
         "AI mode: enabled={}, available={}, no_ai_flag={}",
         use_ai,
-        is_ai_available(),
+        ai_available,
         cli.no_ai
     );
-    if cli.verbose {
-        if use_ai {
-            eprintln!("🤖 AI mode enabled - using GitHub Copilot for grouping and messages");
-        } else if cli.no_ai {
-            eprintln!("🔧 AI mode disabled by --no-ai flag - using heuristic grouping");
-        } else {
-            eprintln!("🔧 GitHub Copilot CLI not available - falling back to heuristic grouping");
-        }
-    }
+    print_ai_status(cli.verbose, use_ai, cli.no_ai, ai_available);
 
     // Step 3: Build commit groups (AI-first approach)
     let spinner = ProgressSpinner::new("Creating commit groups...", 3, 4);

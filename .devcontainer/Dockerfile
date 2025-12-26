@@ -29,6 +29,9 @@ RUN apt-get update && apt-get install -y \
     # Ruby for markdownlint
     ruby \
     ruby-dev \
+    # Node.js and npm for GitHub Copilot CLI
+    nodejs \
+    npm \
     # CLI tools
     curl \
     wget \
@@ -82,6 +85,43 @@ RUN python3 -m pip install --no-cache-dir pre-commit
 # Install markdownlint gem
 RUN gem install mdl
 
+# Upgrade Node.js to latest LTS version using n
+# Debian bullseye ships with Node.js 12.x which is too old for @github/copilot
+# Use bash explicitly since pipefail is a bash-specific feature
+RUN /bin/bash -c 'set -euo pipefail; \
+    echo "=== Node.js Upgrade Process ==="; \
+    echo "Step 1/5: Installing '\''n'\'' version manager..."; \
+    npm install -g n; \
+    echo "✓ '\''n'\'' installed successfully"; \
+    echo "Step 2/5: Upgrading to Node.js LTS..."; \
+    n lts; \
+    echo "✓ Node.js LTS installed"; \
+    echo "Step 3/5: Refreshing shell hash table..."; \
+    hash -r; \
+    echo "✓ Shell hash refreshed"; \
+    echo "Step 4/5: Verifying Node.js version..."; \
+    NODE_VERSION=$(node --version); \
+    echo "✓ Node.js version: $NODE_VERSION"; \
+    echo "Step 5/5: Verifying npm version..."; \
+    NPM_VERSION=$(npm --version); \
+    echo "✓ npm version: $NPM_VERSION"; \
+    echo "=== Node.js Upgrade Complete ==="'
+# Install GitHub Copilot CLI globally
+# NOTE: We intentionally pin the Copilot CLI version for reproducible devcontainers
+# and to avoid unexpected behavior changes from upstream releases.
+# As of 2025-12-21, version 0.0.372 is the latest stable release.
+# When updating, bump COPILOT_CLI_VERSION to a tested, known-good version
+# and verify that `commit-wizard`'s AI features work as expected.
+# You can also override this at build time:
+#   docker build --build-arg COPILOT_CLI_VERSION=0.0.XXX .
+ARG COPILOT_CLI_VERSION=0.0.372
+RUN echo "Installing GitHub Copilot CLI (@github/copilot@${COPILOT_CLI_VERSION})..."; \
+    if npm install -g @github/copilot@${COPILOT_CLI_VERSION}; then \
+        echo "GitHub Copilot CLI installed successfully."; \
+    else \
+        echo "ERROR: Failed to install GitHub Copilot CLI (@github/copilot)."; \
+        exit 1; \
+    fi
 # Create symlinks for fd (some systems use fdfind)
 RUN if [ -x /usr/bin/fdfind ]; then ln -sf /usr/bin/fdfind /usr/local/bin/fd || echo "Warning: Could not create fd symlink"; fi
 

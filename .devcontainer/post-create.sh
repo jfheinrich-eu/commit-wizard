@@ -176,7 +176,33 @@ if [ -f ".pre-commit-config.yaml" ]; then
     fi
 fi
 
+# Check GitHub Copilot CLI status
+echo "🤖 Checking GitHub Copilot CLI..."
+if command -v copilot >/dev/null 2>&1; then
+    echo "✅ GitHub Copilot CLI is installed"
+
+    # Test authentication status (non-interactive) by running a prompt command
+    # This will fail with an auth error if the user is not logged in
+    if command -v timeout >/dev/null 2>&1; then
+        if timeout 5 copilot -s -p "test" >/dev/null 2>&1; then
+            echo "✅ GitHub Copilot CLI is authenticated and working"
+        else
+            echo "⚠️  GitHub Copilot CLI is NOT authenticated"
+            echo "   To authenticate, run: copilot"
+            echo "   Then type: /login"
+        fi
+    else
+        echo "ℹ️  'timeout' command not found; skipping non-interactive Copilot authentication check"
+    fi
+else
+    echo "❌ GitHub Copilot CLI not found"
+    echo "   The Copilot CLI installation may have failed during container build."
+    echo "   Try rebuilding the development container. If the problem persists, check the Dockerfile and build logs."
+fi
+
+echo ""
 echo "✅ Development environment setup complete!"
 echo "💡 Available aliases: cb, cr, ct, cc, cf, ccl, cw, cu, tree"
 echo "🔗 Git commit aliases: gcf, gcfix, gcd, gcs, gcr, gct, gcc"
 echo "🪝 Pre-commit hooks: make pre-commit-run"
+echo "🤖 GitHub Copilot CLI: copilot (run '/login' to authenticate)"
