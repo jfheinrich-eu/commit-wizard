@@ -83,6 +83,17 @@ jobs:
         run: |
           set -euo pipefail
 
+          if [[ -z "${PR_NUMBER:-}" ]]; then
+            echo "Error: PR_NUMBER is not set or is empty. Aborting auto-merge."
+            exit 1
+          fi
+
+          if ! gh pr view "${PR_NUMBER}" >/dev/null 2>&1; then
+            echo "Error: Pull request #${PR_NUMBER} does not exist or is not accessible. Aborting auto-merge."
+            exit 1
+          fi
+          set -euo pipefail
+
           # NOTE: gh pr merge --auto may wait for required checks indefinitely.
           # This step runs within the job-level timeout (timeout-minutes: 10), which
           # bounds how long the auto-merge can wait if checks never complete.
