@@ -58,6 +58,28 @@ jobs:
           SANITIZED_TAG=$(echo "${{ github.ref_name }}" | sed 's/[^a-zA-Z0-9._-]/-/g')
           echo "branch_name=changelog-update-${SANITIZED_TAG}" >> $GITHUB_OUTPUT
 
+      - name: Prepare PR body content
+        id: pr_body
+        run: |
+          CHANGES="${{ steps.changelog.outputs.changes }}"
+          MAX_SIZE=60000  # Leave buffer below GitHub's 65,536 character limit
+
+          if [ ${#CHANGES} -gt $MAX_SIZE ]; then
+            TRUNCATED_CHANGES="${CHANGES:0:$MAX_SIZE}"
+            TRUNCATED_CHANGES="${TRUNCATED_CHANGES}
+
+          ...
+
+          ⚠️ **Changelog truncated due to size limits.** Please see CHANGELOG.md for the complete changes."
+            echo "content<<EOF" >> $GITHUB_OUTPUT
+            echo "$TRUNCATED_CHANGES" >> $GITHUB_OUTPUT
+            echo "EOF" >> $GITHUB_OUTPUT
+          else
+            echo "content<<EOF" >> $GITHUB_OUTPUT
+            echo "$CHANGES" >> $GITHUB_OUTPUT
+            echo "EOF" >> $GITHUB_OUTPUT
+          fi
+
       - name: Create Pull Request for CHANGELOG
         id: pr
         uses: peter-evans/create-pull-request@5e914681df9dc83aa4e4905692ca88beb2f9e91f # v7.0.5
