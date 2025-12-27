@@ -52,15 +52,31 @@ jobs:
           name: "Release ${{ github.ref_name }}"
           body: ${{ steps.changelog.outputs.changes }}
 
-      - name: Commit CHANGELOG.md
-        run: |
-          git config --local user.name "${{ github.actor }}"
-          git config --local user.email "${{ github.actor_id }}+${{ github.actor }}@users.noreply.github.com"
-          git add CHANGELOG.md
-          git commit -m "docs: update CHANGELOG.md for ${{ github.ref_name }} [skip ci]"
-
-      - name: Push changes
-        uses: ad-m/github-push-action@77c5b412c50b723d2a4fbc6d71fb5723bcd439aa # v1.0.0
+      - name: Create Pull Request for CHANGELOG
+        id: pr
+        uses: peter-evans/create-pull-request@5e914681df9dc83aa4e4905692ca88beb2f9e91f # v7.0.5
         with:
-          github_token: ${{ steps.fetch_secrets.outputs.secret1 }}
-          branch: main
+          token: ${{ steps.fetch_secrets.outputs.secret1 }}
+          branch: changelog-update-${{ github.ref_name }}
+          commit-message: "docs: update CHANGELOG.md for ${{ github.ref_name }} [skip ci]"
+          title: "docs: update CHANGELOG.md for ${{ github.ref_name }}"
+          body: |
+            Automated CHANGELOG update for release ${{ github.ref_name }}
+
+            This PR was automatically created by the release workflow.
+
+            ## Changes
+            ${{ steps.changelog.outputs.changes }}
+          labels: documentation,automated
+          delete-branch: true
+          committer: github-actions[bot] <41898282+github-actions[bot]@users.noreply.github.com>
+          author: github-actions[bot] <41898282+github-actions[bot]@users.noreply.github.com>
+
+      - name: Enable Auto-Merge
+        if: steps.pr.outputs.pull-request-number
+        run: |
+          gh pr merge ${{ steps.pr.outputs.pull-request-number }} \
+            --auto --squash \
+            --subject "docs: update CHANGELOG.md for ${{ github.ref_name }} [skip ci]"
+        env:
+          GITHUB_TOKEN: ${{ steps.fetch_secrets.outputs.secret1 }}
