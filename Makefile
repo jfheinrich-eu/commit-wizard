@@ -266,7 +266,7 @@ build-target:
 		echo "Checking for cross..."; \
 		if ! command -v cross >/dev/null 2>&1; then \
 			echo "Installing cross (version v0.2.5)..."; \
-			cargo install cross --git https://github.com/cross-rs/cross --tag v0.2.5 --locked; \
+			cargo install cross --git https://github.com/cross-rs/cross --rev 1b8cf50d20180c1a394099e608141480f934b7f7 --locked; \
 		else \
 			echo "cross already installed: $$(cross --version)"; \
 		fi; \

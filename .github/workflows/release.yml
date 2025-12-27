@@ -52,6 +52,12 @@ jobs:
           name: "Release ${{ github.ref_name }}"
           body: ${{ steps.changelog.outputs.changes }}
 
+      - name: Sanitize tag name for branch
+        id: sanitize
+        run: |
+          SANITIZED_TAG=$(echo "${{ github.ref_name }}" | sed 's/[^a-zA-Z0-9._-]/-/g')
+          echo "branch_name=changelog-update-${SANITIZED_TAG}" >> $GITHUB_OUTPUT
+
       - name: Create Pull Request for CHANGELOG
         id: pr
         uses: peter-evans/create-pull-request@5e914681df9dc83aa4e4905692ca88beb2f9e91f # v7.0.5
