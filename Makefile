@@ -268,12 +268,17 @@ build-target:
 			echo "cross not found, installing cross (version v0.2.5)..."; \
 			cargo install cross --git https://github.com/cross-rs/cross --rev 1b8cf50d20180c1a394099e608141480f934b7f7 --locked; \
 		else \
-			CROSS_VERSION=$$(cross --version | awk '{print $$2}'); \
-			if [ "$$CROSS_VERSION" != "0.2.5" ]; then \
-				echo "cross version $$CROSS_VERSION found, but 0.2.5 is required. Installing required version..."; \
+			CROSS_RAW=$$(cross --version 2>/dev/null); \
+			CROSS_VERSION=$$(printf '%s\n' "$$CROSS_RAW" | awk 'NR==1{for(i=1;i<=NF;i++) if($$i ~ /^[0-9]+\.[0-9]+\.[0-9]+$$/){print $$i; exit}}'); \
+			if [ -z "$$CROSS_VERSION" ] || [ "$$CROSS_VERSION" != "0.2.5" ]; then \
+				if [ -z "$$CROSS_VERSION" ]; then \
+					echo "Warning: unable to detect cross version from output: $$CROSS_RAW"; \
+				else \
+					echo "cross version $$CROSS_VERSION found, but 0.2.5 is required. Installing required version..."; \
+				fi; \
 				cargo install cross --git https://github.com/cross-rs/cross --rev 1b8cf50d20180c1a394099e608141480f934b7f7 --locked --force; \
 			else \
-				echo "Required cross version 0.2.5 already installed: $$(cross --version)"; \
+				echo "Required cross version 0.2.5 already installed: $$CROSS_RAW"; \
 			fi; \
 		fi; \
 		cross build --release --target $(TARGET) --locked $$BUILD_FEATURES; \
