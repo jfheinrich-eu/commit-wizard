@@ -63,7 +63,7 @@ jobs:
         uses: peter-evans/create-pull-request@5e914681df9dc83aa4e4905692ca88beb2f9e91f # v7.0.5
         with:
           token: ${{ steps.fetch_secrets.outputs.secret1 }}
-          branch: changelog-update-${{ github.ref_name }}
+          branch: ${{ steps.sanitize.outputs.branch_name }}
           commit-message: "docs: update CHANGELOG.md for ${{ github.ref_name }} [skip ci]"
           title: "docs: update CHANGELOG.md for ${{ github.ref_name }}"
           body: |
@@ -81,9 +81,30 @@ jobs:
       - name: Enable Auto-Merge
         if: steps.pr.outputs.pull-request-number
         run: |
-          gh pr merge "${PR_NUMBER}" \
+          set -euo pipefail
+
+          # NOTE: gh pr merge --auto may wait for required checks indefinitely.
+          # This step runs within the job-level timeout (timeout-minutes: 10), which
+          # bounds how long the auto-merge can wait if checks never complete.
+
+          if [[ -z "${PR_NUMBER:-}" ]]; then
+            echo "Error: PR_NUMBER is not set or is empty. Aborting auto-merge."
+            exit 1
+          fi
+
+          if ! gh pr view "${PR_NUMBER}" >/dev/null 2>&1; then
+            echo "Error: Pull request #${PR_NUMBER} does not exist or is not accessible. Aborting auto-merge."
+            exit 1
+          fi
+
+          if ! gh pr merge "${PR_NUMBER}" \
             --auto --squash \
-            --subject "docs: update CHANGELOG.md for ${{ github.ref_name }} [skip ci]"
+            --subject "docs: update CHANGELOG.md for ${REF_NAME} [skip ci]"; then
+            echo "Error: Failed to enable auto-merge for PR #${PR_NUMBER}."
+            echo "This may be due to missing required checks, branch protection rules, or insufficient permissions."
+            exit 1
+          fi
         env:
           GITHUB_TOKEN: ${{ steps.fetch_secrets.outputs.secret1 }}
           PR_NUMBER: ${{ steps.pr.outputs.pull-request-number }}
+          REF_NAME: ${{ github.ref_name }}

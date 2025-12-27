@@ -263,12 +263,18 @@ build-target:
 		echo "Using vendored OpenSSL for musl target"; \
 	fi; \
 	if [ "$(USE_CROSS)" = "true" ]; then \
-		echo "Checking for cross..."; \
+		echo "Checking for cross (required version: 0.2.5)..."; \
 		if ! command -v cross >/dev/null 2>&1; then \
-			echo "Installing cross (version v0.2.5)..."; \
+			echo "cross not found, installing cross (version v0.2.5)..."; \
 			cargo install cross --git https://github.com/cross-rs/cross --rev 1b8cf50d20180c1a394099e608141480f934b7f7 --locked; \
 		else \
-			echo "cross already installed: $$(cross --version)"; \
+			CROSS_VERSION=$$(cross --version | awk '{print $$2}'); \
+			if [ "$$CROSS_VERSION" != "0.2.5" ]; then \
+				echo "cross version $$CROSS_VERSION found, but 0.2.5 is required. Installing required version..."; \
+				cargo install cross --git https://github.com/cross-rs/cross --rev 1b8cf50d20180c1a394099e608141480f934b7f7 --locked --force; \
+			else \
+				echo "Required cross version 0.2.5 already installed: $$(cross --version)"; \
+			fi; \
 		fi; \
 		cross build --release --target $(TARGET) --locked $$BUILD_FEATURES; \
 	else \
