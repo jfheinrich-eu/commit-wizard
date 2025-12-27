@@ -81,6 +81,9 @@ jobs:
       - name: Enable Auto-Merge
         if: steps.pr.outputs.pull-request-number
         run: |
+          # NOTE: gh pr merge --auto may wait for required checks indefinitely.
+          # This step runs within the job-level timeout (timeout-minutes: 10), which
+          # bounds how long the auto-merge can wait if checks never complete.
           set -euo pipefail
 
           if [[ -z "${PR_NUMBER:-}" ]]; then
