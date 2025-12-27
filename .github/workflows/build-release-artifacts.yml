@@ -96,6 +96,12 @@ jobs:
           sudo apt-get update
           sudo apt-get install -y musl-tools
 
+      - name: Install cross-compilation tools (ARM64 targets)
+        if: contains(matrix.target, 'aarch64') && runner.os == 'Linux'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y gcc-aarch64-linux-gnu
+
       - name: Build binary and create archive
         run: |
           VERSION="${{ steps.version.outputs.VERSION }}"
