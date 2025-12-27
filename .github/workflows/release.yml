@@ -52,15 +52,95 @@ jobs:
           name: "Release ${{ github.ref_name }}"
           body: ${{ steps.changelog.outputs.changes }}
 
-      - name: Commit CHANGELOG.md
+      - name: Sanitize tag name for branch
+        id: sanitize
         run: |
-          git config --local user.name "${{ github.actor }}"
-          git config --local user.email "${{ github.actor_id }}+${{ github.actor }}@users.noreply.github.com"
-          git add CHANGELOG.md
-          git commit -m "docs: update CHANGELOG.md for ${{ github.ref_name }} [skip ci]"
+          SANITIZED_TAG=$(echo "${{ github.ref_name }}" | sed 's/[^a-zA-Z0-9._-]/-/g')
+          echo "branch_name=changelog-update-${SANITIZED_TAG}" >> $GITHUB_OUTPUT
 
-      - name: Push changes
-        uses: ad-m/github-push-action@77c5b412c50b723d2a4fbc6d71fb5723bcd439aa # v1.0.0
+      - name: Prepare PR body content
+        id: pr_body
+        run: |
+          CHANGES="${{ steps.changelog.outputs.changes }}"
+          MAX_SIZE=60000  # Leave buffer below GitHub's 65,536 character limit
+
+          if [ ${#CHANGES} -gt $MAX_SIZE ]; then
+            TRUNCATED_CHANGES="${CHANGES:0:$MAX_SIZE}"
+            TRUNCATED_CHANGES="${TRUNCATED_CHANGES}
+
+          ...
+
+          ⚠️ **Changelog truncated due to size limits.** Please see CHANGELOG.md for the complete changes."
+            echo "content<<EOF" >> $GITHUB_OUTPUT
+            echo "$TRUNCATED_CHANGES" >> $GITHUB_OUTPUT
+            echo "EOF" >> $GITHUB_OUTPUT
+          else
+            echo "content<<EOF" >> $GITHUB_OUTPUT
+            echo "$CHANGES" >> $GITHUB_OUTPUT
+            echo "EOF" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Create Pull Request for CHANGELOG
+        id: pr
+        uses: peter-evans/create-pull-request@5e914681df9dc83aa4e4905692ca88beb2f9e91f # v7.0.5
         with:
-          github_token: ${{ steps.fetch_secrets.outputs.secret1 }}
-          branch: main
+          token: ${{ steps.fetch_secrets.outputs.secret1 }}
+          branch: ${{ steps.sanitize.outputs.branch_name }}
+          commit-message: "docs: update CHANGELOG.md for ${{ github.ref_name }} [skip ci]"
+          title: "docs: update CHANGELOG.md for ${{ github.ref_name }}"
+          body: |
+            Automated CHANGELOG update for release ${{ github.ref_name }}
+
+            This PR was automatically created by the release workflow.
+
+            ## Changes
+            ${{ steps.changelog.outputs.changes }}
+          labels: documentation,automated
+          delete-branch: true
+          committer: github-actions[bot] <41898282+github-actions[bot]@users.noreply.github.com>
+          author: github-actions[bot] <41898282+github-actions[bot]@users.noreply.github.com>
+
+      - name: Enable Auto-Merge
+        if: steps.pr.outputs.pull-request-number
+        run: |
+          # NOTE: gh pr merge --auto may wait for required checks indefinitely.
+          # This step runs within the job-level timeout (timeout-minutes: 10), which
+          # bounds how long the auto-merge can wait if checks never complete.
+          set -euo pipefail
+
+          if [[ -z "${PR_NUMBER:-}" ]]; then
+            echo "Error: PR_NUMBER is not set or is empty. Aborting auto-merge."
+            exit 1
+          fi
+
+          if ! gh pr view "${PR_NUMBER}" >/dev/null 2>&1; then
+            echo "Error: Pull request #${PR_NUMBER} does not exist or is not accessible. Aborting auto-merge."
+            exit 1
+          fi
+          set -euo pipefail
+
+          # NOTE: gh pr merge --auto may wait for required checks indefinitely.
+          # This step runs within the job-level timeout (timeout-minutes: 10), which
+          # bounds how long the auto-merge can wait if checks never complete.
+
+          if [[ -z "${PR_NUMBER:-}" ]]; then
+            echo "Error: PR_NUMBER is not set or is empty. Aborting auto-merge."
+            exit 1
+          fi
+
+          if ! gh pr view "${PR_NUMBER}" >/dev/null 2>&1; then
+            echo "Error: Pull request #${PR_NUMBER} does not exist or is not accessible. Aborting auto-merge."
+            exit 1
+          fi
+
+          if ! gh pr merge "${PR_NUMBER}" \
+            --auto --squash \
+            --subject "docs: update CHANGELOG.md for ${REF_NAME} [skip ci]"; then
+            echo "Error: Failed to enable auto-merge for PR #${PR_NUMBER}."
+            echo "This may be due to missing required checks, branch protection rules, or insufficient permissions."
+            exit 1
+          fi
+        env:
+          GITHUB_TOKEN: ${{ steps.fetch_secrets.outputs.secret1 }}
+          PR_NUMBER: ${{ steps.pr.outputs.pull-request-number }}
+          REF_NAME: ${{ github.ref_name }}

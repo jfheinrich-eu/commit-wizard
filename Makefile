@@ -263,8 +263,24 @@ build-target:
 		echo "Using vendored OpenSSL for musl target"; \
 	fi; \
 	if [ "$(USE_CROSS)" = "true" ]; then \
-		echo "Installing cross (forced, version v0.2.5)..."; \
-		cargo install cross --git https://github.com/cross-rs/cross --tag v0.2.5 --locked --force; \
+		echo "Checking for cross (required version: 0.2.5)..."; \
+		if ! command -v cross >/dev/null 2>&1; then \
+			echo "cross not found, installing cross (version v0.2.5)..."; \
+			cargo install cross --git https://github.com/cross-rs/cross --rev 1b8cf50d20180c1a394099e608141480f934b7f7 --locked; \
+		else \
+			CROSS_RAW=$$(cross --version 2>/dev/null); \
+			CROSS_VERSION=$$(printf '%s\n' "$$CROSS_RAW" | awk 'NR==1{for(i=1;i<=NF;i++) if($$i ~ /^[0-9]+\.[0-9]+\.[0-9]+$$/){print $$i; exit}}'); \
+			if [ -z "$$CROSS_VERSION" ] || [ "$$CROSS_VERSION" != "0.2.5" ]; then \
+				if [ -z "$$CROSS_VERSION" ]; then \
+					echo "Warning: unable to detect cross version from output: $$CROSS_RAW"; \
+				else \
+					echo "cross version $$CROSS_VERSION found, but 0.2.5 is required. Installing required version..."; \
+				fi; \
+				cargo install cross --git https://github.com/cross-rs/cross --rev 1b8cf50d20180c1a394099e608141480f934b7f7 --locked --force; \
+			else \
+				echo "Required cross version 0.2.5 already installed: $$CROSS_RAW"; \
+			fi; \
+		fi; \
 		cross build --release --target $(TARGET) --locked $$BUILD_FEATURES; \
 	else \
 		cargo build --release --target $(TARGET) --locked $$BUILD_FEATURES; \
