@@ -75,8 +75,9 @@ jobs:
       - name: Enable Auto-Merge
         if: steps.pr.outputs.pull-request-number
         run: |
-          gh pr merge ${{ steps.pr.outputs.pull-request-number }} \
+          gh pr merge "${PR_NUMBER}" \
             --auto --squash \
             --subject "docs: update CHANGELOG.md for ${{ github.ref_name }} [skip ci]"
         env:
           GITHUB_TOKEN: ${{ steps.fetch_secrets.outputs.secret1 }}
+          PR_NUMBER: ${{ steps.pr.outputs.pull-request-number }}
